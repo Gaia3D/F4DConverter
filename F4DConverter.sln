@@ -10,6 +10,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "F4DConverter", "F4DConverte
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IfcLoader", "IfcLoader\IfcLoader.vcxproj", "{C165D128-F816-4CD1-B168-C099D2BA7D28}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "SetupF4DConverter", "SetupF4DConverter\SetupF4DConverter.vdproj", "{F719F2A2-B506-48AA-88A1-C75C27CC7360}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -34,6 +36,10 @@ Global
 		{C165D128-F816-4CD1-B168-C099D2BA7D28}.Release|x64.Build.0 = Release|x64
 		{C165D128-F816-4CD1-B168-C099D2BA7D28}.Release|x86.ActiveCfg = Release|Win32
 		{C165D128-F816-4CD1-B168-C099D2BA7D28}.Release|x86.Build.0 = Release|Win32
+		{F719F2A2-B506-48AA-88A1-C75C27CC7360}.Debug|x64.ActiveCfg = Debug
+		{F719F2A2-B506-48AA-88A1-C75C27CC7360}.Debug|x86.ActiveCfg = Debug
+		{F719F2A2-B506-48AA-88A1-C75C27CC7360}.Release|x64.ActiveCfg = Release
+		{F719F2A2-B506-48AA-88A1-C75C27CC7360}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

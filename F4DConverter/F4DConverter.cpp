@@ -38,6 +38,14 @@ int wmain(int argc, wchar_t* argv[])
 		return -1;
 	}
 
+	// arguments log
+	printf("[step]Arguments are following.\n");
+	std::map<std::string, std::string>::iterator iter = arguments.begin();
+	for (; iter != arguments.end(); iter++)
+	{
+		printf("%s : %s\n", iter->first.c_str(), iter->second.c_str());
+	}
+
 	// TODO(khj 20180424) : NYI must make log file through logger system
 	// start log writer if needed
 	if (arguments.find(LogFilePath) != arguments.end())

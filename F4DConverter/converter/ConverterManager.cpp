@@ -73,7 +73,8 @@ bool CConverterManager::processDataFolder()
 	if (!outputFolderExist)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), true);
+		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
+		LogWriter::getLogWriter()->addContents(outputFolder, true);
 		return false;
 	}
 
@@ -89,7 +90,8 @@ bool CConverterManager::processDataFolder()
 	if (!inputFolderExist)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), true);
+		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
+		LogWriter::getLogWriter()->addContents(inputFolder, true);
 		return false;
 	}
 
@@ -354,10 +356,7 @@ void CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 	{
 		if (arguments[CreateIndex] == std::string("Y") ||
 			arguments[CreateIndex] == std::string("y"))
-		{
 			bCreateIndices = true;
-			outputFolderPath = arguments[CreateIndex];
-		}
 		else
 			bCreateIndices = false;
 	}
