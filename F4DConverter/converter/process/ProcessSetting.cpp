@@ -16,6 +16,7 @@ ProcessSetting::ProcessSetting()
 	exteriorVisibilityIndexingCameraStep = 20.0f; // camera position step for exterior visibility indexing
 	interiorVisibilityIndexingOctreeDepth = 2; // visibility octree depth for interior
 	exteriorVisibilityIndexingOctreeDepth = 1; // visibility octree depth for exterior
+	bYAxisUp = false;
 }
 
 

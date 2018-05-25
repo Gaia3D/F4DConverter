@@ -26,6 +26,10 @@ private:
 	bool bOcclusionCulling;
 	double unitScaleFactor;
 	unsigned char skinLevel;
+	bool bYAxisUp;
+	std::string referenceFileName;
+	double referenceLon, referenceLat;
+	double referencePosX, referencePosY;
 
 	std::string inputFolderPath, outputFolderPath;
 
@@ -38,7 +42,7 @@ public:
 public:
 	bool initialize();
 
-	bool processSingleFile(std::string& filePath);
+	//bool processSingleFile(std::string& filePath);
 
 	void setProcessConfiguration(std::map<std::string, std::string>& arguments);
 
@@ -49,11 +53,15 @@ public:
 private:
 	bool processDataFolder();
 
+	void collectTargetFiles(std::string& inputFolder, std::map<std::string, std::string>& targetFiles);
+
 	bool writeIndexFile();
 
-	void processDataFolder(std::string& inputFolder);
+	void processDataFiles(std::map<std::string, std::string>& targetFiles);
 
 	bool processDataFile(std::string& filePath, aReader* reader);
+
+	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);
 };
 
 

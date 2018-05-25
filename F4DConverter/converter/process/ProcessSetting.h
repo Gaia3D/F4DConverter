@@ -21,6 +21,7 @@ public:
 	float exteriorVisibilityIndexingCameraStep; // camera position step for exterior visibility indexing(meter)
 	unsigned char interiorVisibilityIndexingOctreeDepth; // visibility octree depth for interior
 	unsigned char exteriorVisibilityIndexingOctreeDepth; // visibility octree depth for exterior
+	bool bYAxisUp; // if y axis of original data is toward ceil
 
 	std::map<unsigned char, NetSurfaceMeshSetting*> nsmSettings; // net surface mesh setting for each lod
 

@@ -275,6 +275,7 @@ void ConversionProcessor::uninitialize()
 void ConversionProcessor::clear()
 {
 	fullBbox.isInitialized = false;
+	originalFullBbox.isInitialized = false;
 
 	attributes.clear();
 
@@ -339,11 +340,21 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 	if(!originalTextureInfo.empty())
 		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
 
+	// change up axis from y to z
+	if (settings.bYAxisUp)
+	{
+		rotateAllMeshesAroundXAxisByQuater(allMeshes);
+	}
+
+	// calculate original bounding box
+	calculateBoundingBox(allMeshes, originalFullBbox);
+	fullBbox.addBox(originalFullBbox);
+
+	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
+	changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
+
 	// calculate plane normals and align them to their vertex normals
 	trimVertexNormals(allMeshes);
-
-	// calculate bounding box
-	calculateBoundingBox(allMeshes, fullBbox);
 
 	// determine  which surfaces are exteriors
 	if(settings.bExtractExterior)
@@ -2179,4 +2190,48 @@ void ConversionProcessor::normalizeMosiacTextures(std::map<unsigned char, unsign
 		mosaicTextureWidth[iterTexture->first] = resizedWidth;
 		mosaicTextureHeight[iterTexture->first] = resizedHeight;
 	}
+}
+
+void ConversionProcessor::rotateAllMeshesAroundXAxisByQuater(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
+{
+	size_t meshCount = meshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		gaia3d::TrianglePolyhedron* mesh = meshes[i];
+		size_t vertexCount = mesh->getVertices().size();
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			gaia3d::Vertex* vertex = mesh->getVertices()[j];
+
+			double tmpZ = vertex->position.z;
+			vertex->position.z = vertex->position.y;
+			vertex->position.y = -tmpZ;
+		}
+	}
+}
+
+void ConversionProcessor::changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(std::vector<gaia3d::TrianglePolyhedron*>& meshes,
+																								gaia3d::BoundingBox& bbox)
+{
+	double cx, cy, cz;
+	bbox.getCenterPoint(cx, cy, cz);
+
+	size_t meshCount = meshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		gaia3d::TrianglePolyhedron* mesh = meshes[i];
+		size_t vertexCount = mesh->getVertices().size();
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			gaia3d::Vertex* vertex = mesh->getVertices()[j];
+
+			vertex->position.x = vertex->position.x - cx;
+			vertex->position.y = vertex->position.y - cy;
+		}
+	}
+
+	bbox.minX = bbox.minX - cx;
+	bbox.minY = bbox.minY - cy;
+	bbox.maxX = bbox.maxX - cx;
+	bbox.maxY = bbox.maxY - cy;
 }

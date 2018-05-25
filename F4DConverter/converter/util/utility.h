@@ -42,6 +42,10 @@ namespace gaia3d
 		static std::string convertWideStringToUtf8(std::wstring& sourceString);
 
 		static std::wstring convertUtf8ToWideString(std::string& sourceString);
+
+#ifdef _WIN32
+		static std::string convertMultibyteToUtf8(std::string& sourceString);
+#endif
 	};
 
 	class ImageUtility

@@ -78,13 +78,17 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		tokens.push_back(std::wstring(argv[i]));
 
 	size_t tokenCount = tokens.size();
+	if (tokenCount % 2 != 0)
+		return false;
+
 	for (size_t i = 0; i < tokenCount; i++)
 	{
 		if (tokens[i].substr(0, 1) == std::wstring(L"-"))
 		{
-			if (i == tokenCount - 1 || tokens[i + 1].substr(0, 1) == std::wstring(L"-"))
+			if (tokens[i + 1].substr(0, 1) == std::wstring(L"-"))
 			{
-				return false;
+				if(tokens[i] != std::wstring(MatchedLonW) && tokens[i] != std::wstring(MatchedLatW))
+					return false;
 			}
 
 			if (tokens[i] == std::wstring(InputFolderW))
@@ -146,6 +150,34 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			if (tokens[i] == std::wstring(SkinLevelNsmW))
 			{
 				arguments[SkinLevelNsm] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(IsYAxisUpW))
+			{
+				arguments[IsYAxisUp] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(ReferenceFileW))
+			{
+				arguments[ReferenceFile] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(MatchedLonW))
+			{
+				arguments[MatchedLon] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(MatchedLatW))
+			{
+				arguments[MatchedLat] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
 				i++;
 				continue;
 			}
@@ -212,7 +244,7 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			std::string skinLevel = arguments[SkinLevelNsm];
 			int nSkinLevel = std::stoi(skinLevel);
 
-			if (nSkinLevel > 3 || nSkinLevel < 1)
+			if (nSkinLevel > 4 || nSkinLevel < 1)
 				return false;
 		}
 		catch (const std::invalid_argument& error)
@@ -226,6 +258,43 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			return false;
 		}
 	}
+
+	if (arguments.find(IsYAxisUp) != arguments.end())
+	{
+		if (arguments[IsYAxisUp] != std::string("Y") &&
+			arguments[IsYAxisUp] != std::string("y") &&
+			arguments[IsYAxisUp] != std::string("N") &&
+			arguments[IsYAxisUp] != std::string("n"))
+			return false;
+	}
+
+	if (arguments.find(ReferenceFile) != arguments.end())
+	{
+		if (arguments.find(MatchedLon) == arguments.end() || arguments.find(MatchedLat) == arguments.end())
+			return false;
+
+		try
+		{
+			double refLon = std::stod(arguments[MatchedLon]);
+			double refLat = std::stod(arguments[MatchedLat]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
+	else
+	{
+		if (arguments.find(MatchedLon) != arguments.end() || arguments.find(MatchedLat) != arguments.end())
+			return false;
+	}
+		
 
 	return true;
 }
@@ -356,6 +425,34 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 				i++;
 				continue;
 			}
+
+			if (tokens[i] == std::string(IsYAxisUp))
+			{
+				arguments[IsYAxisUp] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(ReferenceFile))
+			{
+				arguments[ReferenceFile] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(MatchedLon))
+			{
+				arguments[MatchedLon] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(MatchedLat))
+			{
+				arguments[MatchedLat] = tokens[i + 1];
+				i++;
+				continue;
+			}
 		}
 		else
 			return false;
@@ -432,6 +529,42 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 			std::string errorMessage = error.what();
 			return false;
 		}
+	}
+
+	if (arguments.find(IsYAxisUp) != arguments.end())
+	{
+		if (arguments[IsYAxisUp] != std::string("Y") &&
+			arguments[IsYAxisUp] != std::string("y") &&
+			arguments[IsYAxisUp] != std::string("N") &&
+			arguments[IsYAxisUp] != std::string("n"))
+			return false;
+	}
+
+	if (arguments.find(ReferenceFile) != arguments.end())
+	{
+		if (arguments.find(MatchedLon) == arguments.end() || arguments.find(MatchedLat) == arguments.end())
+			return false;
+
+		try
+		{
+			double refLon = std::stod(arguments[MatchedLon]);
+			double refLat = std::stod(arguments[MatchedLat]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
+	else
+	{
+		if (arguments.find(MatchedLon) != arguments.end() || arguments.find(MatchedLat) != arguments.end())
+			return false;
 	}
 
 	return true;

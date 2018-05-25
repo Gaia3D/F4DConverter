@@ -432,6 +432,19 @@ namespace gaia3d
 #endif
 	}
 
+#ifdef _WIN32
+	std::string StringUtility::convertMultibyteToUtf8(std::string& sourceString)
+	{
+		int neededLength = MultiByteToWideChar(CP_ACP, 0, sourceString.c_str(), (int)sourceString.size(), NULL, 0);
+		wchar_t* receiver = new wchar_t[neededLength + 1];
+		memset(receiver, 0x00, sizeof(wchar_t)*(neededLength + 1));
+		MultiByteToWideChar(CP_ACP, 0, sourceString.c_str(), (int)sourceString.size(), receiver, neededLength);
+		std::wstring wideString(receiver);
+		delete[] receiver;
+		return convertWideStringToUtf8(wideString);
+	}
+#endif
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../util/stb_image_write.h"
 	void ImageUtility::writeMemoryImageToFile(unsigned char* buffer, int width, int height, const char* fullPath)
