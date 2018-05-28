@@ -460,7 +460,7 @@ void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string
 {
 	std::string lonLatFileFullPath = outputFolderPath + std::string("/lonsLats.txt");
 	FILE* file = NULL;
-	fopen(lonLatFileFullPath.c_str(), "wt");
+	file = fopen(lonLatFileFullPath.c_str(), "wt");
 	while (referenceLon < 0.0)
 	{
 		referenceLon += 360.0;
@@ -469,7 +469,7 @@ void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string
 	{
 		referenceLon -= 360.0;
 	}
-	fprintf(file, "%s %f %f\n", referenceFileName.c_str(), referenceLon, referenceLat);
+	fprintf(file, "%s %.9lf %.9lf\n", referenceFileName.c_str(), referenceLon, referenceLat);
 
 	double deg2rad = M_PI / 180.0, rad2deg = 180.0 / M_PI;
 	double refLatRad = referenceLat * deg2rad;
@@ -489,7 +489,7 @@ void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string
 		double lat = referenceLat + radiusReciprocal * xDiff * rad2deg;
 		double lon = referenceLon + (radiusReciprocal / cosLat)* yDiff * rad2deg;
 
-		fprintf(file, "%s %f %f\n", iter->first.c_str(), lon, lat);
+		fprintf(file, "%s %.9lf %.9lf\n", iter->first.c_str(), lon, lat);
 	}
 
 	fclose(file);

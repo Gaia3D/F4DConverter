@@ -275,7 +275,11 @@ void ConversionProcessor::uninitialize()
 void ConversionProcessor::clear()
 {
 	fullBbox.isInitialized = false;
+	fullBbox.minX = fullBbox.minY = fullBbox.minZ = 10E9;
+	fullBbox.maxX = fullBbox.maxY = fullBbox.maxZ = -10E9;
 	originalFullBbox.isInitialized = false;
+	originalFullBbox.minX = originalFullBbox.minY = originalFullBbox.minZ = 10E9;
+	originalFullBbox.maxX = originalFullBbox.maxY = originalFullBbox.maxZ = -10E9;
 
 	attributes.clear();
 
