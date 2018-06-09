@@ -26,7 +26,7 @@ public:
 	void setExteriorExtraction(bool bDo) { settings.bExtractExterior = bDo; }
 	void setVisibilityIndexing(bool bDo) { settings.bOcclusionCulling = bDo; }
 	void setSpatialOctreeSize(float fSize) { settings.leafSpatialOctreeSize = fSize; }
-	void setTextureCoordinateUFlip(bool bDo) { settings.bFlipTextureCoordinateU = bDo; }
+	void setTextureCoordinateVFlip(bool bDo) { settings.bFlipTextureCoordinateV = bDo; }
 	void setInteriorVisibilityIndexingCameraStep(float step) { settings.interiorVisibilityIndexingCameraStep = step; }
 	void setExteriorVisibilityIndexingCameraStep(float step) { settings.exteriorVisibilityIndexingCameraStep = step; }
 	void setInteriorVisibilityIndexingOctreeDepth(unsigned char depth) { settings.interiorVisibilityIndexingOctreeDepth = depth; }
@@ -34,6 +34,8 @@ public:
 	void clearNsmSettings() { settings.clearNsmSettings(); }
 	void setSkinLevel(unsigned char level) { settings.netSurfaceMeshSettingIndex = level; }
 	void setYAxisUp(bool bUp) { settings.bYAxisUp = bUp; }
+	void setAlignPostionToCenter(bool bAlign) { settings.bAlignPositionToCenter = bAlign; }
+	void setIsRealisticMesh(bool bTrue) { settings.bRealisticMesh = bTrue; }
 
 protected:
 	SceneControlVariables* scv;
@@ -116,6 +118,12 @@ public:
 
 protected:
 	// main processing steps - start
+	void convertSemanticData(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+							std::map<std::string, std::string>& originalTextureInfo);
+
+	void convertRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+							std::map<std::string, std::string>& originalTextureInfo);
+
 	void trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes);
 
 	void calculateBoundingBox(std::vector<gaia3d::TrianglePolyhedron*>& meshes, gaia3d::BoundingBox& bbox);
@@ -136,6 +144,13 @@ protected:
 												bool bFixedDepth = true,
 												double leafBoxSize = 0.0,
 												bool bRefOnOnlyOneLeaf = false);
+
+	void splitOriginalMeshIntoEachSpatialOctrees(gaia3d::SpatialOctreeBox& spatialOctree,
+												std::vector<gaia3d::TrianglePolyhedron*>& meshes,
+												gaia3d::BoundingBox& bbox,
+												bool bFixedDepth,
+												double leafBoxSize,
+												bool bAllowDuplication);
 
 	void makeOcclusionInformation(std::vector<gaia3d::TrianglePolyhedron*>& meshes,
 									gaia3d::VisionOctreeBox& interiorOcclusionOctree,
@@ -194,7 +209,8 @@ protected:
 	void makeNetSurfaceMeshes(gaia3d::SpatialOctreeBox& octrees,
 							std::map<std::string, unsigned char*>& textures,
 							std::map<std::string, int>& textureWidths,
-							std::map<std::string, int>& textureHeights);
+							std::map<std::string, int>& textureHeights,
+							std::map<unsigned char, unsigned char>& lodUsingOriginalMesh);
 
 	void normalizeMosiacTextures(std::map<unsigned char, unsigned char*>& mosaicTextures,
 								std::map<unsigned char, int>& mosaicTextureWidth,
@@ -203,4 +219,20 @@ protected:
 	void rotateAllMeshesAroundXAxisByQuater(std::vector<gaia3d::TrianglePolyhedron*>& meshes);
 
 	void changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(std::vector<gaia3d::TrianglePolyhedron*>& meshes, gaia3d::BoundingBox& bbox);
+
+	void dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::TrianglePolyhedron*>& meshes, double edgeMinSize);
+
+	void removeDuplicatedVerticesAndOverlappingTriangles(std::vector<gaia3d::TrianglePolyhedron*>& meshes, bool bCompareTexCoord, bool bCompareNormal);
+
+	void makeLodTextureUsingOriginalTextureDirectly(unsigned char* originalTexture, int originalWidth, int originalHeight,
+													std::map<unsigned char, unsigned char>& lodMadeOfOriginalMesh,
+													std::map<unsigned char, unsigned char*>& netSurfaceTextures,
+													std::map<unsigned char, int>& netSurfaceTextureWidth,
+													std::map<unsigned char, int>& netSurfaceTextureHeight);
+
+	void divideOriginalTextureIntoSmallerSize(unsigned char* originalTexture, int originalWidth, int originalHeight,
+											gaia3d::SpatialOctreeBox& octree,
+											std::map<std::string, unsigned char*>& results,
+											std::map<std::string, int>& resultWidths,
+											std::map<std::string, int>& resultHeights);
 };

@@ -68,6 +68,8 @@ int wmain(int argc, wchar_t* argv[])
 		LogWriter::getLogWriter()->save();
 	}
 
+	system("pause");
+
     return 0;
 }
 

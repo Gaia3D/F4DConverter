@@ -13,6 +13,8 @@
 #define ReferenceFileW		L"-referenceFile"
 #define MatchedLonW			L"-matchedLon"
 #define MatchedLatW			L"-matchedLat"
+#define IsRealisticMeshW	L"-isRealisticMesh"
+#define AlignToCenterW		L"-alignToCenter"
 
 #define InputFolder		"-inputFolder"
 #define OutputFolder	"-outputFolder"
@@ -27,4 +29,5 @@
 #define ReferenceFile	"-referenceFile"
 #define MatchedLon		"-matchedLon"
 #define MatchedLat		"-matchedLat"
-
+#define IsRealisticMesh	"-isRealisticMesh"
+#define AlignToCenter	"-alignToCenter"

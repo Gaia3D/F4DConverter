@@ -789,10 +789,10 @@ bool F4DWriter::writeIndexFile()
 
 void F4DWriter::writeTextures(std::string imagePath)
 {
-	std::map<std::string, std::string>::iterator itr = processor->getTextureInfo().begin();
+	std::map<std::string, unsigned char*>::iterator itr = processor->getResizedTextures().begin();
 	std::string fileName, fileExt, targetFullPath;
 	int bpp = 4, width, height;
-	for (; itr != processor->getTextureInfo().end(); itr++)
+	for (; itr != processor->getResizedTextures().end(); itr++)
 	{
 		fileName = itr->first;
 
@@ -806,7 +806,7 @@ void F4DWriter::writeTextures(std::string imagePath)
 		targetFullPath = imagePath + "/" + fileName;
 		width = processor->getAllTextureWidths()[fileName];
 		height = processor->getAllTextureHeights()[fileName];
-		unsigned char* texture = processor->getResizedTextures()[fileName];
+		unsigned char* texture = itr->second;
 
 		if (fileExt.compare("jpg") == 0 || fileExt.compare("jpeg") == 0 || fileExt.compare("jpe") == 0)
 		{

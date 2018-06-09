@@ -129,6 +129,18 @@
     <ClInclude Include="converter\util\utility.h">
       <Filter>converter\util</Filter>
     </ClInclude>
+    <ClInclude Include="converter\util\KK_Image2D.h">
+      <Filter>converter\util</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\KK_Image2D_SplitData.h">
+      <Filter>converter\util</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\KK_Image2D_Utils.h">
+      <Filter>converter\util</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\KK_Rectangle.h">
+      <Filter>converter\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -201,6 +213,18 @@
       <Filter>converter\writer</Filter>
     </ClCompile>
     <ClCompile Include="converter\util\utility.cpp">
+      <Filter>converter\util</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\util\KK_Image2D.cpp">
+      <Filter>converter\util</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\util\KK_Image2D_SplitData.cpp">
+      <Filter>converter\util</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\util\KK_Image2D_Utils.cpp">
+      <Filter>converter\util</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\util\KK_Rectangle.cpp">
       <Filter>converter\util</Filter>
     </ClCompile>
   </ItemGroup>

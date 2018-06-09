@@ -13,6 +13,10 @@
 
 #include "../LogWriter.h"
 #include "../util/utility.h"
+#include "../util/KK_Image2D_Utils.h"
+#include "../util/KK_Rectangle.h"
+#include "../util/KK_Image2D_SplitData.h"
+#include "../util/KK_Image2D.h"
 
 #define STB_IMAGE_IMPLEMENTATION  // declare to use STB library
 #define STBI_NO_GIF // exclude .gif image format
@@ -296,7 +300,8 @@ void ConversionProcessor::clear()
 	{
 		std::map<std::string, unsigned char*>::iterator itr = resizedTextures.begin();
 		for (; itr != resizedTextures.end(); itr++)
-			delete[] itr->second;
+			stbi_image_free(itr->second);
+			//delete[] itr->second;
 
 		resizedTextures.clear();
 
@@ -313,7 +318,7 @@ void ConversionProcessor::clear()
 
 	std::map<unsigned char, unsigned char*>::iterator iterNetSurfaceTextures =  netSurfaceTextures.begin();
 	for (; iterNetSurfaceTextures != netSurfaceTextures.end(); iterNetSurfaceTextures++)
-		delete iterNetSurfaceTextures->second;
+		delete[] iterNetSurfaceTextures->second;
 	netSurfaceTextures.clear();
 
 	netSurfaceTextureWidth.clear();
@@ -333,15 +338,26 @@ void ConversionProcessor::addAttribute(std::string key, std::string value)
 bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
 											std::map<std::string, std::string>& originalTextureInfo)
 {
+	if (settings.bRealisticMesh)
+		convertRealisticMesh(originalMeshes, originalTextureInfo);
+	else
+		convertSemanticData(originalMeshes, originalTextureInfo);
+
+	return true;
+}
+
+void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+											std::map<std::string, std::string>& originalTextureInfo)
+{
 	if (settings.nsmSettings.empty())
 		settings.fillNsmSettings(settings.netSurfaceMeshSettingIndex);
-		//settings.fillNsmSettings(255);
+	//settings.fillNsmSettings(255);
 
 	// copy data from original to this container
 	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
 
 	// copy texture info
-	if(!originalTextureInfo.empty())
+	if (!originalTextureInfo.empty())
 		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
 
 	// change up axis from y to z
@@ -355,13 +371,14 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 	fullBbox.addBox(originalFullBbox);
 
 	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
-	changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
+	if (settings.bAlignPositionToCenter)
+		changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
 
 	// calculate plane normals and align them to their vertex normals
 	trimVertexNormals(allMeshes);
 
 	// determine  which surfaces are exteriors
-	if(settings.bExtractExterior)
+	if (settings.bExtractExterior)
 		determineWhichSurfacesAreExterior(allMeshes, fullBbox);
 
 	// make model-reference relationship
@@ -369,9 +386,9 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 
 	size_t modelCount = 0;
 	size_t meshCount = allMeshes.size();
-	for(size_t i = 0; i < meshCount; i++)
+	for (size_t i = 0; i < meshCount; i++)
 	{
-		if(allMeshes[i]->getReferenceInfo().model == NULL)
+		if (allMeshes[i]->getReferenceInfo().model == NULL)
 			modelCount++;
 	}
 	// make VBO
@@ -381,7 +398,7 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 	assignReferencesIntoEachSpatialOctrees(thisSpatialOctree, allMeshes, fullBbox, false, settings.leafSpatialOctreeSize);
 
 	// make visibility indices
-	if(settings.bOcclusionCulling)
+	if (settings.bOcclusionCulling)
 	{
 		// exterior extraction is necessary for occlusion culling
 		// so, if it is not done, do it before occlusion culling
@@ -394,7 +411,7 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 		gaia3d::BoundingBox interiorBbox, exteriorBbox;
 		calculateBoundingBox(interiors, interiorBbox);
 		calculateBoundingBox(exteriors, exteriorBbox);
-			 
+
 		// make occlusion culling information
 		gaia3d::VisionOctreeBox interiorOcclusionOctree(NULL), exteriorOcclusionOctree(NULL);
 		makeOcclusionInformation(allMeshes, interiorOcclusionOctree, exteriorOcclusionOctree, interiorBbox, exteriorBbox);
@@ -410,9 +427,128 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 		normalizeTextures(allTextureInfo);
 	}
 
-	makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights);
+	std::map<unsigned char, unsigned char> dummy;
+	makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, dummy);
+}
 
-	return true;
+void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+	std::map<std::string, std::string>& originalTextureInfo)
+{
+	if (settings.nsmSettings.empty())
+		settings.fillNsmSettings(50);
+	//settings.fillNsmSettings(255);
+
+	// copy data from original to this container
+	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
+
+	// copy texture info
+	if (!originalTextureInfo.empty())
+		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
+
+	// change up axis from y to z
+	if (settings.bYAxisUp)
+	{
+		rotateAllMeshesAroundXAxisByQuater(allMeshes);
+	}
+
+	// calculate original bounding box
+	calculateBoundingBox(allMeshes, originalFullBbox);
+	fullBbox.addBox(originalFullBbox);
+
+	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
+	if (settings.bAlignPositionToCenter)
+		changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
+
+	// calculate plane normals and align them to their vertex normals
+	trimVertexNormals(allMeshes);
+
+	// split original mesh into each leaf spatial octree
+	splitOriginalMeshIntoEachSpatialOctrees(thisSpatialOctree, allMeshes, fullBbox, false, settings.leafSpatialOctreeSize, false);
+
+	// collect newly created meshes into the container
+	allMeshes.clear();
+	std::vector<gaia3d::OctreeBox*> leafOctrees;
+	thisSpatialOctree.getAllLeafBoxes(leafOctrees, true);
+	size_t leafOctreeCount = leafOctrees.size();
+	printf("[Info]Created octree count : %zd\n\n", leafOctreeCount);
+	for (size_t i = 0; i < leafOctreeCount; i++)
+	{
+		size_t meshCount = leafOctrees[i]->meshes.size();
+		for (size_t j = 0; j < meshCount; j++)
+		{
+			leafOctrees[i]->meshes[j]->setId(allMeshes.size());
+			allMeshes.push_back(leafOctrees[i]->meshes[j]);
+		}
+	}
+
+	// make model-reference relationship
+	determineModelAndReference(allMeshes);
+
+	// drop small-sized edge triangles
+	dropTrianglesOfSmallSizedEdge(allMeshes, 0.005);
+
+	// remove duplicated vertices and superimposing triangles
+	removeDuplicatedVerticesAndOverlappingTriangles(allMeshes, true, false);
+
+	// make vbo
+	makeVboObjects(allMeshes);
+
+	// normalize texture
+	bool bMakeTextureCoordinate = allTextureInfo.empty() ? false : true;
+	if (bMakeTextureCoordinate)
+	{
+		// rebuild original texture
+		normalizeTextures(allTextureInfo);
+		if (resizedTextures.empty())
+		{
+			printf("[Error]No Texture Normalized!!!\n\n");
+		}
+	}
+
+	// make net surface mesh
+	std::map<unsigned char, unsigned char> lodMadeOfOriginalMesh;
+	lodMadeOfOriginalMesh[2] = 2;
+	lodMadeOfOriginalMesh[3] = 3;
+	lodMadeOfOriginalMesh[4] = 4;
+	makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, lodMadeOfOriginalMesh);
+
+	// make lod texture using original texture
+	if (!resizedTextures.empty())
+	{
+		std::map<std::string, unsigned char*>::iterator iter = resizedTextures.begin();
+		unsigned char* originalTexture = iter->second;
+		int originalWidth = allTextureWidths[iter->first];
+		int originalHeight = allTextureHeights[iter->first];
+
+		makeLodTextureUsingOriginalTextureDirectly(originalTexture, originalWidth, originalHeight,
+												lodMadeOfOriginalMesh,
+												netSurfaceTextures,
+												netSurfaceTextureWidth, netSurfaceTextureHeight);
+	}
+
+	// divide large-sized original texture into small-sized ones along octrees 
+	// and re-calculate texture coordinates of all meshes
+	if (!resizedTextures.empty())
+	{
+		std::map<std::string, unsigned char*>::iterator iter = resizedTextures.begin();
+		unsigned char* originalTexture = iter->second;
+		int originalWidth = allTextureWidths[iter->first];
+		int originalHeight = allTextureHeights[iter->first];
+
+		resizedTextures.clear();
+		allTextureWidths.clear();
+		allTextureHeights.clear();
+
+		divideOriginalTextureIntoSmallerSize(originalTexture, originalWidth, originalHeight,
+											thisSpatialOctree,
+											resizedTextures,
+											allTextureWidths, allTextureHeights);
+
+		if (resizedTextures.empty())
+		{
+			printf("[Error]No Texture divided!!!\n\n");
+		}
+	}
 }
 
 void ConversionProcessor::trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
@@ -751,6 +887,29 @@ void ConversionProcessor::assignReferencesIntoEachSpatialOctrees(gaia3d::Spatial
 
 		spatialOctree.setOctreeId();
 	}
+}
+
+void ConversionProcessor::splitOriginalMeshIntoEachSpatialOctrees(gaia3d::SpatialOctreeBox& spatialOctree,
+																std::vector<gaia3d::TrianglePolyhedron*>& meshes,
+																gaia3d::BoundingBox& bbox,
+																bool bFixedDepth,
+																double leafBoxSize,
+																bool bAllowDuplication)
+{
+	if (!bbox.isInitialized)
+		return;
+
+	// not yet support fixed depth
+	if (bFixedDepth)
+		return;
+
+	double maxLength = bbox.getMaxLength();
+	spatialOctree.setSize(bbox.minX, bbox.minY, bbox.minZ, bbox.minX + maxLength, bbox.minY + maxLength, bbox.minZ + maxLength);
+	spatialOctree.meshes.insert(spatialOctree.meshes.end(), meshes.begin(), meshes.end());
+
+	spatialOctree.makeTreeOfUnfixedDepth(leafBoxSize, !bAllowDuplication, true);
+
+	spatialOctree.setOctreeId();
 }
 
 void ConversionProcessor::makeOcclusionInformation(std::vector<gaia3d::TrianglePolyhedron*>& meshes,
@@ -2085,7 +2244,8 @@ void ConversionProcessor::deleteShaders(unsigned int programId)
 void ConversionProcessor::makeNetSurfaceMeshes(gaia3d::SpatialOctreeBox& octrees,
 											std::map<std::string, unsigned char*>& textures,
 											std::map<std::string, int>& textureWidths,
-											std::map<std::string, int>& textureHeights)
+											std::map<std::string, int>& textureHeights,
+											std::map<unsigned char, unsigned char>& lodUsingOriginalMesh)
 {
 	// prepare shaders for depth detection and texture drawing
 	unsigned int shaderProgramDepthDetection = makeShaders(1);
@@ -2109,16 +2269,22 @@ void ConversionProcessor::makeNetSurfaceMeshes(gaia3d::SpatialOctreeBox& octrees
 	for (unsigned char i = 2; i <= MaxLod; i++)
 	{
 		NetSurfaceMeshMaker maker;
-		maker.makeNetSurfaceMesh(container,
-								settings.nsmSettings[i],
-								this->scv,
-								shaderProgramDepthDetection,
-								shaderProgramTexture,
-								bindingResult,
-								netSurfaceMeshes,
-								netSurfaceTextures,
-								netSurfaceTextureWidth,
-								netSurfaceTextureHeight);
+		bool bUseOriginalMesh = lodUsingOriginalMesh.find(i) == lodUsingOriginalMesh.end() ? false : true;
+		if (bUseOriginalMesh)
+			maker.makeNetSurfaceMesh(container,
+									settings.nsmSettings[i],
+									netSurfaceMeshes);
+		else
+			maker.makeNetSurfaceMesh(container,
+									settings.nsmSettings[i],
+									this->scv,
+									shaderProgramDepthDetection,
+									shaderProgramTexture,
+									bindingResult,
+									netSurfaceMeshes,
+									netSurfaceTextures,
+									netSurfaceTextureWidth,
+									netSurfaceTextureHeight);
 	}
 
 
@@ -2238,4 +2404,552 @@ void ConversionProcessor::changeXYPlaneCoordinateToRelativeCoordinateToBoundingB
 	bbox.minY = bbox.minY - cy;
 	bbox.maxX = bbox.maxX - cx;
 	bbox.maxY = bbox.maxY - cy;
+}
+
+void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::TrianglePolyhedron*>& meshes, double edgeMinSize)
+{
+	double squaredMinSize = edgeMinSize*edgeMinSize;
+
+	double squaredEdgeLength0, squaredEdgeLength1, squaredEdgeLength2;
+	double xDiff, yDiff, zDiff;
+	size_t meshCount = meshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		gaia3d::TrianglePolyhedron* mesh = meshes[i];
+		size_t surfaceCount = mesh->getSurfaces().size();
+		std::vector<gaia3d::Surface*> survivedSurfaces;
+		for (size_t j = 0; j < surfaceCount; j++)
+		{
+			gaia3d::Surface* surface = mesh->getSurfaces()[j];
+			size_t triangleCount = surface->getTriangles().size();
+			std::vector<gaia3d::Triangle*> survivedTriangles;
+			for (size_t k = 0; k < triangleCount; k++)
+			{
+				gaia3d::Triangle* triangle = surface->getTriangles()[k];
+
+				xDiff = (triangle->getVertices()[1]->position.x - triangle->getVertices()[0]->position.x);
+				yDiff = (triangle->getVertices()[1]->position.y - triangle->getVertices()[0]->position.y);
+				zDiff = (triangle->getVertices()[1]->position.z - triangle->getVertices()[0]->position.z);
+				squaredEdgeLength0 = xDiff*xDiff + yDiff*yDiff + zDiff*zDiff;
+
+				xDiff = (triangle->getVertices()[2]->position.x - triangle->getVertices()[1]->position.x);
+				yDiff = (triangle->getVertices()[2]->position.y - triangle->getVertices()[1]->position.y);
+				zDiff = (triangle->getVertices()[2]->position.z - triangle->getVertices()[1]->position.z);
+				squaredEdgeLength1 = xDiff*xDiff + yDiff*yDiff + zDiff*zDiff;
+
+				xDiff = (triangle->getVertices()[0]->position.x - triangle->getVertices()[2]->position.x);
+				yDiff = (triangle->getVertices()[0]->position.y - triangle->getVertices()[2]->position.y);
+				zDiff = (triangle->getVertices()[0]->position.z - triangle->getVertices()[2]->position.z);
+				squaredEdgeLength2 = xDiff*xDiff + yDiff*yDiff + zDiff*zDiff;
+
+				if (squaredEdgeLength0 < squaredMinSize || squaredEdgeLength1 < squaredMinSize || squaredEdgeLength2 < squaredMinSize)
+					delete triangle;
+				else
+					survivedTriangles.push_back(triangle);
+			}
+
+			surface->getTriangles().clear();
+
+			if (!survivedTriangles.empty())
+			{
+				surface->getTriangles().assign(survivedTriangles.begin(), survivedTriangles.end());
+				survivedSurfaces.push_back(surface);
+			}
+			else
+				delete surface;
+		}
+
+		mesh->getSurfaces().clear();
+
+		if (!survivedSurfaces.empty())
+			mesh->getSurfaces().assign(survivedSurfaces.begin(), survivedSurfaces.end());
+	}
+}
+
+void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::vector<gaia3d::TrianglePolyhedron*>& meshes,
+																			bool bCompareTexCoord,
+																			bool bCompareNormal)
+{
+	size_t meshCount = meshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		gaia3d::TrianglePolyhedron* mesh = meshes[i];
+		
+		// collect vertex use case
+		std::map<gaia3d::Vertex*, std::vector<gaia3d::Triangle*>> vertexUseCase;
+		size_t surfaceCount = mesh->getSurfaces().size();
+		for (size_t j = 0; j < surfaceCount; j++)
+		{
+			gaia3d::Surface* surface = mesh->getSurfaces()[j];
+			size_t triangleCount = surface->getTriangles().size();
+			for (size_t k = 0; k < triangleCount; k++)
+			{
+				gaia3d::Triangle* triangle = surface->getTriangles()[k];
+
+				for (size_t m = 0; m < 3; m++)
+				{
+					gaia3d::Vertex* vertex = triangle->getVertices()[m];
+					if (vertexUseCase.find(vertex) == vertexUseCase.end())
+					{
+						std::vector<gaia3d::Triangle*> trianglesUsingSameVertex;
+						trianglesUsingSameVertex.push_back(triangle);
+						vertexUseCase[vertex] = trianglesUsingSameVertex;
+					}
+					else
+						vertexUseCase[vertex].push_back(triangle);
+				}
+			}
+		}
+
+		// spatial indexing on vertices for vertex search
+		double maxBboxLength = mesh->getBoundingBox().getMaxLength();
+
+		double leafOctreeSize = maxBboxLength / 10.0;
+		if (leafOctreeSize < 3.0)
+			leafOctreeSize = 3.0;
+
+		gaia3d::PointDistributionOctree octree(NULL);
+		octree.setSize(mesh->getBoundingBox().minX, mesh->getBoundingBox().minY, mesh->getBoundingBox().minZ,
+			mesh->getBoundingBox().minX + maxBboxLength, mesh->getBoundingBox().minY + maxBboxLength, mesh->getBoundingBox().minZ + maxBboxLength);
+		octree.vertices.assign(mesh->getVertices().begin(), mesh->getVertices().end());
+		octree.makeTreeOfUnfixedDepth(leafOctreeSize, true);
+
+		// remove duplicated vertices and overlapped triangles
+		double error = 10E-6;
+		double posError = 0.0001;
+		double texError = 0.001;
+		double norError = 0.001;
+		std::map<gaia3d::Triangle*, int> overlappedTriangles;
+		std::map<gaia3d::Vertex*, int> verticesToBeDelete;
+		size_t vertexCount = mesh->getVertices().size();
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			gaia3d::Vertex* vertex = mesh->getVertices()[j];
+			if (verticesToBeDelete.find(vertex) != verticesToBeDelete.end())
+				continue;
+
+			// find coincident vertices
+			std::vector<gaia3d::Vertex*> coincidentVertices;
+			gaia3d::PointDistributionOctree* leafOctree = octree.getIntersectedLeafOctree(vertex);
+			size_t octreeVertexCount = leafOctree->vertices.size();
+			for (size_t k = 0; k < octreeVertexCount; k++)
+			{
+				gaia3d::Vertex* octreeVertex = leafOctree->vertices[k];
+				if (vertex == octreeVertex)
+					continue;
+
+				// position checking
+				if (octreeVertex->position.x < vertex->position.x - posError || octreeVertex->position.x > vertex->position.x + posError ||
+					octreeVertex->position.y < vertex->position.y - posError || octreeVertex->position.y > vertex->position.y + posError ||
+					octreeVertex->position.z < vertex->position.z - posError || octreeVertex->position.z > vertex->position.z + posError)
+					continue;
+
+				// texture coordinate checking
+				if (bCompareTexCoord &&
+					octreeVertex->textureCoordinate[0] < vertex->textureCoordinate[0] - texError ||
+					octreeVertex->textureCoordinate[0] > vertex->textureCoordinate[0] + texError ||
+					octreeVertex->textureCoordinate[1] < vertex->textureCoordinate[1] - texError ||
+					octreeVertex->textureCoordinate[1] > vertex->textureCoordinate[1] + texError)
+					continue;
+
+				// normal checking
+				if (bCompareNormal &&
+					octreeVertex->normal.x < vertex->normal.x - norError || octreeVertex->normal.x > vertex->normal.x + norError ||
+					octreeVertex->normal.y < vertex->normal.y - norError || octreeVertex->normal.y > vertex->normal.y + norError ||
+					octreeVertex->normal.z < vertex->normal.z - norError || octreeVertex->normal.z > vertex->normal.z + norError)
+					continue;
+
+				coincidentVertices.push_back(octreeVertex);
+			}
+			
+			// replace coincident vertices with original vertex
+			std::vector<gaia3d::Triangle*> vertexReplacedTriangles;
+			size_t coincidentVertexCount = coincidentVertices.size();
+			for (size_t k = 0; k < coincidentVertexCount; k++)
+			{
+				gaia3d::Vertex* coincidentVertex = coincidentVertices[k];
+				if (vertexUseCase.find(coincidentVertex) == vertexUseCase.end())
+					continue;
+
+				size_t triangleCountOfCoincidentVertex = vertexUseCase[coincidentVertex].size();
+				for (size_t m = 0; m < triangleCountOfCoincidentVertex; m++)
+				{
+					gaia3d::Triangle* triangleOfCoincidentVertex = vertexUseCase[coincidentVertex][m];
+					if (triangleOfCoincidentVertex->getVertices()[0] == coincidentVertex)
+					{
+						if (triangleOfCoincidentVertex->getVertices()[1] != vertex &&
+							triangleOfCoincidentVertex->getVertices()[2] != vertex)
+							triangleOfCoincidentVertex->getVertices()[0] = vertex;
+					}
+					else if (triangleOfCoincidentVertex->getVertices()[1] == coincidentVertex)
+					{
+						if (triangleOfCoincidentVertex->getVertices()[2] != vertex &&
+							triangleOfCoincidentVertex->getVertices()[0] != vertex)
+							triangleOfCoincidentVertex->getVertices()[1] = vertex;
+					}
+					else
+					{
+						if (triangleOfCoincidentVertex->getVertices()[0] != vertex &&
+							triangleOfCoincidentVertex->getVertices()[1] != vertex)
+							triangleOfCoincidentVertex->getVertices()[2] = vertex;
+					}
+
+					vertexReplacedTriangles.push_back(triangleOfCoincidentVertex);
+				}
+
+				verticesToBeDelete[coincidentVertex] = 0;
+			}
+
+			// collect triangles sharing this vertex
+			std::vector<gaia3d::Triangle*> vertexSharingTriangles;
+			vertexSharingTriangles.insert(vertexSharingTriangles.end(), vertexUseCase[vertex].begin(), vertexUseCase[vertex].end());
+			vertexSharingTriangles.insert(vertexSharingTriangles.end(), vertexReplacedTriangles.begin(), vertexReplacedTriangles.end());
+
+			// find overlapped triangles
+			size_t vertexSharingTriangleCount = vertexSharingTriangles.size();
+			for (size_t k = 0; k < vertexSharingTriangleCount; k++)
+			{
+				gaia3d::Triangle* triangleA = vertexSharingTriangles[k];
+				if (overlappedTriangles.find(triangleA) != overlappedTriangles.end())
+					continue;
+
+				for (size_t m = k + 1; m < vertexSharingTriangleCount; m++)
+				{
+					gaia3d::Triangle* triangleB = vertexSharingTriangles[m];
+					if (triangleA == triangleB)
+						continue;
+
+					for (char n = 0; n < 3; n++)
+					{
+						if ( (triangleA->getVertices()[0] == triangleB->getVertices()[n % 3] &&
+							  triangleA->getVertices()[1] == triangleB->getVertices()[(n + 1) % 3]) ||
+							 (triangleA->getVertices()[1] == triangleB->getVertices()[(n + 1) % 3] &&
+							  triangleA->getVertices()[2] == triangleB->getVertices()[(n + 2) % 3]) ||
+							 (triangleA->getVertices()[2] == triangleB->getVertices()[(n + 2) % 3] &&
+							  triangleA->getVertices()[0] == triangleB->getVertices()[n % 3]))
+						{
+							overlappedTriangles[triangleB] = 0;
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		// delete coincident vertices of this mesh and rebuild vertex id
+		std::vector<gaia3d::Vertex*> survivedVertices;
+		std::map<gaia3d::Vertex*, size_t> vertexId;
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			gaia3d::Vertex* vertex = mesh->getVertices()[j];
+			if (verticesToBeDelete.find(vertex) == verticesToBeDelete.end())
+			{
+				vertexId[vertex] = survivedVertices.size();
+				survivedVertices.push_back(vertex);
+			}	
+			else
+				delete vertex;
+		}
+		mesh->getVertices().clear();
+		mesh->getVertices().assign(survivedVertices.begin(), survivedVertices.end());
+
+		// delete overlapped triangles of this mesh and reassign vertex ids to each triangles
+		for (size_t j = 0; j < surfaceCount; j++)
+		{
+			gaia3d::Surface* surface = mesh->getSurfaces()[j];
+			size_t triangleCount = surface->getTriangles().size();
+			std::vector<gaia3d::Triangle*> survivedTriangles;
+			for (size_t k = 0; k < triangleCount; k++)
+			{
+				gaia3d::Triangle* triangle = surface->getTriangles()[k];
+				if (overlappedTriangles.find(triangle) == overlappedTriangles.end())
+				{
+					triangle->setVertexIndices(vertexId[triangle->getVertices()[0]], vertexId[triangle->getVertices()[1]], vertexId[triangle->getVertices()[2]]);
+					survivedTriangles.push_back(triangle);
+				}
+				else
+					delete triangle;
+			}
+
+			surface->getTriangles().clear();
+			surface->getTriangles().assign(survivedTriangles.begin(), survivedTriangles.end());
+		}
+	}
+}
+
+void ConversionProcessor::makeLodTextureUsingOriginalTextureDirectly(unsigned char* originalTexture, int originalWidth, int originalHeight,
+																	std::map<unsigned char, unsigned char>& lodMadeOfOriginalMesh,
+																	std::map<unsigned char, unsigned char*>& netSurfaceTextures,
+																	std::map<unsigned char, int>& netSurfaceTextureWidth,
+																	std::map<unsigned char, int>& netSurfaceTextureHeight)
+{
+	int bpp = 4;
+	std::map<unsigned char, unsigned char>::iterator iterLod = lodMadeOfOriginalMesh.begin();
+	for (; iterLod != lodMadeOfOriginalMesh.end(); iterLod++)
+	{
+		unsigned char lod = iterLod->first;
+		
+		int resizedWidth, resizedHeight;
+		switch (lod)
+		{
+		case 2:
+		{
+			resizedWidth = originalWidth < 1024 ? originalWidth : 1024;
+			resizedHeight = originalHeight < 1024 ? originalHeight : 1024;
+		}
+		break;
+		case 3:
+		{
+			resizedWidth = originalWidth < 512 ? originalWidth : 512;
+			resizedHeight = originalHeight < 512 ? originalHeight : 512;
+		}
+		break;
+		case 4:
+		{
+			resizedWidth = originalWidth < 256 ? originalWidth : 256;
+			resizedHeight = originalHeight < 256 ? originalHeight : 256;
+		}
+		break;
+		}
+		
+		int resizedImageSize = resizedWidth*resizedHeight*bpp;
+		unsigned char* resizedImage = new unsigned char[resizedImageSize];
+		memset(resizedImage, 0x00, resizedImageSize);
+		stbir_resize_uint8(originalTexture, originalWidth, originalHeight, 0, resizedImage, resizedWidth, resizedHeight, 0, bpp);
+
+		netSurfaceTextures[lod] = resizedImage;
+		netSurfaceTextureWidth[lod] = resizedWidth;
+		netSurfaceTextureHeight[lod] = resizedHeight;
+	}
+}
+
+void ConversionProcessor::divideOriginalTextureIntoSmallerSize(unsigned char* originalTexture, int originalWidth, int originalHeight,
+																gaia3d::SpatialOctreeBox& octree,
+																std::map<std::string, unsigned char*>& results,
+																std::map<std::string, int>& resultWidths,
+																std::map<std::string, int>& resultHeights)
+{
+	CKK_Image2D_Utils* utils = new CKK_Image2D_Utils;
+
+	CKK_Image2D image_original;
+	image_original.Set_Image(originalTexture, originalWidth, originalHeight);
+	image_original.m_dimensions = 4; // RGBA.!!!
+
+	std::vector<gaia3d::OctreeBox*> leafBoxes;
+	octree.getAllLeafBoxes(leafBoxes, true);
+
+	size_t leafOctreeCount = leafBoxes.size();
+	for (size_t i = 0; i < leafOctreeCount; i++)
+	{
+		gaia3d::SpatialOctreeBox* leafOctree = (gaia3d::SpatialOctreeBox*)leafBoxes[i];
+		utils->MULTISPLITTIMAGE_Delete_Image2DSplitDatas(); // init
+
+		// make new texture file name
+		std::string textureFileName = "ImageOctree_" + std::to_string(leafOctree->octreeId) + ".jpg";
+
+		size_t meshCount = leafOctree->meshes.size();
+		for (size_t j = 0; j < meshCount; j++)
+		{
+			gaia3d::TrianglePolyhedron* mesh = leafOctree->meshes[j];
+
+			// replace old texture info of newer one
+			mesh->getStringAttributes()[std::string(TextureName)] = textureFileName;
+
+			size_t surfaceCount = mesh->getSurfaces().size();
+			for (size_t k = 0; k < surfaceCount; k++)
+			{
+				gaia3d::Surface* surface = mesh->getSurfaces()[k];
+				size_t triangleCount = surface->getTriangles().size();
+				for (size_t m = 0; m < triangleCount; m++)
+				{
+					gaia3d::Triangle* triangle = surface->getTriangles()[m];
+					CKK_Rectangle rectangleImage;
+
+					// calculate the texture-coords rectangle of the triangle.***
+					rectangleImage.Set_Init(triangle->getVertices()[0]->textureCoordinate[0], triangle->getVertices()[0]->textureCoordinate[1]);
+					rectangleImage.Add_Point(triangle->getVertices()[1]->textureCoordinate[0], triangle->getVertices()[1]->textureCoordinate[1]);
+					rectangleImage.Add_Point(triangle->getVertices()[2]->textureCoordinate[0], triangle->getVertices()[2]->textureCoordinate[1]);
+
+					utils->MULTISPLITTIMAGE_Add_ImageRectangle(&rectangleImage, triangle);
+				}
+			}
+
+			utils->MULTISPLITTIMAGE_Recombine_ImageRectangles();
+		}
+
+		utils->MULTISPLITTIMAGE_Recombine_ImageRectangles();
+
+		// now, if there are multiples rectanglesImages, then make a oneMosaic.***
+		utils->MULTISPLITTIMAGE_Make_SplittedMosaic(); // splitMosaic is smaller than the original.***
+
+													   // now, for this lowestOctree, make the splitted image texCoords.***
+													   // To do this, we need the new textureImage boundingRectangle.***
+		CKK_Rectangle newImageBoundingRect;
+		size_t imageRectanglesCount = utils->m_vec_image2DSplitDatas.size();
+		for (size_t j = 0; j<imageRectanglesCount; j++)
+		{
+			CKK_Image2D_SplitData *image2dSplitData = utils->m_vec_image2DSplitDatas[j];
+			CKK_Rectangle *splittedRect = image2dSplitData->m_rectangleImage_splitted;
+			if (j == 0)
+			{
+				newImageBoundingRect.CopyFrom(splittedRect);
+			}
+			else
+			{
+				newImageBoundingRect.Add_Rectangle(splittedRect);
+			}
+		}
+
+		double newImage_width = newImageBoundingRect.Get_Width();
+		double newImage_height = newImageBoundingRect.Get_Height();
+		// note: the original width = 1.0, but the newImage is smaller than the original.***
+
+		// now, recalculate the texCoords.***
+		for (size_t j = 0; j<imageRectanglesCount; j++)
+		{
+			CKK_Image2D_SplitData *image2dSplitData = utils->m_vec_image2DSplitDatas[j];
+			CKK_Rectangle *splitDataRect = image2dSplitData->m_rectangleImage_splitted;
+			CKK_Rectangle *originalDataRect = image2dSplitData->m_rectangleImage_original;
+
+			double splitDataRect_width = splitDataRect->Get_Width();
+			double splitDataRect_height = splitDataRect->Get_Height();
+
+			// Note: splitDataRect_size = originalDataRect_size.***
+			double originalDataRect_width = originalDataRect->Get_Width();
+			double originalDataRect_height = originalDataRect->Get_Height();
+
+			std::vector<gaia3d::Vertex*> vec_vertices;
+			image2dSplitData->Get_Vertices(vec_vertices);
+			size_t vertexCount = vec_vertices.size();
+			for (size_t k = 0; k < vertexCount; k++)
+			{
+				gaia3d::Vertex *vertex = vec_vertices[k];
+				double *texCoord_0 = vertex->textureCoordinate;
+
+				double u, v;
+				double u2, v2;
+
+				// point 0.***
+				// 1rst, recalculate referencing only by "image2dSplitData-rectangle", NO by newTexture-rectangle.***
+				u = (texCoord_0[0] - originalDataRect->m_minX) / originalDataRect_width;
+				v = (texCoord_0[1] - originalDataRect->m_minY) / originalDataRect_height;
+
+				// now calculate referencing by newTexture-rectangle.***
+				u2 = (splitDataRect->m_minX + u*originalDataRect_width) / newImage_width;
+				v2 = (splitDataRect->m_minY + v*originalDataRect_height) / newImage_height;
+				texCoord_0[0] = u2;
+				texCoord_0[1] = v2;
+			}
+		}
+
+		// make a sub-texture of this octree
+		
+		CKK_Rectangle smallImageRect;
+		// 1rst, calculate the splittedImageRectangle.***
+		for (size_t j = 0; j < imageRectanglesCount; j++)
+		{
+			CKK_Image2D_SplitData *splitData = utils->m_vec_image2DSplitDatas[j];
+			if (splitData->m_vec_triangles.size() > 0)
+			{
+				if (j == 0)
+				{
+					smallImageRect.CopyFrom(splitData->m_rectangleImage_splitted);
+				}
+				else
+				{
+					smallImageRect.Add_Rectangle(splitData->m_rectangleImage_splitted);
+				}
+			}
+		}
+
+		// now, create the smallImage.***
+		double smallImageRectWidthDouble = smallImageRect.Get_Width();
+		if (smallImageRectWidthDouble < 0.0)
+			smallImageRectWidthDouble = 0.0;
+		double smallImageRectHeightDouble = smallImageRect.Get_Height();
+		if (smallImageRectHeightDouble < 0.0)
+			smallImageRectHeightDouble = 0.0;
+
+		int smallImageWidth = int(smallImageRectWidthDouble * double(originalWidth));
+		int smallImageHeight = int(smallImageRectHeightDouble * double(originalHeight));
+		unsigned char* smallImageArray = new unsigned char[smallImageWidth*smallImageHeight * 4]; // RGBA.!!!
+		memset(smallImageArray, 90, smallImageWidth*smallImageHeight * 4 * sizeof(unsigned char)); // RGBA.!!!
+		CKK_Image2D smallImage;
+		smallImage.Set_Image(smallImageArray, smallImageWidth, smallImageHeight);
+
+		// Now, take the original part of the image and insert into smallImage.***
+		for (size_t j = 0; j < imageRectanglesCount; j++)
+		{
+			CKK_Image2D_SplitData *splitData = utils->m_vec_image2DSplitDatas[j];
+
+			if (splitData->m_vec_triangles.size() > 0)
+			{
+				// 1) Take the splittedImage from original image.***
+				// The image_original is in RGB, but we take a region in RGBA.***
+				CKK_Rectangle *splittedOriginalRect = splitData->m_rectangleImage_original;
+				CKK_Rectangle *splittedNewPosRect = splitData->m_rectangleImage_splitted;
+				CKK_Rectangle splittedNewPosRectNormalized;
+				splittedNewPosRectNormalized.CopyFrom(splittedNewPosRect);
+				splittedNewPosRectNormalized.m_minX /= smallImageRectWidthDouble;
+				splittedNewPosRectNormalized.m_maxX /= smallImageRectWidthDouble;
+				splittedNewPosRectNormalized.m_minY /= smallImageRectHeightDouble;
+				splittedNewPosRectNormalized.m_maxY /= smallImageRectHeightDouble;
+
+				CKK_Image2D splittedImage_RGBA;
+				utils->Get_Region(&image_original, splittedOriginalRect, &splittedImage_RGBA);
+
+				// 2) insert the splittedImage into smallImage.***
+				utils->InsertImage_RGBA(&smallImage, &splittedNewPosRectNormalized, &splittedImage_RGBA);
+			}
+		}
+
+		// now resize the result so that width/height is type of 2^n
+		unsigned char* tempTexture = smallImage.m_image;
+		int tempWidth = smallImage.m_imageWidth;
+		int tempHeight = smallImage.m_imageHeight;
+		int widthResized;
+		int heightResized;
+
+		// resize width into a shape of power of 2
+		if ((tempWidth & (tempWidth - 1)) == 0)
+			widthResized = tempWidth;
+		else
+		{
+			unsigned int prevPower = 1;
+			while (tempWidth >> prevPower != 1)
+				prevPower++;
+
+			unsigned int nextPower = prevPower + 1;
+			widthResized = ((tempWidth - (1 << prevPower)) > ((1 << nextPower) - tempWidth)) ? 1 << nextPower : 1 << prevPower;
+		}
+
+		// resize height into a shape of power of 2
+		if ((tempHeight & (tempHeight - 1)) == 0)
+			heightResized = tempHeight;
+		else
+		{
+			unsigned int prevPower = 1;
+			while (tempHeight >> prevPower != 1)
+				prevPower++;
+
+			unsigned int nextPower = prevPower + 1;
+			heightResized = ((tempHeight - (1 << prevPower)) > ((1 << nextPower) - tempHeight)) ? 1 << nextPower : 1 << prevPower;
+		}
+
+		int bpp = 4;
+		int resizedImageSize = widthResized*heightResized*bpp;
+		unsigned char* resizedImage = new unsigned char[resizedImageSize];
+		memset(resizedImage, 0x00, resizedImageSize);
+		stbir_resize_uint8(tempTexture, tempWidth, tempHeight, 0, resizedImage, widthResized, heightResized, 0, bpp);
+
+		results[textureFileName] = resizedImage;
+		resultWidths[textureFileName] = widthResized;
+		resultHeights[textureFileName] = heightResized;
+
+
+
+		utils->MULTISPLITTIMAGE_Delete_Image2DSplitDatas();
+	}
+
+	delete utils;
 }

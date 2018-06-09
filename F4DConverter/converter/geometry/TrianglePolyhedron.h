@@ -54,6 +54,7 @@ namespace gaia3d
 		void addStringAttribute(std::string keyString, std::string valueString);
 		bool doesStringAttributeExist(std::string keyString);
 		std::string getStringAttribute(std::string keyString);
+		std::map<std::string, std::string>& getStringAttributes() { return stringAttributes; }
 
 		void setHasNormals(bool bHas) {hasNormals = bHas;}
 		bool doesThisHaveNormals() {return hasNormals;} 

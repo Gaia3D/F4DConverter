@@ -178,6 +178,10 @@
     <ClInclude Include="converter\reader\ClassicFormatReader.h" />
     <ClInclude Include="converter\reader\IfcReader.h" />
     <ClInclude Include="converter\reader\ReaderFactory.h" />
+    <ClInclude Include="converter\util\KK_Image2D.h" />
+    <ClInclude Include="converter\util\KK_Image2D_SplitData.h" />
+    <ClInclude Include="converter\util\KK_Image2D_Utils.h" />
+    <ClInclude Include="converter\util\KK_Rectangle.h" />
     <ClInclude Include="converter\util\utility.h" />
     <ClInclude Include="converter\util\stb_image.h" />
     <ClInclude Include="converter\util\stb_image_resize.h" />
@@ -207,6 +211,10 @@
     <ClCompile Include="converter\reader\ClassicFormatReader.cpp" />
     <ClCompile Include="converter\reader\IfcReader.cpp" />
     <ClCompile Include="converter\reader\ReaderFactory.cpp" />
+    <ClCompile Include="converter\util\KK_Image2D.cpp" />
+    <ClCompile Include="converter\util\KK_Image2D_SplitData.cpp" />
+    <ClCompile Include="converter\util\KK_Image2D_Utils.cpp" />
+    <ClCompile Include="converter\util\KK_Rectangle.cpp" />
     <ClCompile Include="converter\util\utility.cpp" />
     <ClCompile Include="converter\writer\F4DWriter.cpp" />
     <ClCompile Include="F4DConverter.cpp" />

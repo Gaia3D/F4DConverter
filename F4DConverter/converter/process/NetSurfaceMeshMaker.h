@@ -30,5 +30,9 @@ public:
 							std::map<unsigned char, int>& netSurfaceTextureWidth,
 							std::map<unsigned char, int>& netSurfaceTextureHeight);
 
+	void makeNetSurfaceMesh(std::vector<gaia3d::OctreeBox*>& octrees,
+							NetSurfaceMeshSetting* setting,
+							std::map<unsigned char, gaia3d::TrianglePolyhedron*>& netSurfaceMeshes);
+
 };
 

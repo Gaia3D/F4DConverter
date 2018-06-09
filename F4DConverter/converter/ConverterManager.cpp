@@ -34,6 +34,10 @@ CConverterManager::CConverterManager()
 	skinLevel = 3;
 
 	bYAxisUp = false;
+
+	bAlignPostionToCenter = false;
+
+	bRealisticMesh = true;
 }
 
 CConverterManager::~CConverterManager()
@@ -217,6 +221,8 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	processor->setVisibilityIndexing(bOcclusionCulling);
 	processor->setSkinLevel(skinLevel);
 	processor->setYAxisUp(bYAxisUp);
+	processor->setAlignPostionToCenter(bAlignPostionToCenter);
+	processor->setIsRealisticMesh(bRealisticMesh);
 	// TODO(khj 20180417) end
 
 	std::string outputFolder = outputFolderPath;
