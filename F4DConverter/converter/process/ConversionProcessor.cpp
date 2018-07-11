@@ -351,7 +351,6 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 {
 	if (settings.nsmSettings.empty())
 		settings.fillNsmSettings(settings.netSurfaceMeshSettingIndex);
-	//settings.fillNsmSettings(255);
 
 	// copy data from original to this container
 	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
@@ -364,6 +363,12 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 	if (settings.bYAxisUp)
 	{
 		rotateAllMeshesAroundXAxisByQuater(allMeshes);
+		printf("[Info]Y and Z coordinates are changed to each other.\n");
+		size_t meshCount = allMeshes.size();
+		for (size_t i = 0; i < meshCount; i++)
+		{
+			allMeshes[i]->setHasNormals(false);
+		}
 	}
 
 	// calculate original bounding box
@@ -372,10 +377,14 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 
 	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
 	if (settings.bAlignPositionToCenter)
+	{
 		changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
+		printf("[Info]Original coordinate is changed to a coordinate relative to the center of XY-plane projection of bounding box.\n");
+	}
 
 	// calculate plane normals and align them to their vertex normals
 	trimVertexNormals(allMeshes);
+	printf("[Info]Vertex trimming done.\n");
 
 	// determine  which surfaces are exteriors
 	if (settings.bExtractExterior)
@@ -383,6 +392,7 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
+	printf("[Info]Model/reference detection done.\n");
 
 	size_t modelCount = 0;
 	size_t meshCount = allMeshes.size();
@@ -393,9 +403,11 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 	}
 	// make VBO
 	makeVboObjects(allMeshes);
+	printf("[Info]VBO of each mesh created.\n");
 
 	// make generic spatial octree
 	assignReferencesIntoEachSpatialOctrees(thisSpatialOctree, allMeshes, fullBbox, false, settings.leafSpatialOctreeSize);
+	printf("[Info]Mesh distribution on each octree done.\n");
 
 	// make visibility indices
 	if (settings.bOcclusionCulling)
@@ -427,16 +439,25 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 		normalizeTextures(allTextureInfo);
 	}
 
-	std::map<unsigned char, unsigned char> dummy;
-	makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, dummy);
+	if (settings.bUseNsm)
+	{
+		std::map<unsigned char, unsigned char> dummy;
+		makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, dummy);
+		printf("[Info]Net Surface Mesh created.\n");
+	}
+	else
+	{
+		reuseOriginalMeshForRougherLods(thisSpatialOctree);
+	}
+
+	//system("pause");
 }
 
 void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
 	std::map<std::string, std::string>& originalTextureInfo)
 {
 	if (settings.nsmSettings.empty())
-		settings.fillNsmSettings(50);
-	//settings.fillNsmSettings(255);
+		settings.fillNsmSettings(settings.netSurfaceMeshSettingIndex);
 
 	// copy data from original to this container
 	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
@@ -449,6 +470,12 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 	if (settings.bYAxisUp)
 	{
 		rotateAllMeshesAroundXAxisByQuater(allMeshes);
+		printf("[Info]Y and Z coordinates are changed to each other.\n");
+		size_t meshCount = allMeshes.size();
+		for (size_t i = 0; i < meshCount; i++)
+		{
+			allMeshes[i]->setHasNormals(false);
+		}
 	}
 
 	// calculate original bounding box
@@ -457,10 +484,14 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 
 	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
 	if (settings.bAlignPositionToCenter)
+	{
 		changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
+		printf("[Info]Original coordinate is changed to a coordinate relative to the center of XY-plane projection of bounding box.\n");
+	}
 
 	// calculate plane normals and align them to their vertex normals
 	trimVertexNormals(allMeshes);
+	printf("[Info]Vertex trimming done.\n");
 
 	// split original mesh into each leaf spatial octree
 	splitOriginalMeshIntoEachSpatialOctrees(thisSpatialOctree, allMeshes, fullBbox, false, settings.leafSpatialOctreeSize, false);
@@ -470,7 +501,7 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 	std::vector<gaia3d::OctreeBox*> leafOctrees;
 	thisSpatialOctree.getAllLeafBoxes(leafOctrees, true);
 	size_t leafOctreeCount = leafOctrees.size();
-	printf("[Info]Created octree count : %zd\n\n", leafOctreeCount);
+	printf("[Info]Mesh split done. octree count : %zd\n", leafOctreeCount);
 	for (size_t i = 0; i < leafOctreeCount; i++)
 	{
 		size_t meshCount = leafOctrees[i]->meshes.size();
@@ -480,18 +511,58 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 			allMeshes.push_back(leafOctrees[i]->meshes[j]);
 		}
 	}
+	printf("[Debug]Mesh count after splitting : %zd\n", allMeshes.size());
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
+	printf("[Info]Model/reference detection done.\n");
 
 	// drop small-sized edge triangles
+	size_t meshCount = allMeshes.size();
+	size_t triangleCount = 0;
+	size_t vertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		vertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Debug]BEFORE dropping triangles, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
 	dropTrianglesOfSmallSizedEdge(allMeshes, 0.005);
+	triangleCount = 0;
+	vertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		vertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Debug]AFTER dropping triangles, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
+	printf("[Info]Small edge triangle removal done. Threshold edge length : %f\n", 0.005);
 
 	// remove duplicated vertices and superimposing triangles
+	triangleCount = 0;
+	vertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		vertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Debug]BEFORE removing duplicated vertices, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
 	removeDuplicatedVerticesAndOverlappingTriangles(allMeshes, true, false);
+	triangleCount = 0;
+	vertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		vertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Debug]AFTER removing duplicated vertices, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
+	printf("[Info]Vertex duplication removed.\n");
 
 	// make vbo
 	makeVboObjects(allMeshes);
+	printf("[Info]VBO of each mesh created.\n");
+
+	//system("pause");
 
 	// normalize texture
 	bool bMakeTextureCoordinate = allTextureInfo.empty() ? false : true;
@@ -499,6 +570,7 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 	{
 		// rebuild original texture
 		normalizeTextures(allTextureInfo);
+		printf("[Info]Original textures are normalized.\n");
 		if (resizedTextures.empty())
 		{
 			printf("[Error]No Texture Normalized!!!\n\n");
@@ -511,6 +583,7 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 	lodMadeOfOriginalMesh[3] = 3;
 	lodMadeOfOriginalMesh[4] = 4;
 	makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, lodMadeOfOriginalMesh);
+	printf("[Info]Net Surface Mesh created.\n");
 
 	// make lod texture using original texture
 	if (!resizedTextures.empty())
@@ -524,6 +597,7 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 												lodMadeOfOriginalMesh,
 												netSurfaceTextures,
 												netSurfaceTextureWidth, netSurfaceTextureHeight);
+		printf("[Info]Textures for Net Surface Mesh created.\n");
 	}
 
 	// divide large-sized original texture into small-sized ones along octrees 
@@ -548,7 +622,13 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 		{
 			printf("[Error]No Texture divided!!!\n\n");
 		}
+		else
+		{
+			printf("[Info]Original textures are divided into smaller ones.\n");
+		}
 	}
+
+	system("pause");
 }
 
 void ConversionProcessor::trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
@@ -2474,6 +2554,8 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 	for (size_t i = 0; i < meshCount; i++)
 	{
 		gaia3d::TrianglePolyhedron* mesh = meshes[i];
+
+		printf("[DEBUG-removing vertices]initial vertex count : %zd\n", mesh->getVertices().size());
 		
 		// collect vertex use case
 		std::map<gaia3d::Vertex*, std::vector<gaia3d::Triangle*>> vertexUseCase;
@@ -2501,12 +2583,16 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 			}
 		}
 
+		printf("[DEBUG-removing vertices]categorized vertex count : %zd\n", vertexUseCase.size());
+
 		// spatial indexing on vertices for vertex search
 		double maxBboxLength = mesh->getBoundingBox().getMaxLength();
 
 		double leafOctreeSize = maxBboxLength / 10.0;
 		if (leafOctreeSize < 3.0)
 			leafOctreeSize = 3.0;
+
+		printf("[DEBUG-removing vertices]point distribution octree size : %f\n", leafOctreeSize);
 
 		gaia3d::PointDistributionOctree octree(NULL);
 		octree.setSize(mesh->getBoundingBox().minX, mesh->getBoundingBox().minY, mesh->getBoundingBox().minZ,
@@ -2561,7 +2647,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 
 				coincidentVertices.push_back(octreeVertex);
 			}
-			
+
 			// replace coincident vertices with original vertex
 			std::vector<gaia3d::Triangle*> vertexReplacedTriangles;
 			size_t coincidentVertexCount = coincidentVertices.size();
@@ -2952,4 +3038,142 @@ void ConversionProcessor::divideOriginalTextureIntoSmallerSize(unsigned char* or
 	}
 
 	delete utils;
+}
+
+void ConversionProcessor::reuseOriginalMeshForRougherLods(gaia3d::SpatialOctreeBox& octree)
+{
+	// std::map<unsigned char, gaia3d::TrianglePolyhedron*> netSurfaceMeshes;
+	std::vector<gaia3d::OctreeBox*> leafBoxes;
+	octree.getAllLeafBoxes(leafBoxes, true);
+
+	// merge mehses to make lod2 data
+	size_t leafBoxCount = leafBoxes.size();
+	for (size_t i = 0; i < leafBoxCount; i++)
+	{
+		gaia3d::SpatialOctreeBox* leafBox = (gaia3d::SpatialOctreeBox*)leafBoxes[i];
+
+		gaia3d::TrianglePolyhedron* fakeNsm = new gaia3d::TrianglePolyhedron;
+		gaia3d::Surface* newSurface = new gaia3d::Surface;
+		fakeNsm->getSurfaces().push_back(newSurface);
+		fakeNsm->setHasTextureCoordinates(true);
+		fakeNsm->setHasNormals(true);
+
+		leafBox->netSurfaceMesh = fakeNsm;
+
+		size_t meshCount = leafBox->meshes.size();
+		for(size_t j = 0; j < meshCount; j++)
+		{
+			gaia3d::TrianglePolyhedron* mesh = leafBox->meshes[j];
+			size_t offset = fakeNsm->getVertices().size();
+
+			// copy vertices
+			size_t vertexCount = mesh->getVertices().size();
+			for (size_t k = 0; k < vertexCount; k++)
+			{
+				gaia3d::Vertex* sourceVertex = mesh->getVertices()[k];
+				gaia3d::Vertex* targetVertex = new gaia3d::Vertex;
+				targetVertex->position = sourceVertex->position;
+				targetVertex->normal = sourceVertex->normal;
+				targetVertex->color = sourceVertex->color;
+				targetVertex->textureCoordinate[0] = sourceVertex->textureCoordinate[0];
+				targetVertex->textureCoordinate[1] = sourceVertex->textureCoordinate[1];
+				fakeNsm->getVertices().push_back(targetVertex);
+			}
+
+			// copy triangles
+			size_t surfaceCount = mesh->getSurfaces().size();
+			for (size_t k = 0; k < surfaceCount; k++)
+			{
+				gaia3d::Surface* surface = mesh->getSurfaces()[k];
+				size_t triangleCount = surface->getTriangles().size();
+				for (size_t m = 0; m < triangleCount; m++)
+				{
+					gaia3d::Triangle* sourceTriangle = surface->getTriangles()[m];
+					gaia3d::Triangle* targetTriangle = new gaia3d::Triangle;
+					targetTriangle->setNormal(sourceTriangle->getNormal()->x, sourceTriangle->getNormal()->y, sourceTriangle->getNormal()->z);
+					targetTriangle->setVertexIndices(sourceTriangle->getVertexIndices()[0] + offset,
+													sourceTriangle->getVertexIndices()[1] + offset,
+													sourceTriangle->getVertexIndices()[2] + offset);
+					targetTriangle->setVertices(fakeNsm->getVertices()[targetTriangle->getVertexIndices()[0]],
+												fakeNsm->getVertices()[targetTriangle->getVertexIndices()[1]],
+												fakeNsm->getVertices()[targetTriangle->getVertexIndices()[2]]);
+					newSurface->getTriangles().push_back(targetTriangle);
+				}
+			}
+		}
+	}
+
+	// merge nsm of each spatial octree to make lod 3 to maxLod data
+	for (unsigned char i = 3; i <= MaxLod; i++)
+	{
+		netSurfaceMeshes[i] = new gaia3d::TrianglePolyhedron;
+		netSurfaceMeshes[i]->getSurfaces().push_back(new gaia3d::Surface);
+		netSurfaceMeshes[i]->setHasTextureCoordinates(true);
+		netSurfaceMeshes[i]->setHasNormals(true);
+	}
+
+	for (size_t i = 0; i < leafBoxCount; i++)
+	{
+		gaia3d::SpatialOctreeBox* leafBox = (gaia3d::SpatialOctreeBox*)leafBoxes[i];
+		gaia3d::TrianglePolyhedron* sourceMesh = leafBox->netSurfaceMesh;
+
+		size_t offset = netSurfaceMeshes.begin()->second->getVertices().size();
+
+		// copy vertices
+		size_t vertexCount = sourceMesh->getVertices().size();
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			gaia3d::Vertex* sourceVertex = sourceMesh->getVertices()[j];
+
+			for (unsigned char k = 3; k <= MaxLod; k++)
+			{
+				gaia3d::Vertex* targetVertex = new gaia3d::Vertex;
+				targetVertex->position = sourceVertex->position;
+				targetVertex->normal = sourceVertex->normal;
+				targetVertex->color = sourceVertex->color;
+				targetVertex->textureCoordinate[0] = sourceVertex->textureCoordinate[0];
+				targetVertex->textureCoordinate[1] = sourceVertex->textureCoordinate[1];
+				netSurfaceMeshes[k]->getVertices().push_back(targetVertex);
+			}
+		}
+
+		// copy triangles
+		size_t surfaceCount = sourceMesh->getSurfaces().size();
+		for (size_t j = 0; j < surfaceCount; j++)
+		{
+			gaia3d::Surface* surface = sourceMesh->getSurfaces()[j];
+			size_t triangleCount = surface->getTriangles().size();
+			for (size_t k = 0; k < triangleCount; k++)
+			{
+				gaia3d::Triangle* sourceTriangle = surface->getTriangles()[k];
+
+				for (unsigned char m = 3; m <= MaxLod; m++)
+				{
+					gaia3d::Triangle* targetTriangle = new gaia3d::Triangle;
+					targetTriangle->setNormal(sourceTriangle->getNormal()->x, sourceTriangle->getNormal()->y, sourceTriangle->getNormal()->z);
+					targetTriangle->setVertexIndices(sourceTriangle->getVertexIndices()[0] + offset,
+													sourceTriangle->getVertexIndices()[1] + offset,
+													sourceTriangle->getVertexIndices()[2] + offset);
+					targetTriangle->setVertices(netSurfaceMeshes[m]->getVertices()[targetTriangle->getVertexIndices()[0]],
+												netSurfaceMeshes[m]->getVertices()[targetTriangle->getVertexIndices()[1]],
+												netSurfaceMeshes[m]->getVertices()[targetTriangle->getVertexIndices()[2]]);
+					netSurfaceMeshes[m]->getSurfaces().front()->getTriangles().push_back(targetTriangle);
+				}
+			}
+		}
+	}
+
+	// make fake textures for lod 2~MaxLod
+	//std::map<unsigned char, unsigned char*> netSurfaceTextures;
+	//std::map<unsigned char, int> netSurfaceTextureWidth;
+	//std::map<unsigned char, int> netSurfaceTextureHeight;
+	for (unsigned char i = 2; i <= MaxLod; i++)
+	{
+		netSurfaceTextures[i] = new unsigned char[4];
+		(netSurfaceTextures[i])[0] = (netSurfaceTextures[i])[1] = (netSurfaceTextures[i])[2] = 127;
+		(netSurfaceTextures[i])[3] = 255;
+		netSurfaceTextureWidth[i] = 1;
+		netSurfaceTextureHeight[i] = 1;
+	}
+	
 }

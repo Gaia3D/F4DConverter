@@ -37,7 +37,7 @@ CConverterManager::CConverterManager()
 
 	bAlignPostionToCenter = false;
 
-	bRealisticMesh = true;
+	bRealisticMesh = false;
 }
 
 CConverterManager::~CConverterManager()
@@ -218,12 +218,36 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 	// TODO(khj 20180417) : NYI setup conversion configuration here
 	// now, only set wheter do occlusion culling or not
+	
+	/*
+	// basic configuration
 	processor->setVisibilityIndexing(bOcclusionCulling);
 	processor->setSkinLevel(skinLevel);
 	processor->setYAxisUp(bYAxisUp);
 	processor->setAlignPostionToCenter(bAlignPostionToCenter);
 	processor->setIsRealisticMesh(bRealisticMesh);
+	*/
 	// TODO(khj 20180417) end
+
+	
+	// hard-cord for shibuya realistic mesh
+	processor->setVisibilityIndexing(false);
+	processor->setSkinLevel(50);
+	processor->setYAxisUp(false);
+	processor->setAlignPostionToCenter(false);
+	processor->setIsRealisticMesh(true);
+	processor->setLeafSpatialOctreeSize(40.0f);
+	
+
+	/*
+	// hard-cord for new york citygml
+	processor->setVisibilityIndexing(false);
+	processor->setUseNsm(false);
+	processor->setYAxisUp(true);
+	processor->setAlignPostionToCenter(true);
+	processor->setIsRealisticMesh(false);
+	processor->setLeafSpatialOctreeSize(422.0f);
+	*/
 
 	std::string outputFolder = outputFolderPath;
 
@@ -239,6 +263,8 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 		aReader* reader = ReaderFactory::makeReader(dataFileFullPath);
 		if (reader == NULL)
 			continue;
+
+		printf("===== Start processing this file : %s\n", dataFile.c_str());
 
 		LogWriter::getLogWriter()->numberOfFilesToBeConverted += 1;
 		reader->setUnitScaleFactor(unitScaleFactor);

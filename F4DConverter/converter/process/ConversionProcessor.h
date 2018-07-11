@@ -23,9 +23,10 @@ protected:
 
 public:
 	void setNsmSettingIndex(unsigned char index) { settings.netSurfaceMeshSettingIndex = index; }
+	void setUseNsm(bool bUse) { settings.bUseNsm = bUse; }
 	void setExteriorExtraction(bool bDo) { settings.bExtractExterior = bDo; }
 	void setVisibilityIndexing(bool bDo) { settings.bOcclusionCulling = bDo; }
-	void setSpatialOctreeSize(float fSize) { settings.leafSpatialOctreeSize = fSize; }
+	void setLeafSpatialOctreeSize(float fSize) { settings.leafSpatialOctreeSize = fSize; }
 	void setTextureCoordinateVFlip(bool bDo) { settings.bFlipTextureCoordinateV = bDo; }
 	void setInteriorVisibilityIndexingCameraStep(float step) { settings.interiorVisibilityIndexingCameraStep = step; }
 	void setExteriorVisibilityIndexingCameraStep(float step) { settings.exteriorVisibilityIndexingCameraStep = step; }
@@ -235,4 +236,6 @@ protected:
 											std::map<std::string, unsigned char*>& results,
 											std::map<std::string, int>& resultWidths,
 											std::map<std::string, int>& resultHeights);
+
+	void reuseOriginalMeshForRougherLods(gaia3d::SpatialOctreeBox& octree);
 };

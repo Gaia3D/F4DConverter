@@ -13,10 +13,11 @@ public:
 public:
 	unsigned char netSurfaceMeshSettingIndex; // index to template NSM setting
 
+	bool bUseNsm;
 	bool bExtractExterior; // if extract exteriors or not
 	bool bOcclusionCulling; // if do visibility indexing or not
 	float leafSpatialOctreeSize; // deepest spatial octree edge length(meter)
-	bool bFlipTextureCoordinateV; // if flip texture coordinate u or not
+	bool bFlipTextureCoordinateV; // if flip texture coordinate v or not
 	float interiorVisibilityIndexingCameraStep; // camera position step for interior visibility indexing(meter)
 	float exteriorVisibilityIndexingCameraStep; // camera position step for exterior visibility indexing(meter)
 	unsigned char interiorVisibilityIndexingOctreeDepth; // visibility octree depth for interior

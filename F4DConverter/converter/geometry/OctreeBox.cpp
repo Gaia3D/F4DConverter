@@ -347,6 +347,14 @@ namespace gaia3d
 					continue;
 				}
 
+				// TESTCODE-start
+				if (j != 0)
+				{
+					delete mesh;
+					break;
+				}
+				// TESTCODE-end
+
 				// 2nd test : intersection test for all triangles in a mesh
 				anyTriangleIntersectsWithOctree = false;
 				surfaceCount = mesh->getSurfaces().size();
@@ -384,13 +392,10 @@ namespace gaia3d
 				// clip intersected part and assign it to this children
 				gaia3d::TrianglePolyhedron* intersectedPart = NULL;
 				gaia3d::TrianglePolyhedron* nonIntersectedPart = NULL;
-				printf("[Info]Triangle count before clipping octree(level : %d, order : %zd) : %zd\n", children[j]->level, j, mesh->getSurfaces()[0]->getTriangles().size());
 				clipIntersectedPartWithBox(mesh,
 					children[j]->minX, children[j]->minY, children[j]->minZ,
 					children[j]->maxX, children[j]->maxY, children[j]->maxZ,
 					&intersectedPart, &nonIntersectedPart);
-				if(nonIntersectedPart != NULL)
-					printf("[Info]Triangle count after clipping octree(level : %d, order : %zd) : %zd\n", children[j]->level, j, nonIntersectedPart->getSurfaces()[0]->getTriangles().size());
 
 				if(intersectedPart != NULL)
 				{
@@ -409,8 +414,6 @@ namespace gaia3d
 					calculateBoundingBox(nonIntersectedPart);
 
 					mesh = nonIntersectedPart;
-
-					printf("[Info]Mesh left after clipping mesh of OCTREE(level : %d, order : %zd)\n", children[j]->level, j);
 				}
 				else
 				{
