@@ -96,6 +96,7 @@ void NetSurfaceMeshMaker::makeNetSurfaceMesh(std::vector<gaia3d::OctreeBox*>& oc
 											std::map<unsigned char, int>& netSurfaceTextureHeight)
 {
 	size_t octreeCount = octrees.size();
+	
 	std::vector<NetSurface*> allNetSurfaces;
 	std::map<size_t, std::vector<NetSurface*>*> octreeNetSurfaceRelations;
 	for(size_t h = 0; h < octreeCount; h++)

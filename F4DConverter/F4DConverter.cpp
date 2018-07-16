@@ -39,7 +39,7 @@ int wmain(int argc, wchar_t* argv[])
 	}
 
 	// arguments log
-	printf("[step]Arguments are following.\n");
+	printf("[Info]Arguments are following.\n");
 	std::map<std::string, std::string>::iterator iter = arguments.begin();
 	for (; iter != arguments.end(); iter++)
 	{

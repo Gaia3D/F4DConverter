@@ -78,7 +78,8 @@ bool ConversionProcessor::initialize()
 
 		// Set the window-style:
 		dwExWindowStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
-		dwWindowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+		//dwWindowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+		dwWindowStyle = WS_OVERLAPPEDWINDOW;
 
 		// Create a rendering-window:
 		int windowWidth = WindowWidthForOpenGL, windowHeight = WindowHeightForOpenGL;
@@ -106,8 +107,8 @@ bool ConversionProcessor::initialize()
 		}
 		// dc와 연결
 		scv->m_myhDC = hDC;
-		scv->m_width = windowWidth;
-		scv->m_height = windowHeight;
+		scv->m_width = MemoryDeviceContextEdgeLength;
+		scv->m_height = MemoryDeviceContextEdgeLength;
 	}
 
 
@@ -508,10 +509,18 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 		for (size_t j = 0; j < meshCount; j++)
 		{
 			leafOctrees[i]->meshes[j]->setId(allMeshes.size());
+			calculateBoundingBox(leafOctrees[i]->meshes[j]);
 			allMeshes.push_back(leafOctrees[i]->meshes[j]);
 		}
 	}
 	printf("[Debug]Mesh count after splitting : %zd\n", allMeshes.size());
+
+	// determine  which surfaces are exteriors
+	if (settings.bExtractExterior)
+	{
+		determineWhichSurfacesAreExterior(allMeshes, fullBbox);
+		printf("[Info]Exterior detection done.\n");
+	}
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
@@ -561,8 +570,6 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 	// make vbo
 	makeVboObjects(allMeshes);
 	printf("[Info]VBO of each mesh created.\n");
-
-	//system("pause");
 
 	// normalize texture
 	bool bMakeTextureCoordinate = allTextureInfo.empty() ? false : true;
@@ -1223,8 +1230,7 @@ void ConversionProcessor::setupPerspectiveViewSetting(gaia3d::BoundingBox& bbox)
 
 void ConversionProcessor::checkIfEachSurfaceIsExterior(std::vector<gaia3d::Surface*>& surfaces, std::vector<gaia3d::ColorU4>& colors)
 {
-
-	size_t last_idx_triSurface = 4294967295;// Max value for an unsigned int.***
+	//size_t last_idx_triSurface = 4294967295;// Max value for an unsigned int.***
 
 	int data_size = scv->m_width * scv->m_height;
 	GLuint *data = new GLuint[data_size];
@@ -1234,7 +1240,6 @@ void ConversionProcessor::checkIfEachSurfaceIsExterior(std::vector<gaia3d::Surfa
 	this->drawSurfacesWithIndexColor(surfaces, colors);
 	//SwapBuffers(scv->m_myhDC);
 	//this->drawSurfacesWithIndexColor(surfaces, colors);
-
 	glReadPixels(0,0, scv->m_width, scv->m_height, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	int pixels_count = data_size;
@@ -1246,7 +1251,9 @@ void ConversionProcessor::checkIfEachSurfaceIsExterior(std::vector<gaia3d::Surfa
 
 	for(int i=0; i<pixels_count; i++)
 	{
-		unsigned int idx_triSurf = (data[i] & 0x00ffffff);// Original by Hak.***
+		unsigned int idx_triSurf = (data[i] & 0x00ffffffU);// Original by Hak.***
+
+		/*
 		if(idx_triSurf < triSurfaces_count)
 		{
 			if(idx_triSurf != last_idx_triSurface && idx_triSurf != 0x00ffffff)
@@ -1268,6 +1275,26 @@ void ConversionProcessor::checkIfEachSurfaceIsExterior(std::vector<gaia3d::Surfa
 					// no found.***
 					map_triSurf_pixelsCount[triSurf] = 1;
 				}
+			}
+		}
+		*/
+
+		if (idx_triSurf < triSurfaces_count)
+		{
+			gaia3d::Surface *triSurf = surfaces[idx_triSurf];
+
+			// now, search the triSurf inside of the map.***
+			it = map_triSurf_pixelsCount.find(triSurf);
+			if (it != map_triSurf_pixelsCount.end())
+			{
+				// found.***
+				int current_value = it->second;
+				map_triSurf_pixelsCount[triSurf] = current_value + 1;
+			}
+			else
+			{
+				// no found.***
+				map_triSurf_pixelsCount[triSurf] = 1;
 			}
 		}
 	}
@@ -2498,6 +2525,9 @@ void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::Tria
 		gaia3d::TrianglePolyhedron* mesh = meshes[i];
 		size_t surfaceCount = mesh->getSurfaces().size();
 		std::vector<gaia3d::Surface*> survivedSurfaces;
+		std::vector<gaia3d::Vertex*> survivedVertices;
+		std::map<gaia3d::Vertex*, size_t> survivedVertexMap;
+		std::vector<gaia3d::Vertex*> verticesToBeDelete;
 		for (size_t j = 0; j < surfaceCount; j++)
 		{
 			gaia3d::Surface* surface = mesh->getSurfaces()[j];
@@ -2523,9 +2553,45 @@ void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::Tria
 				squaredEdgeLength2 = xDiff*xDiff + yDiff*yDiff + zDiff*zDiff;
 
 				if (squaredEdgeLength0 < squaredMinSize || squaredEdgeLength1 < squaredMinSize || squaredEdgeLength2 < squaredMinSize)
+				{
 					delete triangle;
+					verticesToBeDelete.push_back(triangle->getVertices()[0]);
+					verticesToBeDelete.push_back(triangle->getVertices()[1]);
+					verticesToBeDelete.push_back(triangle->getVertices()[2]);
+				}
 				else
+				{
 					survivedTriangles.push_back(triangle);
+
+					size_t index0 = triangle->getVertexIndices()[0];
+					size_t index1 = triangle->getVertexIndices()[1];
+					size_t index2 = triangle->getVertexIndices()[2];
+					if (survivedVertexMap.find(triangle->getVertices()[0]) == survivedVertexMap.end())
+					{
+						survivedVertexMap[triangle->getVertices()[0]] = index0 = survivedVertices.size();
+						survivedVertices.push_back(triangle->getVertices()[0]);
+					}
+					else
+						index0 = survivedVertexMap[triangle->getVertices()[0]];
+
+					if (survivedVertexMap.find(triangle->getVertices()[1]) == survivedVertexMap.end())
+					{
+						survivedVertexMap[triangle->getVertices()[1]] = index1 = survivedVertices.size();
+						survivedVertices.push_back(triangle->getVertices()[1]);
+					}
+					else
+						index1 = survivedVertexMap[triangle->getVertices()[1]];
+
+					if (survivedVertexMap.find(triangle->getVertices()[2]) == survivedVertexMap.end())
+					{
+						survivedVertexMap[triangle->getVertices()[2]] = index2 = survivedVertices.size();
+						survivedVertices.push_back(triangle->getVertices()[2]);
+					}
+					else
+						index2 = survivedVertexMap[triangle->getVertices()[2]];
+
+					triangle->setVertexIndices(index0, index1, index2);
+				}
 			}
 
 			surface->getTriangles().clear();
@@ -2543,6 +2609,22 @@ void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::Tria
 
 		if (!survivedSurfaces.empty())
 			mesh->getSurfaces().assign(survivedSurfaces.begin(), survivedSurfaces.end());
+
+		if (!verticesToBeDelete.empty())
+		{
+			size_t vertexCount = verticesToBeDelete.size();
+			for (size_t j = 0; j < vertexCount; j++)
+			{
+				if (survivedVertexMap.find(verticesToBeDelete[j]) == survivedVertexMap.end())
+					delete verticesToBeDelete[j];
+			}
+		}
+
+		if (!survivedVertices.empty())
+		{
+			mesh->getVertices().clear();
+			mesh->getVertices().assign(survivedVertices.begin(), survivedVertices.end());
+		}
 	}
 }
 
@@ -2555,7 +2637,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 	{
 		gaia3d::TrianglePolyhedron* mesh = meshes[i];
 
-		printf("[DEBUG-removing vertices]initial vertex count : %zd\n", mesh->getVertices().size());
+		//printf("[DEBUG-removing vertices]initial vertex count : %zd\n", mesh->getVertices().size());
 		
 		// collect vertex use case
 		std::map<gaia3d::Vertex*, std::vector<gaia3d::Triangle*>> vertexUseCase;
@@ -2583,7 +2665,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 			}
 		}
 
-		printf("[DEBUG-removing vertices]categorized vertex count : %zd\n", vertexUseCase.size());
+		//printf("[DEBUG-removing vertices]categorized vertex count : %zd\n", vertexUseCase.size());
 
 		// spatial indexing on vertices for vertex search
 		double maxBboxLength = mesh->getBoundingBox().getMaxLength();
@@ -2592,7 +2674,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 		if (leafOctreeSize < 3.0)
 			leafOctreeSize = 3.0;
 
-		printf("[DEBUG-removing vertices]point distribution octree size : %f\n", leafOctreeSize);
+		//printf("[DEBUG-removing vertices]point distribution octree size : %f\n", leafOctreeSize);
 
 		gaia3d::PointDistributionOctree octree(NULL);
 		octree.setSize(mesh->getBoundingBox().minX, mesh->getBoundingBox().minY, mesh->getBoundingBox().minZ,
@@ -2754,7 +2836,18 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 					survivedTriangles.push_back(triangle);
 				}
 				else
+				{
+					if (vertexId.find(triangle->getVertices()[0]) == vertexId.end())
+						delete triangle->getVertices()[0];
+
+					if (vertexId.find(triangle->getVertices()[1]) == vertexId.end())
+						delete triangle->getVertices()[0];
+
+					if (vertexId.find(triangle->getVertices()[2]) == vertexId.end())
+						delete triangle->getVertices()[0];
+
 					delete triangle;
+				}	
 			}
 
 			surface->getTriangles().clear();

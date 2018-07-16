@@ -505,14 +505,12 @@ namespace gaia3d
 				newVertex2->textureCoordinate[1] = vertex2->textureCoordinate[1];
 
 				newTriangle->setVertices(newVertex0, newVertex1, newVertex2);
-				size_t index0 = (*intersected)->getVertices().size();
+				size_t index = (*intersected)->getVertices().size();
 				(*intersected)->getVertices().push_back(newVertex0);
-				size_t index1 = (*intersected)->getVertices().size();
 				(*intersected)->getVertices().push_back(newVertex1);
-				size_t index2 = (*intersected)->getVertices().size();
 				(*intersected)->getVertices().push_back(newVertex2);
 
-				newTriangle->setVertexIndices(index0, index1, index2);
+				newTriangle->setVertexIndices(index, index+1, index+2);
 			}
 
 			(*intersected)->setHasNormals(mesh->doesThisHaveNormals());
@@ -560,14 +558,12 @@ namespace gaia3d
 				newVertex2->textureCoordinate[1] = vertex2->textureCoordinate[1];
 
 				newTriangle->setVertices(newVertex0, newVertex1, newVertex2);
-				size_t index0 = (*nonIntersected)->getVertices().size();
+				size_t index = (*nonIntersected)->getVertices().size();
 				(*nonIntersected)->getVertices().push_back(newVertex0);
-				size_t index1 = (*nonIntersected)->getVertices().size();
 				(*nonIntersected)->getVertices().push_back(newVertex1);
-				size_t index2 = (*nonIntersected)->getVertices().size();
 				(*nonIntersected)->getVertices().push_back(newVertex2);
 
-				newTriangle->setVertexIndices(index0, index1, index2);
+				newTriangle->setVertexIndices(index, index+1, index+2);
 			}
 
 			(*nonIntersected)->setHasNormals(mesh->doesThisHaveNormals());
