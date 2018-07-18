@@ -130,12 +130,10 @@ void CKK_Image2D_Utils::Get_Region(CKK_Image2D *image, CKK_Rectangle *rectSplitt
 		for (int col = x; col < x + width; col++)
 		{
 			unsigned char *color_RGB = image->Get_Color_RGB(col, row);
-			// Provisionally returns in BGRA.***
-			// Provisionally returns in BGRA.***
-			// Provisionally returns in BGRA.***
-			splittedImage[counter] = color_RGB[2]; counter++; // B.***
-			splittedImage[counter] = color_RGB[1]; counter++; // G.***
+			// Provisionally returns in RGBA.***
 			splittedImage[counter] = color_RGB[0]; counter++; // R.***
+			splittedImage[counter] = color_RGB[1]; counter++; // G.***
+			splittedImage[counter] = color_RGB[2]; counter++; // B.***
 			splittedImage[counter] = 255; counter++;
 			delete[] color_RGB;
 		}

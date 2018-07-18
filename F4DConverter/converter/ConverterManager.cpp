@@ -236,8 +236,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	processor->setYAxisUp(false);
 	processor->setAlignPostionToCenter(false);
 	processor->setIsRealisticMesh(true);
-	processor->setLeafSpatialOctreeSize(40.0f);
-	
+	processor->setLeafSpatialOctreeSize(40.0f);	
 
 	/*
 	// hard-cord for new york citygml

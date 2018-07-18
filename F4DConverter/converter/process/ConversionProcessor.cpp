@@ -513,7 +513,6 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 			allMeshes.push_back(leafOctrees[i]->meshes[j]);
 		}
 	}
-	printf("[Debug]Mesh count after splitting : %zd\n", allMeshes.size());
 
 	// determine  which surfaces are exteriors
 	if (settings.bExtractExterior)
@@ -528,6 +527,16 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 
 	// drop small-sized edge triangles
 	size_t meshCount = allMeshes.size();
+	size_t oldTriangleCount = 0;
+	size_t oldVertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		oldTriangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		oldVertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Info]%zd vertices and %zd triangles are in original meshes.\n", oldVertexCount, oldTriangleCount);
+
+	dropTrianglesOfSmallSizedEdge(allMeshes, 0.005);
 	size_t triangleCount = 0;
 	size_t vertexCount = 0;
 	for (size_t i = 0; i < meshCount; i++)
@@ -535,27 +544,12 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
 		vertexCount += allMeshes[i]->getVertices().size();
 	}
-	printf("[Debug]BEFORE dropping triangles, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
-	dropTrianglesOfSmallSizedEdge(allMeshes, 0.005);
-	triangleCount = 0;
-	vertexCount = 0;
-	for (size_t i = 0; i < meshCount; i++)
-	{
-		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
-		vertexCount += allMeshes[i]->getVertices().size();
-	}
-	printf("[Debug]AFTER dropping triangles, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
-	printf("[Info]Small edge triangle removal done. Threshold edge length : %f\n", 0.005);
+	printf("[Info]Small edge triangle removal done. %zd vertices and %zd triangles were removed.\n", oldVertexCount - vertexCount, oldTriangleCount - triangleCount);
 
 	// remove duplicated vertices and superimposing triangles
-	triangleCount = 0;
-	vertexCount = 0;
-	for (size_t i = 0; i < meshCount; i++)
-	{
-		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
-		vertexCount += allMeshes[i]->getVertices().size();
-	}
-	printf("[Debug]BEFORE removing duplicated vertices, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
+	oldTriangleCount = triangleCount;
+	oldVertexCount = vertexCount;
+
 	removeDuplicatedVerticesAndOverlappingTriangles(allMeshes, true, false);
 	triangleCount = 0;
 	vertexCount = 0;
@@ -564,8 +558,8 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
 		vertexCount += allMeshes[i]->getVertices().size();
 	}
-	printf("[Debug]AFTER removing duplicated vertices, vertex count : %zd, triangle count : %zd\n", vertexCount, triangleCount);
-	printf("[Info]Vertex duplication removed.\n");
+	printf("[Info]Duplicated vertex and overlapped triangle removal done. %zd vertices and %zd triangles were removed.\n", oldVertexCount - vertexCount, oldTriangleCount - triangleCount);
+	printf("[Info]%zd vertices and %zd triangles are survived.\n", vertexCount, triangleCount);
 
 	// make vbo
 	makeVboObjects(allMeshes);
@@ -623,7 +617,8 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 		divideOriginalTextureIntoSmallerSize(originalTexture, originalWidth, originalHeight,
 											thisSpatialOctree,
 											resizedTextures,
-											allTextureWidths, allTextureHeights);
+											allTextureWidths, allTextureHeights,
+											allTextureInfo);
 
 		if (resizedTextures.empty())
 		{
@@ -634,8 +629,6 @@ void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyh
 			printf("[Info]Original textures are divided into smaller ones.\n");
 		}
 	}
-
-	system("pause");
 }
 
 void ConversionProcessor::trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
@@ -1130,6 +1123,24 @@ void ConversionProcessor::normalizeTextures(std::map<std::string, std::string>& 
 		memset(resizedImage, 0x00, resizedImageSize);
 		stbir_resize_uint8(sourceImage, x, y, 0, resizedImage, widthResized, heightResized, 0, bpp);
 		stbi_image_free(sourceImage);
+
+		if (settings.bFlipTextureCoordinateV)
+		{
+			int lineSize = widthResized*bpp;
+			unsigned char* lineData = new unsigned char[lineSize];
+			memset(lineData, 0x00, sizeof(unsigned char)*lineSize);
+			for (int i = 0; i < heightResized / 2; i++)
+			{
+				unsigned char* upperLine = resizedImage + lineSize*i;
+				unsigned char* lowerLine = resizedImage + lineSize*(heightResized - i - 1);
+
+				memcpy(lineData, upperLine, sizeof(unsigned char)*lineSize);
+				memcpy(upperLine, lowerLine, sizeof(unsigned char)*lineSize);
+				memcpy(lowerLine, lineData, sizeof(unsigned char)*lineSize);
+			}
+
+			delete[] lineData;
+		}
 
 		resizedTextures[iterTexture->first] = resizedImage;
 		allTextureWidths[iterTexture->first] = widthResized;
@@ -2636,9 +2647,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 	for (size_t i = 0; i < meshCount; i++)
 	{
 		gaia3d::TrianglePolyhedron* mesh = meshes[i];
-
-		//printf("[DEBUG-removing vertices]initial vertex count : %zd\n", mesh->getVertices().size());
-		
+	
 		// collect vertex use case
 		std::map<gaia3d::Vertex*, std::vector<gaia3d::Triangle*>> vertexUseCase;
 		size_t surfaceCount = mesh->getSurfaces().size();
@@ -2665,16 +2674,12 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 			}
 		}
 
-		//printf("[DEBUG-removing vertices]categorized vertex count : %zd\n", vertexUseCase.size());
-
 		// spatial indexing on vertices for vertex search
 		double maxBboxLength = mesh->getBoundingBox().getMaxLength();
 
 		double leafOctreeSize = maxBboxLength / 10.0;
 		if (leafOctreeSize < 3.0)
 			leafOctreeSize = 3.0;
-
-		//printf("[DEBUG-removing vertices]point distribution octree size : %f\n", leafOctreeSize);
 
 		gaia3d::PointDistributionOctree octree(NULL);
 		octree.setSize(mesh->getBoundingBox().minX, mesh->getBoundingBox().minY, mesh->getBoundingBox().minZ,
@@ -2689,6 +2694,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 		double norError = 0.001;
 		std::map<gaia3d::Triangle*, int> overlappedTriangles;
 		std::map<gaia3d::Vertex*, int> verticesToBeDelete;
+		std::map<gaia3d::Vertex*, int> verticesUsedInOverlappedTriangles;
 		size_t vertexCount = mesh->getVertices().size();
 		for (size_t j = 0; j < vertexCount; j++)
 		{
@@ -2731,7 +2737,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 			}
 
 			// replace coincident vertices with original vertex
-			std::vector<gaia3d::Triangle*> vertexReplacedTriangles;
+			// and update vertex use case
 			size_t coincidentVertexCount = coincidentVertices.size();
 			for (size_t k = 0; k < coincidentVertexCount; k++)
 			{
@@ -2747,43 +2753,46 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 					{
 						if (triangleOfCoincidentVertex->getVertices()[1] != vertex &&
 							triangleOfCoincidentVertex->getVertices()[2] != vertex)
+						{
 							triangleOfCoincidentVertex->getVertices()[0] = vertex;
+							vertexUseCase[vertex].push_back(triangleOfCoincidentVertex);
+						}
+							
 					}
 					else if (triangleOfCoincidentVertex->getVertices()[1] == coincidentVertex)
 					{
 						if (triangleOfCoincidentVertex->getVertices()[2] != vertex &&
 							triangleOfCoincidentVertex->getVertices()[0] != vertex)
+						{
 							triangleOfCoincidentVertex->getVertices()[1] = vertex;
+							vertexUseCase[vertex].push_back(triangleOfCoincidentVertex);
+						}
 					}
 					else
 					{
 						if (triangleOfCoincidentVertex->getVertices()[0] != vertex &&
 							triangleOfCoincidentVertex->getVertices()[1] != vertex)
+						{
 							triangleOfCoincidentVertex->getVertices()[2] = vertex;
+							vertexUseCase[vertex].push_back(triangleOfCoincidentVertex);
+						}
 					}
-
-					vertexReplacedTriangles.push_back(triangleOfCoincidentVertex);
 				}
 
 				verticesToBeDelete[coincidentVertex] = 0;
 			}
 
-			// collect triangles sharing this vertex
-			std::vector<gaia3d::Triangle*> vertexSharingTriangles;
-			vertexSharingTriangles.insert(vertexSharingTriangles.end(), vertexUseCase[vertex].begin(), vertexUseCase[vertex].end());
-			vertexSharingTriangles.insert(vertexSharingTriangles.end(), vertexReplacedTriangles.begin(), vertexReplacedTriangles.end());
-
 			// find overlapped triangles
-			size_t vertexSharingTriangleCount = vertexSharingTriangles.size();
+			size_t vertexSharingTriangleCount = vertexUseCase[vertex].size();
 			for (size_t k = 0; k < vertexSharingTriangleCount; k++)
 			{
-				gaia3d::Triangle* triangleA = vertexSharingTriangles[k];
+				gaia3d::Triangle* triangleA = vertexUseCase[vertex][k];
 				if (overlappedTriangles.find(triangleA) != overlappedTriangles.end())
 					continue;
 
 				for (size_t m = k + 1; m < vertexSharingTriangleCount; m++)
 				{
-					gaia3d::Triangle* triangleB = vertexSharingTriangles[m];
+					gaia3d::Triangle* triangleB = vertexUseCase[vertex][m];
 					if (triangleA == triangleB)
 						continue;
 
@@ -2797,6 +2806,9 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 							  triangleA->getVertices()[0] == triangleB->getVertices()[n % 3]))
 						{
 							overlappedTriangles[triangleB] = 0;
+							verticesUsedInOverlappedTriangles[triangleB->getVertices()[0]] = 0;
+							verticesUsedInOverlappedTriangles[triangleB->getVertices()[1]] = 0;
+							verticesUsedInOverlappedTriangles[triangleB->getVertices()[2]] = 0;
 							break;
 						}
 					}
@@ -2810,7 +2822,9 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 		for (size_t j = 0; j < vertexCount; j++)
 		{
 			gaia3d::Vertex* vertex = mesh->getVertices()[j];
-			if (verticesToBeDelete.find(vertex) == verticesToBeDelete.end())
+			if (verticesToBeDelete.find(vertex) == verticesToBeDelete.end() &&
+				(verticesUsedInOverlappedTriangles.find(vertex) == verticesUsedInOverlappedTriangles.end() ||
+					vertexUseCase[vertex].size() > 1))
 			{
 				vertexId[vertex] = survivedVertices.size();
 				survivedVertices.push_back(vertex);
@@ -2836,18 +2850,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 					survivedTriangles.push_back(triangle);
 				}
 				else
-				{
-					if (vertexId.find(triangle->getVertices()[0]) == vertexId.end())
-						delete triangle->getVertices()[0];
-
-					if (vertexId.find(triangle->getVertices()[1]) == vertexId.end())
-						delete triangle->getVertices()[0];
-
-					if (vertexId.find(triangle->getVertices()[2]) == vertexId.end())
-						delete triangle->getVertices()[0];
-
 					delete triangle;
-				}	
 			}
 
 			surface->getTriangles().clear();
@@ -2906,8 +2909,11 @@ void ConversionProcessor::divideOriginalTextureIntoSmallerSize(unsigned char* or
 																gaia3d::SpatialOctreeBox& octree,
 																std::map<std::string, unsigned char*>& results,
 																std::map<std::string, int>& resultWidths,
-																std::map<std::string, int>& resultHeights)
+																std::map<std::string, int>& resultHeights,
+																std::map<std::string, std::string>& resultTextureInfo)
 {
+	resultTextureInfo.clear();
+
 	CKK_Image2D_Utils* utils = new CKK_Image2D_Utils;
 
 	CKK_Image2D image_original;
@@ -2925,6 +2931,7 @@ void ConversionProcessor::divideOriginalTextureIntoSmallerSize(unsigned char* or
 
 		// make new texture file name
 		std::string textureFileName = "ImageOctree_" + std::to_string(leafOctree->octreeId) + ".jpg";
+		resultTextureInfo[textureFileName] = textureFileName;
 
 		size_t meshCount = leafOctree->meshes.size();
 		for (size_t j = 0; j < meshCount; j++)

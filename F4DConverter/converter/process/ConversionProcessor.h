@@ -235,7 +235,8 @@ protected:
 											gaia3d::SpatialOctreeBox& octree,
 											std::map<std::string, unsigned char*>& results,
 											std::map<std::string, int>& resultWidths,
-											std::map<std::string, int>& resultHeights);
+											std::map<std::string, int>& resultHeights,
+											std::map<std::string, std::string>& resultTextureInfo);
 
 	void reuseOriginalMeshForRougherLods(gaia3d::SpatialOctreeBox& octree);
 };

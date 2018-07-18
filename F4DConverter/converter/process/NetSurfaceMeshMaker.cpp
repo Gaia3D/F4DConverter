@@ -2378,7 +2378,7 @@ void changeNetSurfacesIntoTrianglePolyhedron(NetSurface* netSurface, std::map<He
 				if (!vertexMapper.empty())
 				{
 					vertex0->textureCoordinate[0] = vertexMapper[hTriangle->vertex0]->textureCoordinate[0];
-					vertex0->textureCoordinate[1] = vertexMapper[hTriangle->vertex0]->textureCoordinate[1];
+					vertex0->textureCoordinate[1] = 1.0 - vertexMapper[hTriangle->vertex0]->textureCoordinate[1];
 				}
 
 				// calculate vertex normal
@@ -2410,7 +2410,7 @@ void changeNetSurfacesIntoTrianglePolyhedron(NetSurface* netSurface, std::map<He
 				if (!vertexMapper.empty())
 				{
 					vertex1->textureCoordinate[0] = vertexMapper[hTriangle->vertex1]->textureCoordinate[0];
-					vertex1->textureCoordinate[1] = vertexMapper[hTriangle->vertex1]->textureCoordinate[1];
+					vertex1->textureCoordinate[1] = 1.0 - vertexMapper[hTriangle->vertex1]->textureCoordinate[1];
 				}
 
 				// calculate vertex normal
@@ -2442,7 +2442,7 @@ void changeNetSurfacesIntoTrianglePolyhedron(NetSurface* netSurface, std::map<He
 				if (!vertexMapper.empty())
 				{
 					vertex2->textureCoordinate[0] = vertexMapper[hTriangle->vertex2]->textureCoordinate[0];
-					vertex2->textureCoordinate[1] = vertexMapper[hTriangle->vertex2]->textureCoordinate[1];
+					vertex2->textureCoordinate[1] = 1.0 - vertexMapper[hTriangle->vertex2]->textureCoordinate[1];
 				}
 
 				// calculate vertex normal
@@ -2854,45 +2854,19 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 		vertexMapper[hVertex] = mesh->getVertices()[i];
 	}
 
-	// collect vertex-sharing triangles along each vertex
-	std::map<gaia3d::Vertex*, std::vector<gaia3d::Triangle*>> vertexUseCase;
-	size_t surfaceCount = mesh->getSurfaces().size();
-	for (size_t j = 0; j < surfaceCount; j++)
-	{
-		gaia3d::Surface* surface = mesh->getSurfaces()[j];
-		size_t triangleCount = surface->getTriangles().size();
-		for (size_t k = 0; k < triangleCount; k++)
-		{
-			gaia3d::Triangle* triangle = surface->getTriangles()[k];
-
-			for (size_t m = 0; m < 3; m++)
-			{
-				gaia3d::Vertex* vertex = triangle->getVertices()[m];
-				if (vertexUseCase.find(vertex) == vertexUseCase.end())
-				{
-					std::vector<gaia3d::Triangle*> trianglesUsingSameVertex;
-					trianglesUsingSameVertex.push_back(triangle);
-					vertexUseCase[vertex] = trianglesUsingSameVertex;
-				}
-				else
-					vertexUseCase[vertex].push_back(triangle);
-			}
-		}
-	}
-
-	// build half edge triangles
+	// make half edges and half edge triangles
+	// and build vertex use cases
+	std::map<HedgeVertex*, std::vector<HedgeTriangle*>> hVertexUseCase;
 	std::vector<HedgeTriangle*>* hTriangles = new std::vector<HedgeTriangle*>;
 	netSurface->netTriangles.push_back(hTriangles);
-	vertexCount = mesh->getVertices().size();
-	for (size_t i = 0; i < vertexCount; i++)
+	size_t surfaceCount = mesh->getSurfaces().size();
+	for (size_t i = 0; i < surfaceCount; i++)
 	{
-		gaia3d::Vertex* vertex = mesh->getVertices()[i];
-
-		size_t triangleCount = vertexUseCase[vertex].size();
-		std::vector<HedgeTriangle*> vertexSharingHTriangles;
+		gaia3d::Surface* surface = mesh->getSurfaces()[i];
+		size_t triangleCount = surface->getTriangles().size();
 		for (size_t j = 0; j < triangleCount; j++)
 		{
-			gaia3d::Triangle* rawTriangle = vertexUseCase[vertex][j];
+			gaia3d::Triangle* rawTriangle = surface->getTriangles()[j];
 
 			HedgeVertex* vertex0 = (*hVertices)[rawTriangle->getVertexIndices()[0]];
 			HedgeVertex* vertex1 = (*hVertices)[rawTriangle->getVertexIndices()[1]];
@@ -2943,16 +2917,41 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 			netSurface->hedges.push_back(hedge1);
 			netSurface->hedges.push_back(hedge2);
 
-			vertexSharingHTriangles.push_back(triangle);
-		}
-
-		// build twin relationship
-		for (size_t j = 0; j < triangleCount; j++)
-		{
-			HedgeTriangle* hTriangleA = vertexSharingHTriangles[j];
-			for (size_t k = j + 1; k < triangleCount; k++)
+			if (hVertexUseCase.find(vertex0) == hVertexUseCase.end())
 			{
-				HedgeTriangle* hTriangleB = vertexSharingHTriangles[k];
+				std::vector<HedgeTriangle*> trianglesUsingSameHVertex;
+				hVertexUseCase[vertex0] = trianglesUsingSameHVertex;
+			}
+			hVertexUseCase[vertex0].push_back(triangle);
+
+			if (hVertexUseCase.find(vertex1) == hVertexUseCase.end())
+			{
+				std::vector<HedgeTriangle*> trianglesUsingSameHVertex;
+				hVertexUseCase[vertex1] = trianglesUsingSameHVertex;
+			}
+			hVertexUseCase[vertex1].push_back(triangle);
+
+			if (hVertexUseCase.find(vertex2) == hVertexUseCase.end())
+			{
+				std::vector<HedgeTriangle*> trianglesUsingSameHVertex;
+				hVertexUseCase[vertex2] = trianglesUsingSameHVertex;
+			}
+			hVertexUseCase[vertex2].push_back(triangle);
+		}
+	}
+
+	// build twin half edge relationships
+	size_t twinRelationshipCount = 0;
+	std::map<HedgeVertex*, std::vector<HedgeTriangle*>>::iterator iter = hVertexUseCase.begin();
+	for (; iter != hVertexUseCase.end(); iter++)
+	{
+		size_t triangleCount = iter->second.size();
+		for (size_t i = 0; i < triangleCount; i++)
+		{
+			HedgeTriangle* hTriangleA = (iter->second)[i];
+			for (size_t j = i + 1; j < triangleCount; j++)
+			{
+				HedgeTriangle* hTriangleB = (iter->second)[j];
 
 				Hedge* curHedgeA = hTriangleA->hedge;
 				for (char m = 0; m < 3; m++)
@@ -2975,6 +2974,8 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 						{
 							curHedgeA->twin = curHedgeB;
 							curHedgeB->twin = curHedgeA;
+
+							twinRelationshipCount++;
 						}
 					}
 				}
