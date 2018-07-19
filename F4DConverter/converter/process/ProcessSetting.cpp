@@ -19,7 +19,7 @@ ProcessSetting::ProcessSetting()
 	exteriorVisibilityIndexingOctreeDepth = 1; // visibility octree depth for exterior
 	bYAxisUp = false;
 	bAlignPositionToCenter = false;
-	bRealisticMesh = false;
+	meshType = 0;
 }
 
 

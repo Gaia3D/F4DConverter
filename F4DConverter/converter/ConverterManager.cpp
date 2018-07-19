@@ -37,7 +37,7 @@ CConverterManager::CConverterManager()
 
 	bAlignPostionToCenter = false;
 
-	bRealisticMesh = false;
+	meshType = 0;
 }
 
 CConverterManager::~CConverterManager()
@@ -220,22 +220,29 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	// now, only set wheter do occlusion culling or not
 	
 	/*
-	// basic configuration
 	processor->setVisibilityIndexing(bOcclusionCulling);
 	processor->setSkinLevel(skinLevel);
 	processor->setYAxisUp(bYAxisUp);
 	processor->setAlignPostionToCenter(bAlignPostionToCenter);
-	processor->setIsRealisticMesh(bRealisticMesh);
+	processor->setMeshType(meshType);
 	*/
 	// TODO(khj 20180417) end
 
 	
-	// hard-cord for shibuya realistic mesh
+	// hard-cord for japan(AIST) realistic mesh
 	processor->setVisibilityIndexing(false);
-	processor->setSkinLevel(50);
 	processor->setYAxisUp(false);
 	processor->setAlignPostionToCenter(false);
-	processor->setIsRealisticMesh(true);
+	processor->setMeshType(meshType);
+	switch(meshType)
+	{
+	case 1:
+		processor->setSkinLevel(50);
+		break;
+	case 2:
+		processor->setSkinLevel(51);
+		break;
+	}
 	processor->setLeafSpatialOctreeSize(40.0f);	
 
 	/*
@@ -244,7 +251,6 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	processor->setUseNsm(false);
 	processor->setYAxisUp(true);
 	processor->setAlignPostionToCenter(true);
-	processor->setIsRealisticMesh(false);
 	processor->setLeafSpatialOctreeSize(422.0f);
 	*/
 
@@ -418,6 +424,11 @@ void CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 		referenceFileName = arguments[ReferenceFile];
 		referenceLon = std::stod(arguments[MatchedLon]);
 		referenceLat = std::stod(arguments[MatchedLat]);
+	}
+
+	if (arguments.find(MeshType) != arguments.end())
+	{
+		meshType = std::stoi(arguments[MeshType]);
 	}
 }
 

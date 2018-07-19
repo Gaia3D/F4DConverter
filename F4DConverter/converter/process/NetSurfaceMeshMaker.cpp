@@ -96,7 +96,7 @@ void NetSurfaceMeshMaker::makeNetSurfaceMesh(std::vector<gaia3d::OctreeBox*>& oc
 											std::map<unsigned char, int>& netSurfaceTextureHeight)
 {
 	size_t octreeCount = octrees.size();
-	
+
 	std::vector<NetSurface*> allNetSurfaces;
 	std::map<size_t, std::vector<NetSurface*>*> octreeNetSurfaceRelations;
 	for(size_t h = 0; h < octreeCount; h++)
@@ -159,7 +159,7 @@ void NetSurfaceMeshMaker::makeNetSurfaceMesh(std::vector<gaia3d::OctreeBox*>& oc
 		float cosEdgeAngleChangeLimit = cosf(setting->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse * ((float)M_PI) / 180.0f);
 		float cosAngleBtwFrontierEdges = cosf(setting->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse * ((float)M_PI) / 180.0f);
 		for (size_t i = 0; i < netSurfaceCount; i++)
-			triangleReduction((*netSurfacesInThisOctree)[i], cosNormalAngleChangeLimit, cosEdgeAngleChangeLimit, cosAngleBtwFrontierEdges);		
+			triangleReduction((*netSurfacesInThisOctree)[i], cosNormalAngleChangeLimit, cosEdgeAngleChangeLimit, cosAngleBtwFrontierEdges);
 
 		// change net surface mesh into triangle polyhedron
 		std::map<HedgeVertex*, gaia3d::Vertex*> dummy;
@@ -2727,7 +2727,7 @@ void insertEachNetSurfaceTextureIntoMosaicTexture(unsigned char** mosaicTexture,
 	}
 
 	// calculate texture coordinates of net surface meshes for mosaic texture
-	int textoreCoord_offSet = 5;
+	int textoreCoord_offSet = 1;
 
 	float minS = (float)(dataRGBA_leftDownPixelCol + textoreCoord_offSet) / (float)mosaicTexturePixelWidth;
 	float maxS = (float)(dataRGBA_leftDownPixelCol + dataRGBA_width - textoreCoord_offSet) / (float)mosaicTexturePixelWidth;

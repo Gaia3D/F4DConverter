@@ -458,7 +458,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 		}
 	}
 	break;
-	case 50: // for large realistic mesh
+	case 50: // for large single realistic mesh
 	{
 		switch (lodNumber)
 		{
@@ -512,10 +512,73 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
 			result->netCellSize = 0.7f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.0f;
-			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.5f;
+			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
 			result->subBoxSize = 8.0f;
 			result->netSurfaceMeshTextureWidth = 16;
 			result->netSurfaceMeshTextureHeight = 16;
+		}
+		break;
+		}
+	}
+	break;
+	case 51: // for large splitted realistic mesh
+	{
+		switch (lodNumber)
+		{
+		case 2:
+		{
+			result = new NetSurfaceMeshSetting;
+			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
+			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->netCellSize = 0.5f;
+			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.f;
+			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
+			result->subBoxSize = 40.0f;
+			result->netSurfaceMeshTextureWidth = 96;
+			result->netSurfaceMeshTextureHeight = 96;
+		}
+		break;
+		case 3:
+		{
+			result = new NetSurfaceMeshSetting;
+			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
+			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->netCellSize = 1.0f;
+			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.f;
+			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
+			result->subBoxSize = 40.0f;
+			result->netSurfaceMeshTextureWidth = 96;
+			result->netSurfaceMeshTextureHeight = 96;
+		}
+		break;
+		case 4:
+		{
+			result = new NetSurfaceMeshSetting;
+			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
+			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->netCellSize = 2.0f;
+			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.f;
+			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
+			result->subBoxSize = 40.0f;
+			result->netSurfaceMeshTextureWidth = 64;
+			result->netSurfaceMeshTextureHeight = 64;
+		}
+		break;
+		case 5:
+		{
+			result = new NetSurfaceMeshSetting;
+			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
+			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->netCellSize = 4.0f;
+			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.0f;
+			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
+			result->subBoxSize = 40.0f;
+			result->netSurfaceMeshTextureWidth = 32;
+			result->netSurfaceMeshTextureHeight = 32;
 		}
 		break;
 		}

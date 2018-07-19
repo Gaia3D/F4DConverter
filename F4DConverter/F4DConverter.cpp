@@ -68,8 +68,6 @@ int wmain(int argc, wchar_t* argv[])
 		LogWriter::getLogWriter()->save();
 	}
 
-	//system("pause");
-
     return 0;
 }
 
@@ -85,13 +83,10 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 
 	for (size_t i = 0; i < tokenCount; i++)
 	{
-		if (tokens[i].substr(0, 1) == std::wstring(L"-"))
+		if (tokens[i].substr(0, 1) == std::wstring(L"#"))
 		{
-			if (tokens[i + 1].substr(0, 1) == std::wstring(L"-"))
-			{
-				if(tokens[i] != std::wstring(MatchedLonW) && tokens[i] != std::wstring(MatchedLatW))
-					return false;
-			}
+			if (i == tokenCount - 1 || tokens[i + 1].substr(0, 1) == std::wstring(L"#"))
+				return false;
 
 			if (tokens[i] == std::wstring(InputFolderW))
 			{
@@ -180,6 +175,13 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			if (tokens[i] == std::wstring(MatchedLatW))
 			{
 				arguments[MatchedLat] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(MeshTypeW))
+			{
+				arguments[MeshType] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
 				i++;
 				continue;
 			}
@@ -296,6 +298,27 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		if (arguments.find(MatchedLon) != arguments.end() || arguments.find(MatchedLat) != arguments.end())
 			return false;
 	}
+
+	if (arguments.find(MeshType) != arguments.end())
+	{
+		try
+		{
+			int meshType = std::stoi(arguments[MeshType]);
+
+			if (meshType < 0 || meshType > 2)
+				return false;
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
 		
 
 	return true;
@@ -356,9 +379,9 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 	size_t tokenCount = tokens.size();
 	for (size_t i = 0; i < tokenCount; i++)
 	{
-		if (tokens[i].substr(0, 1) == std::string("-"))
+		if (tokens[i].substr(0, 1) == std::string("#"))
 		{
-			if (i == tokenCount - 1 || tokens[i + 1].substr(0, 1) == std::string("-"))
+			if (i == tokenCount - 1 || tokens[i + 1].substr(0, 1) == std::string("#"))
 			{
 				return false;
 			}
@@ -452,6 +475,13 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 			if (tokens[i] == std::string(MatchedLat))
 			{
 				arguments[MatchedLat] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(MeshType))
+			{
+				arguments[MeshType] = tokens[i + 1];
 				i++;
 				continue;
 			}

@@ -28,10 +28,10 @@ private:
 	unsigned char skinLevel;
 	bool bYAxisUp;
 	bool bAlignPostionToCenter;
-	bool bRealisticMesh;
 	std::string referenceFileName;
 	double referenceLon, referenceLat;
 	double referencePosX, referencePosY;
+	int meshType;
 
 	std::string inputFolderPath, outputFolderPath;
 

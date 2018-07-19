@@ -28,6 +28,70 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "../util/stb_image_resize.h"
 
+void testFunction(std::vector<gaia3d::TrianglePolyhedron*>& allMeshes)
+{
+	size_t meshCount = allMeshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		gaia3d::TrianglePolyhedron* mesh = allMeshes[i];
+		std::string objectGuid = mesh->getStringAttribute(std::string(ObjectGuid));
+		if (objectGuid == std::string("Group__Geometry_46"))
+		{
+			printf("[DEBUG]vertex count in mesh : %zd\n", mesh->getVertices().size());
+
+			gaia3d::BoundingBox tempBbox0;
+			size_t meshVertexCount = mesh->getVertices().size();
+			for (size_t j = 0; j < meshVertexCount; j++)
+			{
+				gaia3d::Vertex* meshVertex = mesh->getVertices()[j];
+				tempBbox0.addPoint(meshVertex->position.x, meshVertex->position.y, meshVertex->position.z);
+			}
+			printf("[DEBUG]max edge length of mesh bbox : %f\n", tempBbox0.getMaxLength());
+
+			gaia3d::BoundingBox tempBbox;
+			size_t vboCount = mesh->getVbos().size();
+			printf("[DEBUG]vbo count in mesh : %zd\n", vboCount);
+			double minxx, minyy, minzz, maxxx, maxyy, maxzz;
+			for (size_t j = 0; j < vboCount; j++)
+			{
+				gaia3d::Vbo* vbo = mesh->getVbos()[j];
+				size_t vboVertexCount = vbo->vertices.size();
+				printf("[DEBUG]vertex count in vbo %zd : %zd\n", j, vboVertexCount);
+				for (size_t k = 0; k < vboVertexCount; k++)
+				{
+					gaia3d::Vertex* vboVertex = vbo->vertices[k];
+					tempBbox.addPoint(vboVertex->position.x, vboVertex->position.y, vboVertex->position.z);
+					if (j == 0 && k == 0)
+					{
+						minxx = maxxx = vboVertex->position.x;
+						minyy = maxyy = vboVertex->position.y;
+						minzz = maxzz = vboVertex->position.z;
+					}
+					else
+					{
+						if (minxx > vboVertex->position.x) minxx = vboVertex->position.x;
+						if (maxxx < vboVertex->position.x) maxxx = vboVertex->position.x;
+						if (minyy > vboVertex->position.y) minyy = vboVertex->position.y;
+						if (maxyy < vboVertex->position.y) maxyy = vboVertex->position.y;
+						if (minzz > vboVertex->position.z) minzz = vboVertex->position.z;
+						if (maxzz < vboVertex->position.z) maxzz = vboVertex->position.z;
+					}
+				}
+			}
+
+			double xlength = maxxx - minxx;
+			double ylength = maxyy - minyy;
+			double zlength = maxzz - minzz;
+			double maxlength = (xlength > ylength) ? (xlength > zlength ? xlength : zlength) : (ylength > zlength ? ylength : zlength);
+
+			printf("[DEBUG]max edge length of VBO by bbox : %f\n", tempBbox.getMaxLength());
+			printf("[DEBUG]max edge length of VBO directly : %f\n", maxlength);
+			system("pause");
+			break;
+		}
+	}
+}
+
 ConversionProcessor::ConversionProcessor()
 :thisSpatialOctree(NULL)
 {
@@ -339,12 +403,168 @@ void ConversionProcessor::addAttribute(std::string key, std::string value)
 bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
 											std::map<std::string, std::string>& originalTextureInfo)
 {
-	if (settings.bRealisticMesh)
-		convertRealisticMesh(originalMeshes, originalTextureInfo);
-	else
+	switch(settings.meshType)
+	{
+	case 0:
 		convertSemanticData(originalMeshes, originalTextureInfo);
+		return true;
+	case 1:
+		convertSingleRealisticMesh(originalMeshes, originalTextureInfo);
+		return true;
+	case 2:
+		convertSplittedRealisticMesh(originalMeshes, originalTextureInfo);
+		return true;
+	default:
+	{
+		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
+		LogWriter::getLogWriter()->addContents(std::string(INVAID_ORIGINAL_MESH_TYPE), false);
+		char meshTypeString[256];
+		memset(meshTypeString, 0x00, 256);
+		sprintf(meshTypeString, "original mesh type : %d", settings.meshType);
+		LogWriter::getLogWriter()->addContents(std::string(meshTypeString), true);
+	}
+		return false;
+	}
 
 	return true;
+}
+
+void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+													std::map<std::string, std::string>& originalTextureInfo)
+{
+	if (settings.nsmSettings.empty())
+		settings.fillNsmSettings(settings.netSurfaceMeshSettingIndex);
+
+	// copy data from original to this container
+	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
+
+	// copy texture info
+	if (!originalTextureInfo.empty())
+		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
+
+	// change up axis from y to z
+	if (settings.bYAxisUp)
+	{
+		rotateAllMeshesAroundXAxisByQuater(allMeshes);
+		printf("[Info]Y and Z coordinates are changed to each other.\n");
+		size_t meshCount = allMeshes.size();
+		for (size_t i = 0; i < meshCount; i++)
+		{
+			allMeshes[i]->setHasNormals(false);
+		}
+	}
+
+	// calculate original bounding box
+	calculateBoundingBox(allMeshes, originalFullBbox);
+	fullBbox.addBox(originalFullBbox);
+
+	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
+	if (settings.bAlignPositionToCenter)
+	{
+		changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
+		printf("[Info]Original coordinate is changed to a coordinate relative to the center of XY-plane projection of bounding box.\n");
+	}
+
+	// calculate plane normals and align them to their vertex normals
+	trimVertexNormals(allMeshes);
+	printf("[Info]Vertex trimming done.\n");
+
+	// remove duplicated vertices and overlapping triangles
+	size_t meshCount = allMeshes.size();
+	size_t oldTriangleCount = 0;
+	size_t oldVertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		oldTriangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		oldVertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Info]%zd vertices and %zd triangles are in original meshes.\n", oldVertexCount, oldTriangleCount);
+
+	removeDuplicatedVerticesAndOverlappingTriangles(allMeshes, true, false);
+
+	size_t triangleCount = 0;
+	size_t vertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		vertexCount += allMeshes[i]->getVertices().size();
+	}
+
+	printf("[Info]Duplicated vertex and overlapped triangle removal done. %zd vertices and %zd triangles were removed.\n", oldVertexCount - vertexCount, oldTriangleCount - triangleCount);
+	printf("[Info]%zd vertices and %zd triangles are survived.\n", vertexCount, triangleCount);
+
+	// determine  which surfaces are exteriors
+	if (settings.bExtractExterior)
+		determineWhichSurfacesAreExterior(allMeshes, fullBbox);
+
+	// make model-reference relationship
+	determineModelAndReference(allMeshes);
+
+	size_t modelCount = 0;
+	meshCount = allMeshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		if (allMeshes[i]->getReferenceInfo().model == NULL)
+			modelCount++;
+	}
+	printf("[Info]Model/reference detection done. %zd models out of %zd meshes detected.\n", modelCount, allMeshes.size());
+
+	// make VBO
+	makeVboObjects(allMeshes);
+	printf("[Info]VBO of each mesh created.\n");
+
+	// make generic spatial octree
+	assignReferencesIntoEachSpatialOctrees(thisSpatialOctree, allMeshes, fullBbox, false, settings.leafSpatialOctreeSize);
+	printf("[Info]Mesh distribution on each octree done.\n");
+
+	// make visibility indices
+	if (settings.bOcclusionCulling)
+	{
+		// exterior extraction is necessary for occlusion culling
+		// so, if it is not done, do it before occlusion culling
+		if (!settings.bExtractExterior)
+			determineWhichSurfacesAreExterior(allMeshes, fullBbox);
+
+		std::vector<gaia3d::TrianglePolyhedron*> interiors, exteriors;
+		assignReferencesIntoExteriorAndInterior(allMeshes, interiors, exteriors);
+
+		gaia3d::BoundingBox interiorBbox, exteriorBbox;
+		calculateBoundingBox(interiors, interiorBbox);
+		calculateBoundingBox(exteriors, exteriorBbox);
+
+		// make occlusion culling information
+		gaia3d::VisionOctreeBox interiorOcclusionOctree(NULL), exteriorOcclusionOctree(NULL);
+		makeOcclusionInformation(allMeshes, interiorOcclusionOctree, exteriorOcclusionOctree, interiorBbox, exteriorBbox);
+
+		// finally, import these information into data groups and interior spatial octree boxes
+		applyOcclusionInformationOnSpatialOctree(thisSpatialOctree, interiorOcclusionOctree, exteriorOcclusionOctree);
+
+		printf("[Info]Visibility Indices created.\n");
+	}
+
+	bool bMakeTextureCoordinate = allTextureInfo.empty() ? false : true;
+	if (bMakeTextureCoordinate)
+	{
+		// rebuild original texture
+		normalizeTextures(allTextureInfo);
+		printf("[Info]Original textures are normalized.\n");
+		if (resizedTextures.empty())
+		{
+			printf("[Error]No Texture Normalized!!!\n\n");
+		}
+	}
+
+	if (settings.bUseNsm)
+	{
+		std::map<unsigned char, unsigned char> dummy;
+		makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, dummy);
+		printf("[Info]Net Surface Mesh created.\n");
+	}
+	else
+	{
+		reuseOriginalMeshForRougherLods(thisSpatialOctree);
+		printf("[Info]Rougher LOD created.\n");
+	}
 }
 
 void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
@@ -389,11 +609,13 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 
 	// determine  which surfaces are exteriors
 	if (settings.bExtractExterior)
+	{
 		determineWhichSurfacesAreExterior(allMeshes, fullBbox);
+		printf("[Info]Exterior detection done.\n");
+	}
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
-	printf("[Info]Model/reference detection done.\n");
 
 	size_t modelCount = 0;
 	size_t meshCount = allMeshes.size();
@@ -402,6 +624,8 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 		if (allMeshes[i]->getReferenceInfo().model == NULL)
 			modelCount++;
 	}
+	printf("[Info]Model/reference detection done. %zd models out of %zd meshes detected.\n", modelCount, allMeshes.size());
+
 	// make VBO
 	makeVboObjects(allMeshes);
 	printf("[Info]VBO of each mesh created.\n");
@@ -431,6 +655,8 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 
 		// finally, import these information into data groups and interior spatial octree boxes
 		applyOcclusionInformationOnSpatialOctree(thisSpatialOctree, interiorOcclusionOctree, exteriorOcclusionOctree);
+
+		printf("[Info]Visibility Indices created.\n");
 	}
 
 	bool bMakeTextureCoordinate = allTextureInfo.empty() ? false : true;
@@ -438,6 +664,11 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 	{
 		// rebuild original texture
 		normalizeTextures(allTextureInfo);
+		printf("[Info]Original textures are normalized.\n");
+		if (resizedTextures.empty())
+		{
+			printf("[Error]No Texture Normalized!!!\n\n");
+		}
 	}
 
 	if (settings.bUseNsm)
@@ -449,12 +680,13 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 	else
 	{
 		reuseOriginalMeshForRougherLods(thisSpatialOctree);
+		printf("[Info]Rougher LOD created.\n");
 	}
 
 	//system("pause");
 }
 
-void ConversionProcessor::convertRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+void ConversionProcessor::convertSingleRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
 	std::map<std::string, std::string>& originalTextureInfo)
 {
 	if (settings.nsmSettings.empty())
@@ -796,6 +1028,8 @@ void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*
 	{
 		//if(meshes[i]->getReferenceInfo().model != NULL)
 			//continue;
+
+
 
 		vbo = new gaia3d::Vbo;
 		meshes[i]->getVbos().push_back(vbo);
@@ -2438,6 +2672,8 @@ void ConversionProcessor::normalizeMosiacTextures(std::map<unsigned char, unsign
 	int bpp = 4;
 	for (; iterTexture != mosaicTextures.end(); iterTexture++)
 	{
+		unsigned char lod = iterTexture->first;
+
 		unsigned char* sourceImage = iterTexture->second;
 		int sourceWidth = mosaicTextureWidth[iterTexture->first];
 		int sourceHeight = mosaicTextureHeight[iterTexture->first];
@@ -2467,6 +2703,12 @@ void ConversionProcessor::normalizeMosiacTextures(std::map<unsigned char, unsign
 			unsigned int nextPower = prevPower + 1;
 			resizedHeight = ((sourceHeight - (1 << prevPower)) > ((1 << nextPower) - sourceHeight)) ? 1 << nextPower : 1 << prevPower;
 		}
+
+		int maxPixelLength = 1 << (MaxLod - lod + 7);
+		if (resizedWidth > maxPixelLength)
+			resizedWidth = maxPixelLength;
+		if (resizedHeight > maxPixelLength)
+			resizedHeight = maxPixelLength;
 
 		int resizedImageSize = resizedWidth*resizedHeight*bpp;
 		unsigned char* resizedImage = new unsigned char[resizedImageSize];

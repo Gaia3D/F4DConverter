@@ -36,7 +36,7 @@ public:
 	void setSkinLevel(unsigned char level) { settings.netSurfaceMeshSettingIndex = level; }
 	void setYAxisUp(bool bUp) { settings.bYAxisUp = bUp; }
 	void setAlignPostionToCenter(bool bAlign) { settings.bAlignPositionToCenter = bAlign; }
-	void setIsRealisticMesh(bool bTrue) { settings.bRealisticMesh = bTrue; }
+	void setMeshType(int type) { settings.meshType = type; }
 
 protected:
 	SceneControlVariables* scv;
@@ -122,8 +122,11 @@ protected:
 	void convertSemanticData(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
 							std::map<std::string, std::string>& originalTextureInfo);
 
-	void convertRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
-							std::map<std::string, std::string>& originalTextureInfo);
+	void convertSingleRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+									std::map<std::string, std::string>& originalTextureInfo);
+
+	void convertSplittedRealisticMesh(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
+									std::map<std::string, std::string>& originalTextureInfo);
 
 	void trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes);
 
