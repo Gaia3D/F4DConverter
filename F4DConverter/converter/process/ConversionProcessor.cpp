@@ -28,70 +28,6 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "../util/stb_image_resize.h"
 
-void testFunction(std::vector<gaia3d::TrianglePolyhedron*>& allMeshes)
-{
-	size_t meshCount = allMeshes.size();
-	for (size_t i = 0; i < meshCount; i++)
-	{
-		gaia3d::TrianglePolyhedron* mesh = allMeshes[i];
-		std::string objectGuid = mesh->getStringAttribute(std::string(ObjectGuid));
-		if (objectGuid == std::string("Group__Geometry_46"))
-		{
-			printf("[DEBUG]vertex count in mesh : %zd\n", mesh->getVertices().size());
-
-			gaia3d::BoundingBox tempBbox0;
-			size_t meshVertexCount = mesh->getVertices().size();
-			for (size_t j = 0; j < meshVertexCount; j++)
-			{
-				gaia3d::Vertex* meshVertex = mesh->getVertices()[j];
-				tempBbox0.addPoint(meshVertex->position.x, meshVertex->position.y, meshVertex->position.z);
-			}
-			printf("[DEBUG]max edge length of mesh bbox : %f\n", tempBbox0.getMaxLength());
-
-			gaia3d::BoundingBox tempBbox;
-			size_t vboCount = mesh->getVbos().size();
-			printf("[DEBUG]vbo count in mesh : %zd\n", vboCount);
-			double minxx, minyy, minzz, maxxx, maxyy, maxzz;
-			for (size_t j = 0; j < vboCount; j++)
-			{
-				gaia3d::Vbo* vbo = mesh->getVbos()[j];
-				size_t vboVertexCount = vbo->vertices.size();
-				printf("[DEBUG]vertex count in vbo %zd : %zd\n", j, vboVertexCount);
-				for (size_t k = 0; k < vboVertexCount; k++)
-				{
-					gaia3d::Vertex* vboVertex = vbo->vertices[k];
-					tempBbox.addPoint(vboVertex->position.x, vboVertex->position.y, vboVertex->position.z);
-					if (j == 0 && k == 0)
-					{
-						minxx = maxxx = vboVertex->position.x;
-						minyy = maxyy = vboVertex->position.y;
-						minzz = maxzz = vboVertex->position.z;
-					}
-					else
-					{
-						if (minxx > vboVertex->position.x) minxx = vboVertex->position.x;
-						if (maxxx < vboVertex->position.x) maxxx = vboVertex->position.x;
-						if (minyy > vboVertex->position.y) minyy = vboVertex->position.y;
-						if (maxyy < vboVertex->position.y) maxyy = vboVertex->position.y;
-						if (minzz > vboVertex->position.z) minzz = vboVertex->position.z;
-						if (maxzz < vboVertex->position.z) maxzz = vboVertex->position.z;
-					}
-				}
-			}
-
-			double xlength = maxxx - minxx;
-			double ylength = maxyy - minyy;
-			double zlength = maxzz - minzz;
-			double maxlength = (xlength > ylength) ? (xlength > zlength ? xlength : zlength) : (ylength > zlength ? ylength : zlength);
-
-			printf("[DEBUG]max edge length of VBO by bbox : %f\n", tempBbox.getMaxLength());
-			printf("[DEBUG]max edge length of VBO directly : %f\n", maxlength);
-			system("pause");
-			break;
-		}
-	}
-}
-
 ConversionProcessor::ConversionProcessor()
 :thisSpatialOctree(NULL)
 {
@@ -442,6 +378,7 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 	if (!originalTextureInfo.empty())
 		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
 
+
 	// change up axis from y to z
 	if (settings.bYAxisUp)
 	{
@@ -480,10 +417,23 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 	}
 	printf("[Info]%zd vertices and %zd triangles are in original meshes.\n", oldVertexCount, oldTriangleCount);
 
-	removeDuplicatedVerticesAndOverlappingTriangles(allMeshes, true, false);
-
+	dropTrianglesOfSmallSizedEdge(allMeshes, 0.005);
 	size_t triangleCount = 0;
 	size_t vertexCount = 0;
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
+		vertexCount += allMeshes[i]->getVertices().size();
+	}
+	printf("[Info]Small edge triangle removal done. %zd vertices and %zd triangles were removed.\n", oldVertexCount - vertexCount, oldTriangleCount - triangleCount);
+
+	oldTriangleCount = triangleCount;
+	oldVertexCount = vertexCount;
+
+	removeDuplicatedVerticesAndOverlappingTriangles(allMeshes, true, false);
+
+	triangleCount = 0;
+	vertexCount = 0;
 	for (size_t i = 0; i < meshCount; i++)
 	{
 		triangleCount += allMeshes[i]->getSurfaces()[0]->getTriangles().size();
@@ -492,6 +442,7 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 
 	printf("[Info]Duplicated vertex and overlapped triangle removal done. %zd vertices and %zd triangles were removed.\n", oldVertexCount - vertexCount, oldTriangleCount - triangleCount);
 	printf("[Info]%zd vertices and %zd triangles are survived.\n", vertexCount, triangleCount);
+
 
 	// determine  which surfaces are exteriors
 	if (settings.bExtractExterior)
@@ -616,6 +567,7 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
+	printf("[Info]Model/reference detection done.\n");
 
 	size_t modelCount = 0;
 	size_t meshCount = allMeshes.size();
@@ -1013,9 +965,11 @@ void ConversionProcessor::determineWhichSurfacesAreExterior(std::vector<gaia3d::
 	defaultSpaceSetupForVisualization(scv->m_width, scv->m_height);
 }
 
+
+
 void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*>& meshes, bool bBind)
 {
-	
+
 	size_t meshCount = meshes.size();
 	size_t surfaceCount, triangleCount;
 	gaia3d::Vbo* vbo;
@@ -1026,31 +980,26 @@ void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*
 	unsigned int eachSizeStartingIndices[TriangleSizeLevels];
 	for(size_t i = 0; i < meshCount; i++)
 	{
-		//if(meshes[i]->getReferenceInfo().model != NULL)
-			//continue;
-
-
+		gaia3d::TrianglePolyhedron* mesh = meshes[i];
 
 		vbo = new gaia3d::Vbo;
-		meshes[i]->getVbos().push_back(vbo);
+		mesh->getVbos().push_back(vbo);
 
 		std::map<gaia3d::Vertex*, size_t> addedVertices;
 
-		surfaceCount = meshes[i]->getSurfaces().size();
+		surfaceCount = mesh->getSurfaces().size();
 		for(size_t j = 0;j < surfaceCount; j++)
 		{
 			sortedTriangles.clear();
-			sortTrianglesBySize(meshes[i]->getSurfaces()[j]->getTriangles(), sizeLevels, sizeThresholds, sortedTriangles, eachSizeStartingIndices);
+			sortTrianglesBySize(mesh->getSurfaces()[j]->getTriangles(), sizeLevels, sizeThresholds, sortedTriangles, eachSizeStartingIndices);
 
 			triangleCount = sortedTriangles.size();
 			for(size_t k = 0; k < triangleCount; k++)
 			{
 				if(vbo->vertices.size() >= VboVertexMaxCount)
 				{
-					// vbo의 maximum vertex개수가 다 차면
-					// 새로 만들어주어야 한다.
-					// 새로 만들기 전에 size별로 sorting 해둔 index marker를 이용해
-					// 기존의 vbo에 size별 index marker를 넣어야 한다.
+					// have to make new vbo when vertex count of current vbo is over limitation of vertex count.
+					// before making newer vbo, have to insert index markers into current vbo with sorted index markers along triangle edge size.
 					for(size_t m = 0; m < TriangleSizeLevels; m++)
 					{
 						if(eachSizeStartingIndices[m]*3 > vbo->indices.size())
@@ -1069,7 +1018,7 @@ void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*
 					}
 
 					vbo = new gaia3d::Vbo;
-					meshes[i]->getVbos().push_back(vbo);
+					mesh->getVbos().push_back(vbo);
 
 					addedVertices.clear();
 				}
@@ -1090,7 +1039,7 @@ void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*
 				}
 			}
 
-			// 마지막 vbo에 size별 index marker를 넣어줘야 한다.
+			// have to insert index markers into the last created vbo
 			for(size_t m = 0; m < TriangleSizeLevels; m++)
 			{
 				if(eachSizeStartingIndices[m]*3 > vbo->indices.size())
@@ -1111,7 +1060,7 @@ void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*
 
 		if(bBind)
 		{
-			// TODO(khj 20170323) : NYI 나중에 off-screen rendering 때문에 gpu를 사용해야 한다면 여기서 추가 구현 해야 한다.
+			// TODO(khj 20170323) : NYI if we have to use gpu for off-screen rendering later, have to implement it here
 		}
 	}
 }
@@ -2780,7 +2729,6 @@ void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::Tria
 		std::vector<gaia3d::Surface*> survivedSurfaces;
 		std::vector<gaia3d::Vertex*> survivedVertices;
 		std::map<gaia3d::Vertex*, size_t> survivedVertexMap;
-		std::vector<gaia3d::Vertex*> verticesToBeDelete;
 		for (size_t j = 0; j < surfaceCount; j++)
 		{
 			gaia3d::Surface* surface = mesh->getSurfaces()[j];
@@ -2808,42 +2756,32 @@ void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::Tria
 				if (squaredEdgeLength0 < squaredMinSize || squaredEdgeLength1 < squaredMinSize || squaredEdgeLength2 < squaredMinSize)
 				{
 					delete triangle;
-					verticesToBeDelete.push_back(triangle->getVertices()[0]);
-					verticesToBeDelete.push_back(triangle->getVertices()[1]);
-					verticesToBeDelete.push_back(triangle->getVertices()[2]);
 				}
 				else
 				{
 					survivedTriangles.push_back(triangle);
 
-					size_t index0 = triangle->getVertexIndices()[0];
-					size_t index1 = triangle->getVertexIndices()[1];
-					size_t index2 = triangle->getVertexIndices()[2];
 					if (survivedVertexMap.find(triangle->getVertices()[0]) == survivedVertexMap.end())
 					{
-						survivedVertexMap[triangle->getVertices()[0]] = index0 = survivedVertices.size();
+						survivedVertexMap[triangle->getVertices()[0]] = survivedVertices.size();
 						survivedVertices.push_back(triangle->getVertices()[0]);
 					}
-					else
-						index0 = survivedVertexMap[triangle->getVertices()[0]];
 
 					if (survivedVertexMap.find(triangle->getVertices()[1]) == survivedVertexMap.end())
 					{
-						survivedVertexMap[triangle->getVertices()[1]] = index1 = survivedVertices.size();
+						survivedVertexMap[triangle->getVertices()[1]] = survivedVertices.size();
 						survivedVertices.push_back(triangle->getVertices()[1]);
 					}
-					else
-						index1 = survivedVertexMap[triangle->getVertices()[1]];
 
 					if (survivedVertexMap.find(triangle->getVertices()[2]) == survivedVertexMap.end())
 					{
-						survivedVertexMap[triangle->getVertices()[2]] = index2 = survivedVertices.size();
+						survivedVertexMap[triangle->getVertices()[2]] = survivedVertices.size();
 						survivedVertices.push_back(triangle->getVertices()[2]);
 					}
-					else
-						index2 = survivedVertexMap[triangle->getVertices()[2]];
 
-					triangle->setVertexIndices(index0, index1, index2);
+					triangle->setVertexIndices(survivedVertexMap[triangle->getVertices()[0]],
+												survivedVertexMap[triangle->getVertices()[1]],
+												survivedVertexMap[triangle->getVertices()[2]]);
 				}
 			}
 
@@ -2861,20 +2799,17 @@ void ConversionProcessor::dropTrianglesOfSmallSizedEdge(std::vector<gaia3d::Tria
 		mesh->getSurfaces().clear();
 
 		if (!survivedSurfaces.empty())
+		{
 			mesh->getSurfaces().assign(survivedSurfaces.begin(), survivedSurfaces.end());
 
-		if (!verticesToBeDelete.empty())
-		{
-			size_t vertexCount = verticesToBeDelete.size();
+			size_t vertexCount = mesh->getVertices().size();
 			for (size_t j = 0; j < vertexCount; j++)
 			{
-				if (survivedVertexMap.find(verticesToBeDelete[j]) == survivedVertexMap.end())
-					delete verticesToBeDelete[j];
+				gaia3d::Vertex* vertex = mesh->getVertices()[j];
+				if (survivedVertexMap.find(vertex) == survivedVertexMap.end())
+					delete vertex;
 			}
-		}
 
-		if (!survivedVertices.empty())
-		{
 			mesh->getVertices().clear();
 			mesh->getVertices().assign(survivedVertices.begin(), survivedVertices.end());
 		}
@@ -2907,11 +2842,10 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 					if (vertexUseCase.find(vertex) == vertexUseCase.end())
 					{
 						std::vector<gaia3d::Triangle*> trianglesUsingSameVertex;
-						trianglesUsingSameVertex.push_back(triangle);
 						vertexUseCase[vertex] = trianglesUsingSameVertex;
 					}
-					else
-						vertexUseCase[vertex].push_back(triangle);
+
+					vertexUseCase[vertex].push_back(triangle);
 				}
 			}
 		}
@@ -3038,6 +2972,9 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 					if (triangleA == triangleB)
 						continue;
 
+					if (overlappedTriangles.find(triangleB) != overlappedTriangles.end())
+						continue;
+
 					for (char n = 0; n < 3; n++)
 					{
 						if ( (triangleA->getVertices()[0] == triangleB->getVertices()[n % 3] &&
@@ -3077,7 +3014,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 		mesh->getVertices().clear();
 		mesh->getVertices().assign(survivedVertices.begin(), survivedVertices.end());
 
-		// delete overlapped triangles of this mesh and reassign vertex ids to each triangles
+		// delete overlapped triangles of this mesh and reassign vertex index to each triangles
 		for (size_t j = 0; j < surfaceCount; j++)
 		{
 			gaia3d::Surface* surface = mesh->getSurfaces()[j];

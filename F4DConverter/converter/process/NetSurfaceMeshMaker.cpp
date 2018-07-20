@@ -1205,10 +1205,10 @@ void makeProjectedModel(NetSurface* netSurface,
 			if (pixelY < 0)
 				pixelY = 0;
 
-			if (pixelX == wa)
+			if (pixelX >= wa)
 				pixelX = wa - 1;
 
-			if (pixelY == ha)
+			if (pixelY >= ha)
 				pixelY = ha - 1;
 
 			// check if this pixel represents geometry or background and calculate depth onto geometry surface

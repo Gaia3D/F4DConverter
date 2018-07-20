@@ -218,41 +218,36 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 	// TODO(khj 20180417) : NYI setup conversion configuration here
 	// now, only set wheter do occlusion culling or not
-	
-	/*
 	processor->setVisibilityIndexing(bOcclusionCulling);
 	processor->setSkinLevel(skinLevel);
 	processor->setYAxisUp(bYAxisUp);
 	processor->setAlignPostionToCenter(bAlignPostionToCenter);
 	processor->setMeshType(meshType);
-	*/
 	// TODO(khj 20180417) end
 
+	//// hard-cord for japan(AIST) realistic mesh
+	//processor->setVisibilityIndexing(false);
+	//processor->setYAxisUp(false);
+	//processor->setAlignPostionToCenter(false);
+	//processor->setMeshType(meshType);
+	//switch(meshType)
+	//{
+	//case 1:
+	//	processor->setSkinLevel(50);
+	//	break;
+	//case 2:
+	//	processor->setSkinLevel(51);
+	//	break;
+	//}
+	//processor->setLeafSpatialOctreeSize(40.0f);
 	
-	// hard-cord for japan(AIST) realistic mesh
-	processor->setVisibilityIndexing(false);
-	processor->setYAxisUp(false);
-	processor->setAlignPostionToCenter(false);
-	processor->setMeshType(meshType);
-	switch(meshType)
-	{
-	case 1:
-		processor->setSkinLevel(50);
-		break;
-	case 2:
-		processor->setSkinLevel(51);
-		break;
-	}
-	processor->setLeafSpatialOctreeSize(40.0f);	
 
-	/*
-	// hard-cord for new york citygml
-	processor->setVisibilityIndexing(false);
-	processor->setUseNsm(false);
-	processor->setYAxisUp(true);
-	processor->setAlignPostionToCenter(true);
-	processor->setLeafSpatialOctreeSize(422.0f);
-	*/
+	//// hard-cord for new york citygml
+	//processor->setVisibilityIndexing(false);
+	//processor->setUseNsm(false);
+	//processor->setYAxisUp(true);
+	//processor->setAlignPostionToCenter(true);
+	//processor->setLeafSpatialOctreeSize(422.0f);
 
 	std::string outputFolder = outputFolderPath;
 
@@ -372,7 +367,6 @@ void CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 	{
 		bConversion = true;
 		inputFolderPath = arguments[InputFolder];
-		outputFolderPath = arguments[OutputFolder];
 
 		if (arguments.find(PerformOC) != arguments.end())
 		{
@@ -392,6 +386,11 @@ void CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 	}
 	else
 		bConversion = false;
+
+	if (arguments.find(OutputFolder) != arguments.end())
+	{
+		outputFolderPath = arguments[OutputFolder];
+	}
 
 	if (arguments.find(CreateIndex) != arguments.end())
 	{
