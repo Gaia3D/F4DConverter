@@ -305,7 +305,7 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		{
 			int meshType = std::stoi(arguments[MeshType]);
 
-			if (meshType < 0 || meshType > 2)
+			if (meshType != 0)
 				return false;
 		}
 		catch (const std::invalid_argument& error)
