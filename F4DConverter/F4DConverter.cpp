@@ -198,7 +198,7 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 
 	if (arguments.find(InputFolder) != arguments.end())
 	{
-		if (arguments.find(LogFilePath) == arguments.end())
+		if (arguments.find(LogFilePath) == arguments.end() || arguments.find(MeshType) == arguments.end())
 			return false;
 	}
 

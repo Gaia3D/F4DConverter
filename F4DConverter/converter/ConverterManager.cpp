@@ -368,6 +368,11 @@ void CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 		bConversion = true;
 		inputFolderPath = arguments[InputFolder];
 
+		if (arguments.find(MeshType) != arguments.end())
+		{
+			meshType = std::stoi(arguments[MeshType]);
+		}
+
 		if (arguments.find(PerformOC) != arguments.end())
 		{
 			if (arguments[PerformOC] == std::string("Y") || arguments[PerformOC] == std::string("y"))
@@ -423,11 +428,6 @@ void CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 		referenceFileName = arguments[ReferenceFile];
 		referenceLon = std::stod(arguments[MatchedLon]);
 		referenceLat = std::stod(arguments[MatchedLat]);
-	}
-
-	if (arguments.find(MeshType) != arguments.end())
-	{
-		meshType = std::stoi(arguments[MeshType]);
 	}
 }
 

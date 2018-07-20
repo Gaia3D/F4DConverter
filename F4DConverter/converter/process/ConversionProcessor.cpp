@@ -567,7 +567,6 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
-	printf("[Info]Model/reference detection done.\n");
 
 	size_t modelCount = 0;
 	size_t meshCount = allMeshes.size();
@@ -707,10 +706,17 @@ void ConversionProcessor::convertSingleRealisticMesh(std::vector<gaia3d::Triangl
 
 	// make model-reference relationship
 	determineModelAndReference(allMeshes);
-	printf("[Info]Model/reference detection done.\n");
+	size_t modelCount = 0;
+	size_t meshCount = allMeshes.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		if (allMeshes[i]->getReferenceInfo().model == NULL)
+			modelCount++;
+	}
+	printf("[Info]Model/reference detection done. %zd models out of %zd meshes detected.\n", modelCount, allMeshes.size());
 
 	// drop small-sized edge triangles
-	size_t meshCount = allMeshes.size();
+	meshCount = allMeshes.size();
 	size_t oldTriangleCount = 0;
 	size_t oldVertexCount = 0;
 	for (size_t i = 0; i < meshCount; i++)
