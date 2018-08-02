@@ -75,6 +75,96 @@ void makeNetSurfaceTextures(std::vector<NetSurface*>& netSurfaces,
 gaia3d::TrianglePolyhedron* mergePolyhedrons(std::vector<gaia3d::TrianglePolyhedron*> meshes);
 NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* mesh, std::map<HedgeVertex*, gaia3d::Vertex*>& vertexMapper);
 
+// TESTCODE-start
+bool checkOutwardHedgesOnAllVertices(std::vector<std::vector<HedgeVertex*>*>& vertices)
+{
+	size_t vertexLineCount = vertices.size();
+	HedgeVertex* target;
+	int frontierEdgeCount = 0;
+	for (size_t i = 0; i < vertexLineCount; i++)
+	{
+		std::vector<HedgeVertex*>* vertexLine = vertices[i];
+		size_t vertexCount = vertexLine->size();
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			target = (*vertexLine)[j];
+
+			if (target == NULL)
+				continue;
+
+			size_t outwardHedgeCount = target->hedgesFromThisVertex.size();
+			if (outwardHedgeCount == 0)
+			{
+				return true;
+			}
+			
+			/*frontierEdgeCount = 0;
+			for (size_t k = 0; k < outwardHedgeCount; k++)
+			{
+				if (target->hedgesFromThisVertex[k]->twin == NULL)
+					frontierEdgeCount++;
+			}
+
+			if (frontierEdgeCount != 0)
+			{
+				if (frontierEdgeCount != 1)
+				{
+					printf("[ERROR]Wrong outward hedge count ON FRONTIER VERTEX!!!! frontier edge count : %d\n", frontierEdgeCount);
+				}
+			}*/
+		}
+	}
+
+	return false;
+}
+
+void checkOutwardHedgesOnAllVertices(NetSurface* nsm)
+{
+	size_t vertexLineCount = nsm->netVertices.size();
+	HedgeVertex* target;
+	int frontierEdgeCount = 0;
+	for (size_t i = 0; i < vertexLineCount; i++)
+	{
+		std::vector<HedgeVertex*>* vertexLine = nsm->netVertices[i];
+		size_t vertexCount = vertexLine->size();
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			target = (*vertexLine)[j];
+
+			if (target == NULL)
+				continue;
+
+			size_t outwardHedgeCount = target->hedgesFromThisVertex.size();
+			if (outwardHedgeCount == 0)
+			{
+				printf("[ERROR]Wrong outward hedge count!!!!\n");
+			}
+			frontierEdgeCount = 0;
+			for (size_t k = 0; k < outwardHedgeCount; k++)
+			{
+				if (target->hedgesFromThisVertex[k]->twin == NULL)
+					frontierEdgeCount++;
+			}
+
+			if (frontierEdgeCount == 0)
+			{
+				if(outwardHedgeCount < 3)
+				{
+					printf("[ERROR]Wrong outward hedge count ON INNER VERTEX!!!! outward hedge count : %zd\n", outwardHedgeCount);
+				}
+			}
+			else
+			{
+				if (frontierEdgeCount != 1)
+				{
+					printf("[ERROR]Wrong outward hedge count ON FRONTIER VERTEX!!!! frontier edge count : %d\n", frontierEdgeCount);
+				}
+			}
+		}
+	}
+}
+// TESTCODE-end
+
 NetSurfaceMeshMaker::NetSurfaceMeshMaker()
 {
 }
@@ -1553,8 +1643,6 @@ bool collapseHedge(Hedge* hedge,
 	if (type == NoCollapse)
 		return false;
 
-	
-
 	HedgeVertex* startVertex;
 	HedgeVertex* endVertex;
 	switch (type)
@@ -1628,6 +1716,7 @@ bool collapseHedge(Hedge* hedge,
 	}
 
 	// step 1. remove outward hedges from vertices on triangles to be deleted
+	// and collect vertices which has no more outward hedges to delete them
 	std::vector<Hedge*> updatedOutward;
 	outwardHedgeCount = triangleToBeDeleted->vertex0->hedgesFromThisVertex.size();
 	for (size_t i = 0; i < outwardHedgeCount; i++)
@@ -1637,7 +1726,7 @@ bool collapseHedge(Hedge* hedge,
 	}
 	triangleToBeDeleted->vertex0->hedgesFromThisVertex.clear();
 	triangleToBeDeleted->vertex0->hedgesFromThisVertex.assign(updatedOutward.begin(), updatedOutward.end());
-	
+
 	updatedOutward.clear();
 	outwardHedgeCount = triangleToBeDeleted->vertex1->hedgesFromThisVertex.size();
 	for (size_t i = 0; i < outwardHedgeCount; i++)
@@ -1730,22 +1819,9 @@ bool collapseHedge(Hedge* hedge,
 		targetHedge->next->next->direction.normalize();
 	}
 
-	// step 3 : delete startVertex and mark it on indicesOfDeletedVertices using vertexMap
-	std::map<std::map<HedgeVertex*, size_t>*, size_t>::iterator iterVertexList = vertexMap.begin();
-	for (; iterVertexList != vertexMap.end(); iterVertexList++)
-	{
-		std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
-		if (vertexListMap->find(startVertex) == vertexListMap->end())
-			continue;
-
-		indicesOfDeletedVertices.push_back(iterVertexList->second);
-		indicesOfDeletedVertices.push_back((*vertexListMap)[startVertex]);
-		delete startVertex;
-		break;
-	}
-
-	// step 4 : delete triangles and 3 hedges on it, and mark it on indicesOfDeletedTriangles and indicesOfDeletedTriangles using hedgeMap and triangleMap
+	// step 3 : delete triangles and 3 hedges on it, and mark it on indicesOfDeletedTriangles and indicesOfDeletedTriangles using hedgeMap and triangleMap
 	// collect edges whose twin was removed to use them for twin rebuilding
+	std::map<std::map<HedgeVertex*, size_t>*, size_t>::iterator iterVertexList;
 	std::vector<Hedge*> edgesWithTwinRemoved;
 	indicesOfDeletedHedges.push_back(hedgeMap[hedge->next->next]);
 	if (hedge->next->next->twin != NULL)
@@ -1770,6 +1846,61 @@ bool collapseHedge(Hedge* hedge,
 		std::map<HedgeTriangle*, size_t>* triangleListMap = iterTriangleList->first;
 		if (triangleListMap->find(triangleToBeDeleted) == triangleListMap->end())
 			continue;
+
+		/*if (triangleToBeDeleted->vertex0 != startVertex)
+		{
+			if (triangleToBeDeleted->vertex0->hedgesFromThisVertex.empty())
+			{
+				iterVertexList = vertexMap.begin();
+				for (; iterVertexList != vertexMap.end(); iterVertexList++)
+				{
+					std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+					if (vertexListMap->find(triangleToBeDeleted->vertex0) == vertexListMap->end())
+						continue;
+
+					indicesOfDeletedVertices.push_back(iterVertexList->second);
+					indicesOfDeletedVertices.push_back((*vertexListMap)[triangleToBeDeleted->vertex0]);
+					delete triangleToBeDeleted->vertex0;
+					break;
+				}
+			}
+		}
+		if (triangleToBeDeleted->vertex1 != startVertex)
+		{
+			if (triangleToBeDeleted->vertex1->hedgesFromThisVertex.empty())
+			{
+				iterVertexList = vertexMap.begin();
+				for (; iterVertexList != vertexMap.end(); iterVertexList++)
+				{
+					std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+					if (vertexListMap->find(triangleToBeDeleted->vertex1) == vertexListMap->end())
+						continue;
+
+					indicesOfDeletedVertices.push_back(iterVertexList->second);
+					indicesOfDeletedVertices.push_back((*vertexListMap)[triangleToBeDeleted->vertex1]);
+					delete triangleToBeDeleted->vertex1;
+					break;
+				}
+			}
+		}
+		if (triangleToBeDeleted->vertex2 != startVertex)
+		{
+			if (triangleToBeDeleted->vertex2->hedgesFromThisVertex.empty())
+			{
+				iterVertexList = vertexMap.begin();
+				for (; iterVertexList != vertexMap.end(); iterVertexList++)
+				{
+					std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+					if (vertexListMap->find(triangleToBeDeleted->vertex2) == vertexListMap->end())
+						continue;
+
+					indicesOfDeletedVertices.push_back(iterVertexList->second);
+					indicesOfDeletedVertices.push_back((*vertexListMap)[triangleToBeDeleted->vertex2]);
+					delete triangleToBeDeleted->vertex2;
+					break;
+				}
+			}
+		}*/
 
 		indicesOfDeletedTriangles.push_back(iterTriangleList->second);
 		indicesOfDeletedTriangles.push_back((*triangleListMap)[triangleToBeDeleted]);
@@ -1803,11 +1934,80 @@ bool collapseHedge(Hedge* hedge,
 			if (triangleListMap->find(twinTriangleToBeDeleted) == triangleListMap->end())
 				continue;
 
+			/*if (twinTriangleToBeDeleted->vertex0 != startVertex)
+			{
+				if (twinTriangleToBeDeleted->vertex0->hedgesFromThisVertex.empty())
+				{
+					iterVertexList = vertexMap.begin();
+					for (; iterVertexList != vertexMap.end(); iterVertexList++)
+					{
+						std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+						if (vertexListMap->find(twinTriangleToBeDeleted->vertex0) == vertexListMap->end())
+							continue;
+
+						indicesOfDeletedVertices.push_back(iterVertexList->second);
+						indicesOfDeletedVertices.push_back((*vertexListMap)[twinTriangleToBeDeleted->vertex0]);
+						delete twinTriangleToBeDeleted->vertex0;
+						break;
+					}
+				}
+			}
+			if (twinTriangleToBeDeleted->vertex1 != startVertex)
+			{
+				if (twinTriangleToBeDeleted->vertex1->hedgesFromThisVertex.empty())
+				{
+					iterVertexList = vertexMap.begin();
+					for (; iterVertexList != vertexMap.end(); iterVertexList++)
+					{
+						std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+						if (vertexListMap->find(twinTriangleToBeDeleted->vertex1) == vertexListMap->end())
+							continue;
+
+						indicesOfDeletedVertices.push_back(iterVertexList->second);
+						indicesOfDeletedVertices.push_back((*vertexListMap)[twinTriangleToBeDeleted->vertex1]);
+						delete twinTriangleToBeDeleted->vertex1;
+						break;
+					}
+				}
+			}
+			if (twinTriangleToBeDeleted->vertex2 != startVertex)
+			{
+				if (twinTriangleToBeDeleted->vertex2->hedgesFromThisVertex.empty())
+				{
+					iterVertexList = vertexMap.begin();
+					for (; iterVertexList != vertexMap.end(); iterVertexList++)
+					{
+						std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+						if (vertexListMap->find(twinTriangleToBeDeleted->vertex2) == vertexListMap->end())
+							continue;
+
+						indicesOfDeletedVertices.push_back(iterVertexList->second);
+						indicesOfDeletedVertices.push_back((*vertexListMap)[twinTriangleToBeDeleted->vertex2]);
+						delete twinTriangleToBeDeleted->vertex2;
+						break;
+					}
+				}
+			}*/
+
 			indicesOfDeletedTriangles.push_back(iterTriangleList->second);
 			indicesOfDeletedTriangles.push_back((*triangleListMap)[twinTriangleToBeDeleted]);
 			delete twinTriangleToBeDeleted;
 			break;
 		}
+	}
+
+	// step 4 : delete startVertex and mark it on indicesOfDeletedVertices using vertexMap
+	iterVertexList = vertexMap.begin();
+	for (; iterVertexList != vertexMap.end(); iterVertexList++)
+	{
+		std::map<HedgeVertex*, size_t>* vertexListMap = iterVertexList->first;
+		if (vertexListMap->find(startVertex) == vertexListMap->end())
+			continue;
+
+		indicesOfDeletedVertices.push_back(iterVertexList->second);
+		indicesOfDeletedVertices.push_back((*vertexListMap)[startVertex]);
+		delete startVertex;
+		break;
 	}
 
 	//	step 5 : rebuild twin relationship of twin-removed hedges
@@ -1927,6 +2127,28 @@ bool isHedgeCollapsable(Hedge* hedge, bool toBeReversed, float cosNormalAngleCha
 
 EdgeCollpaseType getCollapseType(Hedge* hedge, float cosNormalAngleChangeLimit, float cosEdgeAngleChangeLimit, float cosAngleBtwFrontierEdges)
 {
+	// before running a main algorithm which check if this hedge is collasable,
+	// have to find out if this collapse case is 'triangle applause case'
+	HedgeVertex* targetVertex = hedge->next->next->startVertex;
+	if (targetVertex->hedgesFromThisVertex.size() == 3)
+	{
+		if (targetVertex->hedgesFromThisVertex[0]->twin != NULL &&
+			targetVertex->hedgesFromThisVertex[1]->twin != NULL &&
+			targetVertex->hedgesFromThisVertex[2]->twin != NULL)
+			return NoCollapse;
+	}
+	if (hedge->twin != NULL)
+	{
+		targetVertex = hedge->twin->next->next->startVertex;
+		if (targetVertex->hedgesFromThisVertex.size() == 3)
+		{
+			if (targetVertex->hedgesFromThisVertex[0]->twin != NULL &&
+				targetVertex->hedgesFromThisVertex[1]->twin != NULL &&
+				targetVertex->hedgesFromThisVertex[2]->twin != NULL)
+				return NoCollapse;
+		}
+	}
+
 	// there are 2 collpase options
 	// first, move startVertex to endVertex
 	// second, move endVertex to startVertex
@@ -1977,7 +2199,7 @@ bool triangleReduction(std::vector<Hedge*>& hedges,
 	size_t originalHedgeCount = hedges.size();
 	std::map<Hedge*, size_t> hedgeMap;
 	for (size_t i = 0; i < originalHedgeCount; i++)
-		hedgeMap.insert(std::map<Hedge*, size_t>::value_type(hedges[i], i));
+		hedgeMap[hedges[i]] = i;
 
 	std::map<std::map<HedgeVertex*, size_t>*, size_t> vertexMap;
 	size_t vertexListCount = vertices.size();
@@ -1987,9 +2209,9 @@ bool triangleReduction(std::vector<Hedge*>& hedges,
 		size_t vertexCount = vertexList->size();
 		std::map<HedgeVertex*, size_t>* vertexListMap = new std::map<HedgeVertex*, size_t>;
 		for (size_t j = 0; j < vertexCount; j++)
-			vertexListMap->insert(std::map<HedgeVertex*, size_t>::value_type((*vertexList)[j], j));
+			(*vertexListMap)[(*vertexList)[j]] = j;
 
-		vertexMap.insert(std::map<std::map<HedgeVertex*, size_t>*, size_t>::value_type(vertexListMap, i));
+		vertexMap[vertexListMap] =i;
 	}
 
 	std::map<std::map<HedgeTriangle*, size_t>*, size_t> triangleMap;
@@ -2000,9 +2222,9 @@ bool triangleReduction(std::vector<Hedge*>& hedges,
 		size_t triangleCount = triangleList->size();
 		std::map<HedgeTriangle*, size_t>* triangleListMap = new std::map<HedgeTriangle*, size_t>;
 		for (size_t j = 0; j < triangleCount; j++)
-			triangleListMap->insert(std::map<HedgeTriangle*, size_t>::value_type((*triangleList)[j], j));
+			(*triangleListMap)[(*triangleList)[j]] = j;
 
-		triangleMap.insert(std::map<std::map<HedgeTriangle*, size_t>*, size_t>::value_type(triangleListMap, i));
+		triangleMap[triangleListMap] = i;
 	}
 
 	std::vector<size_t> indicesOfDeletedHedges;
@@ -2856,7 +3078,7 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 
 	// make half edges and half edge triangles
 	// and build vertex use cases
-	std::map<HedgeVertex*, std::vector<HedgeTriangle*>> hVertexUseCase;
+	std::map<HedgeVertex*, std::vector<HedgeTriangle*>*> hVertexUseCase;
 	std::vector<HedgeTriangle*>* hTriangles = new std::vector<HedgeTriangle*>;
 	netSurface->netTriangles.push_back(hTriangles);
 	size_t surfaceCount = mesh->getSurfaces().size();
@@ -2907,9 +3129,9 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 			triangle->hedge = hedge0;
 			gaia3d::Point3D normal;
 			gaia3d::GeometryUtility::calculatePlaneNormal(vertex0->position.x, vertex0->position.y, vertex0->position.z,
-				vertex1->position.x, vertex1->position.y, vertex1->position.z,
-				vertex2->position.x, vertex2->position.y, vertex2->position.z,
-				normal.x, normal.y, normal.z, true);
+														vertex1->position.x, vertex1->position.y, vertex1->position.z,
+														vertex2->position.x, vertex2->position.y, vertex2->position.z,
+														normal.x, normal.y, normal.z, true);
 			triangle->normal = normal;
 
 			hTriangles->push_back(triangle);
@@ -2919,39 +3141,36 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 
 			if (hVertexUseCase.find(vertex0) == hVertexUseCase.end())
 			{
-				std::vector<HedgeTriangle*> trianglesUsingSameHVertex;
-				hVertexUseCase[vertex0] = trianglesUsingSameHVertex;
+				hVertexUseCase[vertex0] = new std::vector<HedgeTriangle*>;
 			}
-			hVertexUseCase[vertex0].push_back(triangle);
+			hVertexUseCase[vertex0]->push_back(triangle);
 
 			if (hVertexUseCase.find(vertex1) == hVertexUseCase.end())
 			{
-				std::vector<HedgeTriangle*> trianglesUsingSameHVertex;
-				hVertexUseCase[vertex1] = trianglesUsingSameHVertex;
+				hVertexUseCase[vertex1] = new std::vector<HedgeTriangle*>;
 			}
-			hVertexUseCase[vertex1].push_back(triangle);
+			hVertexUseCase[vertex1]->push_back(triangle);
 
 			if (hVertexUseCase.find(vertex2) == hVertexUseCase.end())
 			{
-				std::vector<HedgeTriangle*> trianglesUsingSameHVertex;
-				hVertexUseCase[vertex2] = trianglesUsingSameHVertex;
+				hVertexUseCase[vertex2] = new std::vector<HedgeTriangle*>;
 			}
-			hVertexUseCase[vertex2].push_back(triangle);
+			hVertexUseCase[vertex2]->push_back(triangle);
 		}
 	}
 
 	// build twin half edge relationships
 	size_t twinRelationshipCount = 0;
-	std::map<HedgeVertex*, std::vector<HedgeTriangle*>>::iterator iter = hVertexUseCase.begin();
+	std::map<HedgeVertex*, std::vector<HedgeTriangle*>*>::iterator iter = hVertexUseCase.begin();
 	for (; iter != hVertexUseCase.end(); iter++)
 	{
-		size_t triangleCount = iter->second.size();
+		size_t triangleCount = (iter->second)->size();
 		for (size_t i = 0; i < triangleCount; i++)
 		{
-			HedgeTriangle* hTriangleA = (iter->second)[i];
+			HedgeTriangle* hTriangleA = (*(iter->second))[i];
 			for (size_t j = i + 1; j < triangleCount; j++)
 			{
-				HedgeTriangle* hTriangleB = (iter->second)[j];
+				HedgeTriangle* hTriangleB = (*(iter->second))[j];
 
 				Hedge* curHedgeA = hTriangleA->hedge;
 				for (char m = 0; m < 3; m++)
@@ -2981,6 +3200,12 @@ NetSurface* makeNetSurfaceMeshFromOriginalDirectly(gaia3d::TrianglePolyhedron* m
 				}
 			}
 		}
+	}
+
+	iter = hVertexUseCase.begin();
+	for (; iter != hVertexUseCase.end(); iter++)
+	{
+		delete iter->second;
 	}
 
 	return netSurface;

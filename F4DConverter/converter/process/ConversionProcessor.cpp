@@ -2938,6 +2938,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 						{
 							triangleOfCoincidentVertex->getVertices()[0] = vertex;
 							vertexUseCase[vertex].push_back(triangleOfCoincidentVertex);
+							verticesToBeDelete[coincidentVertex] = 0;
 						}
 							
 					}
@@ -2948,6 +2949,7 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 						{
 							triangleOfCoincidentVertex->getVertices()[1] = vertex;
 							vertexUseCase[vertex].push_back(triangleOfCoincidentVertex);
+							verticesToBeDelete[coincidentVertex] = 0;
 						}
 					}
 					else
@@ -2957,11 +2959,10 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 						{
 							triangleOfCoincidentVertex->getVertices()[2] = vertex;
 							vertexUseCase[vertex].push_back(triangleOfCoincidentVertex);
+							verticesToBeDelete[coincidentVertex] = 0;
 						}
 					}
 				}
-
-				verticesToBeDelete[coincidentVertex] = 0;
 			}
 
 			// find overlapped triangles
@@ -3001,26 +3002,9 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 			}
 		}
 
-		// delete coincident vertices of this mesh and rebuild vertex id
+		// delete overlapping trianlges of this mesh and rebuild vertex id
 		std::vector<gaia3d::Vertex*> survivedVertices;
 		std::map<gaia3d::Vertex*, size_t> vertexId;
-		for (size_t j = 0; j < vertexCount; j++)
-		{
-			gaia3d::Vertex* vertex = mesh->getVertices()[j];
-			if (verticesToBeDelete.find(vertex) == verticesToBeDelete.end() &&
-				(verticesUsedInOverlappedTriangles.find(vertex) == verticesUsedInOverlappedTriangles.end() ||
-					vertexUseCase[vertex].size() > 1))
-			{
-				vertexId[vertex] = survivedVertices.size();
-				survivedVertices.push_back(vertex);
-			}	
-			else
-				delete vertex;
-		}
-		mesh->getVertices().clear();
-		mesh->getVertices().assign(survivedVertices.begin(), survivedVertices.end());
-
-		// delete overlapped triangles of this mesh and reassign vertex index to each triangles
 		for (size_t j = 0; j < surfaceCount; j++)
 		{
 			gaia3d::Surface* surface = mesh->getSurfaces()[j];
@@ -3031,16 +3015,37 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 				gaia3d::Triangle* triangle = surface->getTriangles()[k];
 				if (overlappedTriangles.find(triangle) == overlappedTriangles.end())
 				{
+					for (int m = 0; m < 3; m++)
+					{
+						if (vertexId.find(triangle->getVertices()[m]) == vertexId.end())
+						{
+							vertexId[triangle->getVertices()[m]] = survivedVertices.size();
+							survivedVertices.push_back(triangle->getVertices()[m]);
+						}
+					}
 					triangle->setVertexIndices(vertexId[triangle->getVertices()[0]], vertexId[triangle->getVertices()[1]], vertexId[triangle->getVertices()[2]]);
+
 					survivedTriangles.push_back(triangle);
 				}
 				else
+				{
 					delete triangle;
+				}
 			}
 
 			surface->getTriangles().clear();
 			surface->getTriangles().assign(survivedTriangles.begin(), survivedTriangles.end());
 		}
+
+		// delete coincident vertices of this mesh
+		for (size_t j = 0; j < vertexCount; j++)
+		{
+			gaia3d::Vertex* vertex = mesh->getVertices()[j];
+			if (vertexId.find(vertex) == vertexId.end())
+				delete vertex;
+		}
+		mesh->getVertices().clear();
+		mesh->getVertices().assign(survivedVertices.begin(), survivedVertices.end());
 	}
 }
 

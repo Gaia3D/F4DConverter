@@ -467,7 +467,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 20.0f;
 			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 15.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 5.0f;
 			result->netCellSize = 0.04f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 2.5f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 2.5f;
@@ -480,8 +480,8 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 		{
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 40.0f;
-			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 15.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 30.0f;
+			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 6.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 6.0f;
 			result->netCellSize = 0.1f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 2.5f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 2.5f;
@@ -494,8 +494,8 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 		{
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 50.0f;
-			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 30.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 40.0f;
+			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 7.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 7.0f;
 			result->netCellSize = 0.3f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 2.5f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 2.5f;
@@ -509,7 +509,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
 			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 5.0f;
 			result->netCellSize = 0.7f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.0f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
@@ -530,7 +530,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
 			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 5.0f;
 			result->netCellSize = 0.5f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
@@ -544,7 +544,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
 			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 5.0f;
 			result->netCellSize = 1.0f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
@@ -558,7 +558,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
 			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 5.0f;
 			result->netCellSize = 2.0f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
@@ -572,7 +572,7 @@ NetSurfaceMeshSetting* NetSurfaceMeshSetting::getNetSurfaceMeshSetting(unsigned 
 			result = new NetSurfaceMeshSetting;
 			result->maxAngleChangeOfNormalVectorForAllowingEdgeCollapse = 35.0f;
 			result->maxAngleChangeOfFrontierEdgeForAllowingEdgeCollapse = 5.0f;
-			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 14.0f;
+			result->maxAngleDifferenceBetweenNeighborFrontierEdgesForCollapse = 5.0f;
 			result->netCellSize = 4.0f;
 			result->maxLengthForAllowingInnerEdgeSkirting = result->netCellSize * 200.0f;
 			result->maxLengthForAllowingFrontierEdgeSkirting = result->netCellSize * 100.f;
