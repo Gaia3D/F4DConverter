@@ -42,17 +42,17 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - #idPrefix [prefix] : a prefix used in name of an F4D folder.
 - #idSuffix [suffix] : a suffix used in name of an F4D folder.
 - #oc [one of Y, y, N, n] : whether visibility indices for occlusion culling should be created or not. "NOT created" is default.
-- #usf [numericValue] : unit scale factor. Geometries in F4D are described in meter. That is, the unit scale factor of raw data descrived in centimeter is 0.01 for example.
+- #usf [numericValue] : unit scale factor. Geometries in F4D are described in meter. That is, the unit scale factor of raw data described in centimeter is 0.01 for example.
 - #indexing [one of Y, y, N, n] : wheter objectIndexFile.ihe should be created or not. "NOT created" is default.
-> At least one of "-inputFolder" and "-indexing" is mandatory. Both arguments can be used together.
+> At least one of "#inputFolder" and "#indexing" is mandatory. Both arguments can be used together.
 >
-> "-outputFolder" and "-log" are mandatory when -inputFolder is used.
+> "#outputFolder" and "#log" are mandatory when "#inputFolder" is used.
 >
-> "-outputFolder" is mandatory when -indexing is used. (So "-outputFolder" is mandatory in any case.)
+> "#outputFolder" is mandatory when "#indexing" is used. (So "#outputFolder" is mandatory in any case.)
 >
-> It takes very looooooong time to create visibility indices. If "-oc y" is used, 99% of total conversion time is used in creaing visibility indices.
+> It takes very looooooong time to create visibility indices. If "#oc y" is used, 99% of total conversion time is used in creaing visibility indices.
 >
-> When "-idPrefix" and/or "-idSuffix" are used, the name of created F4D folder is F4D_|prefix|originalDataFileName|suffix|.
+> When "#idPrefix" and/or "#idSuffix" are used, the name of created F4D folder is F4D_|prefix|originalDataFileName|suffix|.
 >
 > All folder paths injected MUST exist before running the converter. F4DConverter doesn't create folders automatically.
 
