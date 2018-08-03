@@ -46,6 +46,7 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - #usf [numericValue] : unit scale factor. Geometries in F4D are described in meter. That is, the unit scale factor of raw data described in centimeter is 0.01 for example.
 - #indexing [one of Y, y, N, n] : wheter objectIndexFile.ihe should be created or not. "NOT created" is default.
 - #meshType [one of 0, 1, 2] : type of 3D mesh in raw data. 0 is for semantic data, 1 is for large-sized single realistic mesh, 2 is for large-sized splitted realistic meshes. Realistic mesh means irregularily networked triangles such like point cloud
+- #isYAxisUp [one of Y, y, N, n] : Some 3D models support left-handed coordinate system so that y-axis is toward ceil of a building. this arguments describes wheter y-axis of raw data is toward ceil or not. "No" is default.
 ### precautions for contraints ###
 - At least one of "#inputFolder" and "#indexing" is mandatory. Both arguments can be used together.
 - "#outputFolder", "#log", and "#meshType"  are mandatory when "#inputFolder" is used.
