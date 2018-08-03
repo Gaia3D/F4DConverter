@@ -34,7 +34,7 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 ## how to use ##
 ### sample arguments ###
 - #inputFolder D:/data/data_3ds/DC_library_del_3DS #outputFolder D:/data/conversionResult #log D:/data/conversionResult/logTest.txt #idPrefix design_ #idSuffix _2017 #oc y #usf 0.01
-- -outputFolder D:/dataConverted -indexing y
+- #outputFolder D:/dataConverted #indexing y
 ### detailed information ###
 - #inputFolder [rawDataFolder] : an absolute path of the folder where raw data files to be converted are.
 - #outputFolder [F4DFolder] : an absolute path of the folder where conversion results(F4D datasets) are created.
