@@ -59,5 +59,3 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 ## stuffs under development or to be developed ##
 > Priority is not considered.
 - A Version for Linux family will be released. A prototype is already made and we are trimming it.
-- applying parallel processing, specially on visibility indexing.
-- converting multiple raw data files into single F4D folder.
