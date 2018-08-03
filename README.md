@@ -5,8 +5,9 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 
 ## developer's comments before reading more ##
 - F4DConverter runs only in Windows 7 or later version of 64-bit OS.
-- Recently we changed this converter very much and opened this Github repository with previous version deprecated.
+- Recently we changed this converter very much and opened this Github repository with the repository of previous version deprecated.
   This converter runs in pure console mode and makes newer version of F4D.
+- We discarded Lego structure and introduced NSM(Net Surface Mesh) for rougher LOD data structure. Detailed information about NSM will be released in www.mago3d.com
 - Full information and Window installer will be released SOON in www.mago3d.com (Newer specification of F4D and newer version of window installer) 
 
 ## supported input formats ##
