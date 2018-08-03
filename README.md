@@ -52,8 +52,9 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - "#outputFolder" is mandatory when "#indexing" is used. (So "#outputFolder" is mandatory in any case.)
 - It takes very looooooong time to create visibility indices. If "#oc y" is used, 99% of total conversion time is used in creaing visibility indices.
 - When "#idPrefix" and/or "#idSuffix" are used, the name of created F4D folder is F4D_|prefix|originalDataFileName|suffix|.
-- "#meshType 1" is for raw data of a single mesh of irregular triangle network in wide area(about (250-350)m x (250-300)m) with SINGLE texture file such like .obj files based on LIDAR data on city block.
-- "#meshType 2" is for raw data of splitted meshes of irregular triangle network in wide area(about (250-350)m x (250-300)m) with texture files of each meshes such like .obj files based on LIDAR data on city block.
+- In this version, only "#meshType 0" is available. You can use other values with 1 line source code modification.
+"#meshType 1" is for raw data of a single mesh of irregular triangle network in wide area(about (250-350)m x (250-300)m) with SINGLE texture file such like .obj files based on LIDAR data on city block.
+"#meshType 2" is for raw data of splitted meshes of irregular triangle network in wide area(about (250-350)m x (250-300)m) with texture files of each meshes such like .obj files based on LIDAR data on city block.
 - All folder paths injected MUST exist before running the converter. F4DConverter doesn't create folders automatically.
 
 ## stuffs under development or to be developed ##
