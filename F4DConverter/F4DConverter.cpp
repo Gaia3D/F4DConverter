@@ -305,8 +305,8 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		{
 			int meshType = std::stoi(arguments[MeshType]);
 
-			if(meshType != 1 && meshType != 2) // AIT version
-			//if (meshType != 0) // release version
+			//if(meshType != 1 && meshType != 2) // AIT version
+			if (meshType != 0) // release version
 				return false;
 		}
 		catch (const std::invalid_argument& error)
