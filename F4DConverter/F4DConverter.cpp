@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -46,6 +47,10 @@ int wmain(int argc, wchar_t* argv[])
 		printf("%s : %s\n", iter->first.c_str(), iter->second.c_str());
 	}
 
+	std::string programPath = gaia3d::StringUtility::convertWideStringToUtf8(std::wstring(argv[0]));
+	std::replace(programPath.begin(), programPath.end(), '\\', '/');
+	arguments[ProgramPath] = programPath;
+
 	// TODO(khj 20180424) : NYI must make log file through logger system
 	// start log writer if needed
 	if (arguments.find(LogFilePath) != arguments.end())
@@ -55,10 +60,11 @@ int wmain(int argc, wchar_t* argv[])
 	}
 
 	// process
-	CConverterManager::getConverterManager()->initialize();
-	CConverterManager::getConverterManager()->setProcessConfiguration(arguments);
-	CConverterManager::getConverterManager()->process();
-	CConverterManager::getConverterManager()->uninitialize();
+	if (CConverterManager::getConverterManager()->initialize(arguments))
+	{
+		CConverterManager::getConverterManager()->process();
+		CConverterManager::getConverterManager()->uninitialize();
+	}
 
 	// TODO(khj 20180424) : NYI must make log file through logger system
 	// finish and save log if log writing started
@@ -158,23 +164,9 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 				continue;
 			}
 
-			if (tokens[i] == std::wstring(ReferenceFileW))
+			if (tokens[i] == std::wstring(ReferenceLonLatW))
 			{
-				arguments[ReferenceFile] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
-				i++;
-				continue;
-			}
-
-			if (tokens[i] == std::wstring(MatchedLonW))
-			{
-				arguments[MatchedLon] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
-				i++;
-				continue;
-			}
-
-			if (tokens[i] == std::wstring(MatchedLatW))
-			{
-				arguments[MatchedLat] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				arguments[ReferenceLonLat] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
 				i++;
 				continue;
 			}
@@ -182,6 +174,20 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			if (tokens[i] == std::wstring(MeshTypeW))
 			{
 				arguments[MeshType] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(AlignToCenterW))
+			{
+				arguments[AlignToCenter] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(EpsgW))
+			{
+				arguments[Epsg] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
 				i++;
 				continue;
 			}
@@ -272,31 +278,44 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			return false;
 	}
 
-	if (arguments.find(ReferenceFile) != arguments.end())
+	if (arguments.find(ReferenceLonLat) != arguments.end())
 	{
-		if (arguments.find(MatchedLon) == arguments.end() || arguments.find(MatchedLat) == arguments.end())
+		size_t lonLatLength = arguments[ReferenceLonLat].length();
+		char* original = new char[lonLatLength + 1];
+		memset(original, 0x00, sizeof(char)*(lonLatLength + 1));
+		memcpy(original, arguments[ReferenceLonLat].c_str(), lonLatLength);
+		char* lon = std::strtok(original, ",");
+		if (lon == NULL)
+		{
+			delete[] original;
 			return false;
+		}
+		char* lat = std::strtok(NULL, ",");
+		if (lat == NULL)
+		{
+			delete[] original;
+			return false;
+		}
 
 		try
 		{
-			double refLon = std::stod(arguments[MatchedLon]);
-			double refLat = std::stod(arguments[MatchedLat]);
+			double refLon = std::stod(lon);
+			double refLat = std::stod(lat);
 		}
 		catch (const std::invalid_argument& error)
 		{
 			std::string errorMessage = error.what();
+			delete[] original;
 			return false;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
+			delete[] original;
 			return false;
 		}
-	}
-	else
-	{
-		if (arguments.find(MatchedLon) != arguments.end() || arguments.find(MatchedLat) != arguments.end())
-			return false;
+
+		delete[] original;
 	}
 
 	if (arguments.find(MeshType) != arguments.end())
@@ -307,6 +326,7 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 
 			//if(meshType != 1 && meshType != 2) // AIT version
 			if (meshType != 0) // release version
+			//if (meshType != 2 && meshType != 0) // for romania
 				return false;
 		}
 		catch (const std::invalid_argument& error)
@@ -320,7 +340,33 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			return false;
 		}
 	}
-		
+	
+	if (arguments.find(AlignToCenter) != arguments.end())
+	{
+		if (arguments[AlignToCenter] != std::string("Y") &&
+			arguments[AlignToCenter] != std::string("y") &&
+			arguments[AlignToCenter] != std::string("N") &&
+			arguments[AlignToCenter] != std::string("n"))
+			return false;
+	}
+
+	if (arguments.find(Epsg) != arguments.end())
+	{
+		try
+		{
+			int nEpsgCode = std::stoi(arguments[Epsg]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
 
 	return true;
 }
@@ -346,6 +392,10 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+	std::string programPath = std::string(argv[0]);
+	std::replace(programPath.begin(), programPath.end(), '\\', '/');
+	arguments[ProgramPath] = programPath;
+
 	// TODO(khj 20180424) : NYI must make log file through logger system
 	// start log writer if needed
 	if (arguments.find(LogFilePath) != arguments.end())
@@ -355,10 +405,11 @@ int main(int argc, char* argv[])
 	}
 
 	// process
-	CConverterManager::getConverterManager()->initialize();
-	CConverterManager::getConverterManager()->setProcessConfiguration(arguments);
-	CConverterManager::getConverterManager()->process();
-	CConverterManager::getConverterManager()->uninitialize();
+	if (CConverterManager::getConverterManager()->initialize(arguments))
+	{
+		CConverterManager::getConverterManager()->process();
+		CConverterManager::getConverterManager()->uninitialize();
+	}
 
 	// TODO(khj 20180424) : NYI must make log file through logger system
 	// finish and save log if log writing started
@@ -459,23 +510,9 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 				continue;
 			}
 
-			if (tokens[i] == std::string(ReferenceFile))
+			if (tokens[i] == std::string(ReferenceLonLat))
 			{
-				arguments[ReferenceFile] = tokens[i + 1];
-				i++;
-				continue;
-			}
-
-			if (tokens[i] == std::string(MatchedLon))
-			{
-				arguments[MatchedLon] = tokens[i + 1];
-				i++;
-				continue;
-			}
-
-			if (tokens[i] == std::string(MatchedLat))
-			{
-				arguments[MatchedLat] = tokens[i + 1];
+				arguments[ReferenceLonLat] = tokens[i + 1];
 				i++;
 				continue;
 			}
@@ -483,6 +520,20 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 			if (tokens[i] == std::string(MeshType))
 			{
 				arguments[MeshType] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(AlignToCenter))
+			{
+				arguments[AlignToCenter] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(Epsg))
+			{
+				arguments[Epsg] = tokens[i + 1];
 				i++;
 				continue;
 			}
@@ -573,15 +624,31 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 			return false;
 	}
 
-	if (arguments.find(ReferenceFile) != arguments.end())
+	if (arguments.find(ReferenceLonLat) != arguments.end())
 	{
-		if (arguments.find(MatchedLon) == arguments.end() || arguments.find(MatchedLat) == arguments.end())
+		size_t lonLatLength = arguments[ReferenceLonLat].length();
+		char* original = new char[lonLatLength + 1];
+		memset(original, 0x00, sizeof(char)*(lonLatLength + 1));
+		memcpy(original, arguments[ReferenceLonLat].c_str(), lonLatLength);
+		char* lon = std::strtok(original, ",");
+		if (lon == NULL)
+		{
+			delete[] original;
 			return false;
+		}
+		char* lat = std::strtok(NULL, ",");
+		if (lat == NULL)
+		{
+			delete[] original;
+			return false;
+		}
+
+		delete[] original;
 
 		try
 		{
-			double refLon = std::stod(arguments[MatchedLon]);
-			double refLat = std::stod(arguments[MatchedLat]);
+			double refLon = std::stod(lon);
+			double refLat = std::stod(lat);
 		}
 		catch (const std::invalid_argument& error)
 		{
@@ -594,10 +661,23 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 			return false;
 		}
 	}
-	else
+
+	if (arguments.find(Epsg) != arguments.end())
 	{
-		if (arguments.find(MatchedLon) != arguments.end() || arguments.find(MatchedLat) != arguments.end())
+		try
+		{
+			int nEpsgCode = std::stoi(arguments[Epsg]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
 			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
 	}
 
 	return true;

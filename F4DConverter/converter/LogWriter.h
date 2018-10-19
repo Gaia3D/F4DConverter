@@ -30,8 +30,8 @@
 #define CANNOT_INITIALIZE_DC		"[Unable to initialize device context]"
 #define CANNOT_CREATE_DIRECTORY		"[Unable to create the conversion result directory]"
 #define UNLOADABLE_MESH_EXISTS		"[At least 1 unloadable mesh exists]"
-#define NO_REFERENCE_FILE			"[No reference file exists]"
 #define INVAID_ORIGINAL_MESH_TYPE	"[Invalid original mesh type]"
+#define UNSUPPERTED_EPSG_CODE		"[Unable to understand the EPSG code]"
 
 class LogWriter
 {

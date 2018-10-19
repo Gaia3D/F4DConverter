@@ -326,10 +326,10 @@ bool F4DWriter::writeModels(FILE* f, std::vector<gaia3d::TrianglePolyhedron*>& m
 				index = models[i]->getVbos()[j]->indices[k];
 				fwrite(&index, sizeof(unsigned short), 1, f);
 			}
-
-			bool bLegoExist = false;
-			fwrite(&bLegoExist, sizeof(bool), 1, f);
 		}
+
+		bool bLegoExist = false;
+		fwrite(&bLegoExist, sizeof(bool), 1, f);
 	}
 
 	return true;

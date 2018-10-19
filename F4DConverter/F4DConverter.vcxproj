@@ -106,12 +106,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external/proj/lib/proj_i.lib;$(SolutionDir)external/proj/lib/proj.lib;$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -140,14 +140,14 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external/proj/lib/proj_i.lib;$(SolutionDir)external/proj/lib/proj.lib;$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -178,6 +178,15 @@
     <ClInclude Include="converter\reader\ClassicFormatReader.h" />
     <ClInclude Include="converter\reader\IfcReader.h" />
     <ClInclude Include="converter\reader\ReaderFactory.h" />
+    <ClInclude Include="converter\util\json\autolink.h" />
+    <ClInclude Include="converter\util\json\config.h" />
+    <ClInclude Include="converter\util\json\features.h" />
+    <ClInclude Include="converter\util\json\forwards.h" />
+    <ClInclude Include="converter\util\json\json.h" />
+    <ClInclude Include="converter\util\json\json_batchallocator.h" />
+    <ClInclude Include="converter\util\json\reader.h" />
+    <ClInclude Include="converter\util\json\value.h" />
+    <ClInclude Include="converter\util\json\writer.h" />
     <ClInclude Include="converter\util\KK_Image2D.h" />
     <ClInclude Include="converter\util\KK_Image2D_SplitData.h" />
     <ClInclude Include="converter\util\KK_Image2D_Utils.h" />
@@ -211,6 +220,18 @@
     <ClCompile Include="converter\reader\ClassicFormatReader.cpp" />
     <ClCompile Include="converter\reader\IfcReader.cpp" />
     <ClCompile Include="converter\reader\ReaderFactory.cpp" />
+    <ClCompile Include="converter\util\json\json_reader.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="converter\util\json\json_value.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="converter\util\json\json_writer.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="converter\util\KK_Image2D.cpp" />
     <ClCompile Include="converter\util\KK_Image2D_SplitData.cpp" />
     <ClCompile Include="converter\util\KK_Image2D_Utils.cpp" />
@@ -224,6 +245,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="converter\util\json\json_internalarray.inl" />
+    <None Include="converter\util\json\json_internalmap.inl" />
+    <None Include="converter\util\json\json_valueiterator.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

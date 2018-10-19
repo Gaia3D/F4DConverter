@@ -320,6 +320,8 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 							carve::mesh::Mesh<3>* mesh = vec_meshes[i_mesh];
 							surface = NULL;
 
+							size_t prevVertexCount = vertices.size();
+
 							// A mesh is composed of multiple faces. (face == triangle)
 							std::vector<carve::mesh::Face<3>* >& vec_faces = mesh->faces;
 							for (size_t i_face = 0; i_face < vec_faces.size(); ++i_face)
@@ -342,17 +344,17 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 								} while (edge != face->edge);
 							}
 
-							if (vertices.size() / 3 == 0)
+							if ( (vertices.size() - prevVertexCount) / 3 == 0)
 								continue;
 
 							surface = new Surface;
 
 							// fill triangle count and triangle vertex indices
-							surface->triangleCount = vertices.size() / 3;
+							surface->triangleCount = (vertices.size() - prevVertexCount) / 3;
 							surface->triangleIndices = new size_t[3 * surface->triangleCount];
 							memset(surface->triangleIndices, 0x00, sizeof(size_t) * 3 * surface->triangleCount);
 							for (size_t iIndex = 0; iIndex < 3 * surface->triangleCount; iIndex++)
-								surface->triangleIndices[iIndex] = iIndex;
+								surface->triangleIndices[iIndex] = prevVertexCount + iIndex;
 
 							// add this surface to this polyhedron
 							if (polyhedron == NULL)

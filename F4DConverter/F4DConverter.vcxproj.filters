@@ -31,6 +31,9 @@
     <Filter Include="converter\writer">
       <UniqueIdentifier>{b8d40d16-0e02-4479-a4a4-d2c52ea09a06}</UniqueIdentifier>
     </Filter>
+    <Filter Include="converter\util\json">
+      <UniqueIdentifier>{52ee6ba8-31ef-4d64-8c54-73aba82fa73d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -141,6 +144,33 @@
     <ClInclude Include="converter\util\KK_Rectangle.h">
       <Filter>converter\util</Filter>
     </ClInclude>
+    <ClInclude Include="converter\util\json\forwards.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\json.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\json_batchallocator.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\reader.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\value.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\writer.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\autolink.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\config.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
+    <ClInclude Include="converter\util\json\features.h">
+      <Filter>converter\util\json</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -227,5 +257,25 @@
     <ClCompile Include="converter\util\KK_Rectangle.cpp">
       <Filter>converter\util</Filter>
     </ClCompile>
+    <ClCompile Include="converter\util\json\json_reader.cpp">
+      <Filter>converter\util\json</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\util\json\json_value.cpp">
+      <Filter>converter\util\json</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\util\json\json_writer.cpp">
+      <Filter>converter\util\json</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="converter\util\json\json_internalarray.inl">
+      <Filter>converter\util\json</Filter>
+    </None>
+    <None Include="converter\util\json\json_internalmap.inl">
+      <Filter>converter\util\json</Filter>
+    </None>
+    <None Include="converter\util\json\json_valueiterator.inl">
+      <Filter>converter\util\json</Filter>
+    </None>
   </ItemGroup>
 </Project>

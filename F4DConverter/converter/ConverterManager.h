@@ -23,15 +23,17 @@ private:
 
 	bool bCreateIndices, bConversion;
 
+	std::string programPath;
 	bool bOcclusionCulling;
 	double unitScaleFactor;
 	unsigned char skinLevel;
 	bool bYAxisUp;
 	bool bAlignPostionToCenter;
-	std::string referenceFileName;
+	bool bUseReferenceLonLat;
 	double referenceLon, referenceLat;
-	double referencePosX, referencePosY;
 	int meshType;
+	bool bUseEpsg;
+	std::string epsgCode;
 
 	std::string inputFolderPath, outputFolderPath;
 
@@ -42,17 +44,17 @@ public:
 
 
 public:
-	bool initialize();
+	bool initialize(std::map<std::string, std::string>& arguments);
 
 	//bool processSingleFile(std::string& filePath);
-
-	void setProcessConfiguration(std::map<std::string, std::string>& arguments);
 
 	void process();
 
 	void uninitialize();
 
 private:
+	bool setProcessConfiguration(std::map<std::string, std::string>& arguments);
+
 	bool processDataFolder();
 
 	void collectTargetFiles(std::string& inputFolder, std::map<std::string, std::string>& targetFiles);
@@ -63,7 +65,9 @@ private:
 
 	bool processDataFile(std::string& filePath, aReader* reader);
 
-	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);
+	std::string makeProj4String();
+
+	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs, std::string proj4String);
 };
 
 

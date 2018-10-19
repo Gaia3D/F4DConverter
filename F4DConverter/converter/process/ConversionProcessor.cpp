@@ -516,6 +516,32 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 		reuseOriginalMeshForRougherLods(thisSpatialOctree);
 		printf("[Info]Rougher LOD created.\n");
 	}
+
+	{
+		std::map<std::string, unsigned char*>::iterator iter = resizedTextures.begin();
+		int bpp = 4;
+		for (; iter != resizedTextures.end(); iter++)
+		{
+			unsigned char* resizedImage = iter->second;
+			int widthResized = allTextureWidths[iter->first];
+			int heightResized = allTextureHeights[iter->first];
+
+			int lineSize = widthResized*bpp;
+			unsigned char* lineData = new unsigned char[lineSize];
+			memset(lineData, 0x00, sizeof(unsigned char)*lineSize);
+			for (int i = 0; i < heightResized / 2; i++)
+			{
+				unsigned char* upperLine = resizedImage + lineSize*i;
+				unsigned char* lowerLine = resizedImage + lineSize*(heightResized - i - 1);
+
+				memcpy(lineData, upperLine, sizeof(unsigned char)*lineSize);
+				memcpy(upperLine, lowerLine, sizeof(unsigned char)*lineSize);
+				memcpy(lowerLine, lineData, sizeof(unsigned char)*lineSize);
+			}
+
+			delete[] lineData;
+		}
+	}
 }
 
 void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
@@ -634,6 +660,32 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 		printf("[Info]Rougher LOD created.\n");
 	}
 
+	//if (!settings.bFlipTextureCoordinateV)
+	{
+		std::map<std::string, unsigned char*>::iterator iter = resizedTextures.begin();
+		int bpp = 4;
+		for(; iter != resizedTextures.end(); iter++)
+		{
+			unsigned char* resizedImage = iter->second;
+			int widthResized = allTextureWidths[iter->first];
+			int heightResized = allTextureHeights[iter->first];
+
+			int lineSize = widthResized*bpp;
+			unsigned char* lineData = new unsigned char[lineSize];
+			memset(lineData, 0x00, sizeof(unsigned char)*lineSize);
+			for (int i = 0; i < heightResized / 2; i++)
+			{
+				unsigned char* upperLine = resizedImage + lineSize*i;
+				unsigned char* lowerLine = resizedImage + lineSize*(heightResized - i - 1);
+
+				memcpy(lineData, upperLine, sizeof(unsigned char)*lineSize);
+				memcpy(upperLine, lowerLine, sizeof(unsigned char)*lineSize);
+				memcpy(lowerLine, lineData, sizeof(unsigned char)*lineSize);
+			}
+
+			delete[] lineData;
+		}
+	}
 	//system("pause");
 }
 
@@ -994,10 +1046,17 @@ void ConversionProcessor::makeVboObjects(std::vector<gaia3d::TrianglePolyhedron*
 		std::map<gaia3d::Vertex*, size_t> addedVertices;
 
 		surfaceCount = mesh->getSurfaces().size();
-		for(size_t j = 0;j < surfaceCount; j++)
+		std::vector<gaia3d::Triangle*> totalTriangles;
+		for (size_t j = 0; j < surfaceCount; j++)
+		{
+			totalTriangles.insert(totalTriangles.end(), mesh->getSurfaces()[j]->getTriangles().begin(), mesh->getSurfaces()[j]->getTriangles().end());
+		}
+
+		//for(size_t j = 0;j < surfaceCount; j++)
 		{
 			sortedTriangles.clear();
-			sortTrianglesBySize(mesh->getSurfaces()[j]->getTriangles(), sizeLevels, sizeThresholds, sortedTriangles, eachSizeStartingIndices);
+			//sortTrianglesBySize(mesh->getSurfaces()[j]->getTriangles(), sizeLevels, sizeThresholds, sortedTriangles, eachSizeStartingIndices);
+			sortTrianglesBySize(totalTriangles, sizeLevels, sizeThresholds, sortedTriangles, eachSizeStartingIndices);
 
 			triangleCount = sortedTriangles.size();
 			for(size_t k = 0; k < triangleCount; k++)
@@ -1313,7 +1372,7 @@ void ConversionProcessor::normalizeTextures(std::map<std::string, std::string>& 
 		stbir_resize_uint8(sourceImage, x, y, 0, resizedImage, widthResized, heightResized, 0, bpp);
 		stbi_image_free(sourceImage);
 
-		if (settings.bFlipTextureCoordinateV)
+		if (!settings.bFlipTextureCoordinateV)
 		{
 			int lineSize = widthResized*bpp;
 			unsigned char* lineData = new unsigned char[lineSize];
@@ -2887,6 +2946,9 @@ void ConversionProcessor::removeDuplicatedVerticesAndOverlappingTriangles(std::v
 			// find coincident vertices
 			std::vector<gaia3d::Vertex*> coincidentVertices;
 			gaia3d::PointDistributionOctree* leafOctree = octree.getIntersectedLeafOctree(vertex);
+			if (leafOctree == NULL)
+				continue;
+
 			size_t octreeVertexCount = leafOctree->vertices.size();
 			for (size_t k = 0; k < octreeVertexCount; k++)
 			{
