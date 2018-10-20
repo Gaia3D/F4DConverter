@@ -75,6 +75,5 @@ This situation is not so recommended in the point of development style. But we d
 - We are considering changing the way of start this converter from passing arguments into this converter to loading a configuration file. As number of parameters used in controlling conversion processes increases, we see the necessity to introduce a configuration file like .ini file to offer much control point for end users.
 - We have plans to extend formats of input data supported by our converter for point cloud and .rvt
 - Data packing including tiling will be supported by F4D spec and request/response protocol of mago3d to reduce network traffic.
-- When converts multiple raw data with same coordinate system, to support matching local coordinates to GIS environment, coordinates on GIS environment will be exported.
 - Flexible LOD will be supported to handle 3D models of various geometric sizes.
 - As F4DConverter is developed for pure CLI mode, more screen logs will be supported.
