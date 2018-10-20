@@ -8,7 +8,10 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - Recently we changed this converter very much and opened this Github repository with the repository of previous version deprecated.
   This converter runs in pure console mode and makes newer version of F4D.
 - We discarded Lego structure and introduced NSM(Net Surface Mesh) for rougher LOD data structure. Detailed information about NSM will be released in www.mago3d.com
-- Full information and Window installer will be released SOON in www.mago3d.com (Newer specification of F4D and newer version of window installer) 
+- Resource files of proj4(proj4 parameters for EPSG code, datum files, and etc) should be in '[executable full path]/proj' when you set up this Visual Studio solution.
+This means that you have to copy the folder of proj4 resouce into the binary output folder manually.(Of course, this resource folder is included in the .msi file.)
+This situation is not so recommended in the point of development style. But we don't want mandatory proj4 installation before installing the converter.
+(We are still considering whether we have to insert step of proj4 installation into the whole installation process.) 
 
 ## supported input formats ##
 - .ifc
@@ -27,6 +30,7 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - Assimp 3.2 : http://assimp.sourceforge.net/main_downloads.html
 - boost 1.62 : http://www.boost.org/users/history/version_1_62_0.html
 - glew 2.0 : http://glew.sourceforge.net/
+- proj4 4.9.3 : https://proj4.org
 
 > ifcplusplus, Assimp, and glew are for F4DConverter directly.
 >
@@ -45,17 +49,24 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - #oc [one of Y, y, N, n] : whether visibility indices for occlusion culling should be created or not. "NOT created" is default.
 - #usf [numericValue] : unit scale factor. Geometries in F4D are described in meter. That is, the unit scale factor of raw data described in centimeter is 0.01 for example.
 - #indexing [one of Y, y, N, n] : wheter objectIndexFile.ihe should be created or not. "NOT created" is default.
-- #meshType [one of 0, 1, 2] : type of 3D mesh in raw data. 0 is for semantic data, 1 is for large-sized single realistic mesh, 2 is for large-sized splitted realistic meshes. Realistic mesh means irregularily networked triangles such like point cloud
+- #meshType [one of 0, 1, 2] : type of 3D mesh in raw data. 0 is for semantic data, 1 is for large-sized single realistic mesh, 2 is for large-sized splitted realistic meshes. Realistic mesh means irregularily networked triangles such like point cloud.
 - #isYAxisUp [one of Y, y, N, n] : Some 3D models support left-handed coordinate system so that y-axis is toward ceil of a building. this arguments describes wheter y-axis of raw data is toward ceil or not. "No" is default.
+- #referenceLonLat [lon,lat] : Matched longitude and latitude of origin of input data files in WGS84 in the case that all input data files are described in same coordinate system.   
+- #epsg [public EPSG code] : EPSG code of input data file in the case that all input data files are described in same EPSG code.
+
 ### precautions for contraints ###
 - At least one of "#inputFolder" and "#indexing" is mandatory. Both arguments can be used together.
 - "#outputFolder", "#log", and "#meshType"  are mandatory when "#inputFolder" is used.
 - "#outputFolder" is mandatory when "#indexing" is used. (So "#outputFolder" is mandatory in any case.)
 - It takes very looooooong time to create visibility indices. If "#oc y" is used, 99% of total conversion time is used in creaing visibility indices.
 - When "#idPrefix" and/or "#idSuffix" are used, the name of created F4D folder is F4D_|prefix|originalDataFileName|suffix|.
-- In this version, only "#meshType 0" is available. You can use other values with 1 line source code modification.
+- In this version, only "#meshType 0" is available. You can use other values with 1 line source code modification in 'F4DConverter.cpp'.
 - "#meshType 1" is for raw data of a single mesh of irregular triangle network in wide area(about (250-350)m x (250-300)m) with SINGLE texture file such like .obj files based on LIDAR data on city block.
 - "#meshType 2" is for raw data of splitted meshes of irregular triangle network in wide area(about (250-350)m x (250-300)m) with texture files of each meshes such like .obj files based on LIDAR data on city block.
+- "#referenceLonLat" should be used like "#referenceLonLat -58.78785,-62.2233". Separation with comma & no blank allowed.
+- When "#epsg" and "#referenceLonLat" are used at same time, "#referenceLonLat" is ignored.
+- When "#epsg" or "#referenceLonLat" are used, 3D models are moved to their origins along x-y plane so that their bounding box centers coincide with thier origin in x-y plane, and
+  'lonsLats.json' is created, in which geo-referencing information of each F4D are written.
 - All folder paths injected MUST exist before running the converter. F4DConverter doesn't create folders automatically.
 
 ## stuffs under development or to be developed ##
