@@ -32,9 +32,8 @@ namespace gaia3d
 		return sqrt(x*x + y*y + z*z);
 	}
 
-	bool Point3D::normalize()
+	bool Point3D::normalize(double tolerance)
 	{
-		double tolerance = 1E-7;
 		double mag = this->magnitude();
 		if( mag >= tolerance || mag <= -tolerance)
 		{

@@ -104,9 +104,10 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,9 +139,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -175,6 +177,7 @@
     <ClInclude Include="converter\process\ProcessSetting.h" />
     <ClInclude Include="converter\process\SceneControlVariables.h" />
     <ClInclude Include="converter\reader\aReader.h" />
+    <ClInclude Include="converter\reader\CitygmlReader.h" />
     <ClInclude Include="converter\reader\ClassicFormatReader.h" />
     <ClInclude Include="converter\reader\IfcReader.h" />
     <ClInclude Include="converter\reader\ReaderFactory.h" />
@@ -217,6 +220,7 @@
     <ClCompile Include="converter\process\ProcessSetting.cpp" />
     <ClCompile Include="converter\process\SceneControlVariables.cpp" />
     <ClCompile Include="converter\reader\aReader.cpp" />
+    <ClCompile Include="converter\reader\CitygmlReader.cpp" />
     <ClCompile Include="converter\reader\ClassicFormatReader.cpp" />
     <ClCompile Include="converter\reader\IfcReader.cpp" />
     <ClCompile Include="converter\reader\ReaderFactory.cpp" />

@@ -169,7 +169,7 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 
 	std::map<int, shared_ptr<ProductShapeInputData> >::iterator it;
 	for (it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
-	//for (auto it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
+		//for (auto it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
 	{
 		// STEP entity id:
 		int entity_id = it->first;
@@ -187,7 +187,7 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 
 		// filtering out IfcProduct of IfcSite type
 		shared_ptr<IfcSite> site_elem = dynamic_pointer_cast<IfcSite>(ifc_product);
-		if (site_elem  != NULL)
+		if (site_elem != NULL)
 			continue;
 
 		// for each IfcProduct, there can be mulitple geometric representation items:
@@ -344,7 +344,7 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 								} while (edge != face->edge);
 							}
 
-							if ( (vertices.size() - prevVertexCount) / 3 == 0)
+							if ((vertices.size() - prevVertexCount) / 3 == 0)
 								continue;
 
 							surface = new Surface;
@@ -540,7 +540,7 @@ void IfcLoader::loadProjectAttributes()
 void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Value& root)
 {
 	Json::Value properties(Json::objectValue);
-	
+
 	// guid
 	std::string guid = convertWideStringToUtf8(ifcProduct->m_GlobalId->m_value);
 	properties["guid"] = guid;
@@ -591,7 +591,7 @@ void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Va
 #ifdef TMPTEST
 					attributeMap.insert(std::map<std::string, std::string>::value_type(std::string(singleValue->m_NominalValue->className()), std::string(singleValue->m_NominalValue->className())));
 #endif
-					if(singleValue->m_Unit != NULL)
+					if (singleValue->m_Unit != NULL)
 					{
 						if (dynamic_pointer_cast<IfcNamedUnit>(singleValue->m_Unit) != NULL)
 						{
@@ -617,7 +617,7 @@ void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Va
 					propertyAggr[keyName] = valueObject;
 				}
 				else
-					propertyAggr[keyName] = std::string("unknown : ") +  std::string(propertySet->m_HasProperties[j]->className());
+					propertyAggr[keyName] = std::string("unknown : ") + std::string(propertySet->m_HasProperties[j]->className());
 			}
 			else
 				propertyAggr[keyName] = std::string("unknown : ") + std::string(propertySet->m_HasProperties[j]->className());
@@ -653,7 +653,7 @@ void IfcLoader::parsePropertySingleValue(Json::Value& valueObject, shared_ptr<If
 			valueObject["value"] = std::string("");
 		else
 			valueObject["value"] = convertWideStringToUtf8(dynamic_pointer_cast<IfcIdentifier>(value)->m_value);
-	}	
+	}
 	else if (dynamic_pointer_cast<IfcInteger>(value) != NULL)
 		valueObject["value"] = dynamic_pointer_cast<IfcInteger>(value)->m_value;
 	else if (dynamic_pointer_cast<IfcLabel>(value) != NULL)

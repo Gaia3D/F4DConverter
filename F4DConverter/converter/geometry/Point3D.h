@@ -18,7 +18,7 @@ namespace gaia3d
 
 		double magnitude();
 
-		bool normalize();
+		bool normalize(double tolerance = 1E-7);
 
 		// operator overriding
 		void operator = (const Point3D &q){x=q.x; y=q.y; z=q.z;}

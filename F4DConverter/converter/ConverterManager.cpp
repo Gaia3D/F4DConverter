@@ -34,7 +34,7 @@ CConverterManager::CConverterManager()
 
 	unitScaleFactor = 1.0;
 
-	skinLevel = 1;
+	skinLevel = 3;
 
 	bYAxisUp = false;
 
@@ -239,6 +239,17 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	processor->setYAxisUp(bYAxisUp);
 	processor->setAlignPostionToCenter(bAlignPostionToCenter);
 	processor->setMeshType(meshType);
+	switch (meshType)
+	{
+	case 1:
+		processor->setSkinLevel(50);
+		processor->setLeafSpatialOctreeSize(40.0f);
+		break;
+	case 2:
+		processor->setSkinLevel(51);
+		processor->setLeafSpatialOctreeSize(40.0f);
+		break;
+	}
 	// TODO(khj 20180417) end
 
 	//// hard-cord for japan(AIST) realistic mesh and romania data
@@ -292,6 +303,15 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 			continue;
 		}
 
+		// 1.1 get embedded representative lon/lat of original dataset
+		if (reader->doesHasGeoReferencingInfo())
+		{
+			double lon, lat;
+			reader->getGeoReferencingInfo(lon, lat);
+			centerXs[dataFile] = lon;
+			centerYs[dataFile] = lat;
+		}
+
 		delete reader;
 
 		std::string::size_type dotPosition = dataFile.rfind(".");
@@ -314,7 +334,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 			continue;
 		}
 		
-		// 2.1 extract representative lon/lat of F4D if a reference file exists
+		// 2.1 extract representative lon/lat of F4D
 		if (bUseEpsg || bUseReferenceLonLat)
 		{
 			double centerX, centerY, centerZ;
@@ -329,10 +349,12 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	}
 
 	// save representative lon / lat of F4D if a reference file exists
-	if (bUseEpsg || bUseReferenceLonLat)
+	if (!centerXs.empty())
 	{
-		std::string proj4String = makeProj4String();
-		writeRepresentativeLonLatOfEachData(centerXs, centerYs,proj4String);
+		std::string proj4String;
+		if (bUseEpsg || bUseReferenceLonLat)
+			proj4String = makeProj4String();
+		writeRepresentativeLonLatOfEachData(centerXs, centerYs, proj4String);
 	}
 }
 
@@ -569,53 +591,78 @@ std::string CConverterManager::makeProj4String()
 
 void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs, std::string proj4String)
 {
-	std::string localCRS = proj4String;
-	const char* wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-
-	projPJ pjLocal, pjWgs84;
-	pjLocal = pj_init_plus(localCRS.c_str());
-	if (pjLocal == NULL)
-	{
-	}
-
-	pjWgs84 = pj_init_plus(wgs84);
-	if (pjWgs84 == NULL)
-	{
-	}
-
-	std::map<std::string, double>::iterator iter = posXs.begin();
-	int transformResult;
-
 	Json::Value arrayNode(Json::arrayValue);
 
-	for (; iter != posXs.end(); iter++)
+	if (proj4String.empty())
 	{
-		Json::Value f4d(Json::objectValue);
-
-		// data_key
-		std::string fileName = iter->first;
-		std::string::size_type dotPosition = fileName.rfind(".");
-		std::string dataKey = fileName.substr(0, dotPosition);
-		f4d["data_key"] = dataKey;
-
-		// longitude and latitude
-		double posX = iter->second;
-		double posY = posYs[iter->first];
-
-		transformResult = pj_transform(pjLocal, pjWgs84, 1, 1, &posX, &posY, NULL);
-		char* errorMsg = pj_strerrno(transformResult);
-		if (errorMsg != NULL)
+		std::map<std::string, double>::iterator iter = posXs.begin();
+		for (; iter != posXs.end(); iter++)
 		{
+			Json::Value f4d(Json::objectValue);
 
+			// data_key
+			std::string fileName = iter->first;
+			std::string::size_type dotPosition = fileName.rfind(".");
+			std::string dataKey = fileName.substr(0, dotPosition);
+			f4d["data_key"] = dataKey;
+
+			// longitude and latitude
+			f4d["longitude"] = iter->second;
+			f4d["latitude"] = posYs[iter->first];
+
+			arrayNode.append(f4d);
+		}
+	}
+	else
+	{
+		std::string localCRS = proj4String;
+		const char* wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+
+		projPJ pjLocal, pjWgs84;
+		pjLocal = pj_init_plus(localCRS.c_str());
+		if (pjLocal == NULL)
+		{
+			return;
 		}
 
-		posX *= RAD_TO_DEG;
-		posY *= RAD_TO_DEG;
+		pjWgs84 = pj_init_plus(wgs84);
+		if (pjWgs84 == NULL)
+		{
+			return;
+		}
 
-		f4d["longitude"] = posX;
-		f4d["latitude"] = posY;
+		std::map<std::string, double>::iterator iter = posXs.begin();
+		int transformResult;
 
-		arrayNode.append(f4d);
+		for (; iter != posXs.end(); iter++)
+		{
+			Json::Value f4d(Json::objectValue);
+
+			// data_key
+			std::string fileName = iter->first;
+			std::string::size_type dotPosition = fileName.rfind(".");
+			std::string dataKey = fileName.substr(0, dotPosition);
+			f4d["data_key"] = dataKey;
+
+			// longitude and latitude
+			double posX = iter->second;
+			double posY = posYs[iter->first];
+
+			transformResult = pj_transform(pjLocal, pjWgs84, 1, 1, &posX, &posY, NULL);
+			char* errorMsg = pj_strerrno(transformResult);
+			if (errorMsg != NULL)
+			{
+				continue;
+			}
+
+			posX *= RAD_TO_DEG;
+			posY *= RAD_TO_DEG;
+
+			f4d["longitude"] = posX;
+			f4d["latitude"] = posY;
+
+			arrayNode.append(f4d);
+		}
 	}
 
 	Json::StyledWriter writer;

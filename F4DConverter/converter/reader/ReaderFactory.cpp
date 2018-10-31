@@ -17,6 +17,9 @@
 #ifdef CLASSICFORMAT
 #include "ClassicFormatReader.h"
 #endif
+#ifdef CITYGMLFORMAT
+#include "CitygmlReader.h"
+#endif
 
 ReaderFactory::ReaderFactory()
 {
@@ -62,6 +65,14 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 		fileExt.compare(std::string("3ds")) == 0)
 	{
 		return new ClassicFormatReader;
+	}
+#endif
+
+#ifdef CITYGMLFORMAT
+	if (fileExt.compare(std::string("gml")) == 0 ||
+		fileExt.compare(std::string("xml")) == 0)
+	{
+		return new CitygmlReader;
 	}
 #endif
 

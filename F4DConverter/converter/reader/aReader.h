@@ -24,10 +24,18 @@ public:
 
 	virtual void setUnitScaleFactor(double factor) { unitScaleFactor = factor; }
 
+	virtual bool doesHasGeoReferencingInfo() { return bHasGeoReferencingInfo; }
+
+	virtual void getGeoReferencingInfo(double& lon, double& lat) { lon = refLon; lat = refLat; }
+
 protected:
 	std::vector<gaia3d::TrianglePolyhedron*> container;
 
 	std::map<std::string, std::string> textureContainer;
 
 	double unitScaleFactor;
+
+	bool bHasGeoReferencingInfo;
+
+	double refLon, refLat;
 };
