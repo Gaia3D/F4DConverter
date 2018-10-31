@@ -20,6 +20,8 @@
 *.db
 *.opendb
 *debug*.txt
+*_old.*
+*_new.*
 
 # Directories
 ipch

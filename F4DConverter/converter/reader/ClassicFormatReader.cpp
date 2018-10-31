@@ -210,6 +210,8 @@ bool proceedNode(aiNode* node,
 ClassicFormatReader::ClassicFormatReader()
 {
 	unitScaleFactor = 1.0;
+
+	bHasGeoReferencingInfo = false;
 }
 
 

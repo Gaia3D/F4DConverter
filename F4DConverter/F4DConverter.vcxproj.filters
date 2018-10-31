@@ -171,6 +171,9 @@
     <ClInclude Include="converter\util\json\features.h">
       <Filter>converter\util\json</Filter>
     </ClInclude>
+    <ClInclude Include="converter\reader\CitygmlReader.h">
+      <Filter>converter\reader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -265,6 +268,9 @@
     </ClCompile>
     <ClCompile Include="converter\util\json\json_writer.cpp">
       <Filter>converter\util\json</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\reader\CitygmlReader.cpp">
+      <Filter>converter\reader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
