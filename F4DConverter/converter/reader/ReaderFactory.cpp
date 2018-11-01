@@ -70,7 +70,8 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 
 #ifdef CITYGMLFORMAT
 	if (fileExt.compare(std::string("gml")) == 0 ||
-		fileExt.compare(std::string("xml")) == 0)
+		fileExt.compare(std::string("xml")) == 0 ||
+		fileExt.compare(std::string("citygml")) == 0)
 	{
 		return new CitygmlReader;
 	}
