@@ -19,8 +19,8 @@ This means that you have to copy the folder of proj4 resouce into the binary out
 This situation is not so recommended in the point of development style. But we don't want mandatory proj4 installation before installing the converter.
 (We are still considering whether we have to insert step of proj4 installation into the whole installation process or not.)
 - Conversion from citygml to F4D is prototype-level. Currently, there are 3 things to be kept in mind.
--- 1. Only geometries of most detailed LOD are converted to F4D.
--- 2. Geometries without any id in original files are assigned randomly-created id by libcitygml and the converter accepts them as they are.
+-- 1. Only geometries of most detailed LOD are converted to F4D.  
+-- 2. Geometries without any id in original files are assigned randomly-created id by libcitygml and the converter accepts them as they are.  
 -- 3. A geometry can have multiple texture themes but the converter accepts only 1-st theme by the '1 mesh on 1 texture material' rule in F4D spec.
 
 ## supported input formats ##
