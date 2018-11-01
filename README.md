@@ -22,6 +22,7 @@ This situation is not so recommended in the point of development style. But we d
  1. Only geometries of most detailed LOD are converted to F4D.  
  2. Geometries without any id in original files are assigned randomly-created id by libcitygml and the converter accepts them as they are.  
  3. A geometry can have multiple texture themes but the converter accepts only 1-st theme by the '1 mesh on 1 texture material' rule in F4D spec.
+- When we built libcitygml with CMake, we dropped GDAL dependency and selected static library mode(.lib) instead of dynamic library mode(.dll). 
 
 ## supported input formats ##
 - .ifc
@@ -33,6 +34,8 @@ This situation is not so recommended in the point of development style. But we d
 > Beside above formats, other formats which are supported by Assimp may be supported.(NOT TESTED!!)
 >
 > In this version, .JT(Jupiter Tessellation, a kind of cad design format) is not included.
+> 
+> As you know, the file extension .gml and .xml are not only used in citygml. So we are considering if we have to limit the file extension for citygml.
 
 ## necessary libraries for F4DConverter ##
 - OpenSceneGraph 3.4.0 : http://www.openscenegraph.org
@@ -45,9 +48,12 @@ This situation is not so recommended in the point of development style. But we d
 - libcitygml-2.0.9 : https://github.com/jklimke/libcitygml
 - xerces-c-3.2.2 : http://xerces.apache.org/xerces-c/
 
-> ifcplusplus, Assimp, and glew are for F4DConverter directly.  
+> ifcplusplus, Assimp, libcitygml, and glew are for F4DConverter directly.  
 >
 > Carve, boost, and OpenSceneGraph are for ifcplusplus.
+>
+> xerces-c is for libcitygml.
+
 
 ## how to use ##
 ### sample arguments ###
@@ -80,13 +86,15 @@ This situation is not so recommended in the point of development style. But we d
 - When "#epsg" and "#referenceLonLat" are used at same time, "#referenceLonLat" is ignored.
 - When "#epsg" or "#referenceLonLat" are used, 3D models are moved to their origins along x-y plane so that their bounding box centers coincide with thier origin in x-y plane, and
   'lonsLats.json' is created, in which geo-referencing information of each F4D are written.
+- When converting citygml, 'lonsLats.json' is created.
+- When "#epsg" or "#referenceLonLat" are used in converting citygml, the embedded SRS information in citygml is ignored.
 - All folder paths injected MUST exist before running the converter. F4DConverter doesn't create folders automatically.
 
 ## stuffs under development or to be developed ##
 > Priority is not considered.
-- A version for Linux family will be released. A prototype is already made and we are trimming it.
 - We are considering changing the way of start this converter from passing arguments into this converter to loading a configuration file. As number of parameters used in controlling conversion processes increases, we see the necessity to introduce a configuration file like .ini file to offer much control point for end users.
 - We have plans to extend formats of input data supported by our converter for point cloud and .rvt
 - Data packing including tiling will be supported by F4D spec and request/response protocol of mago3d to reduce network traffic.
 - Flexible LOD will be supported to handle 3D models of various geometric sizes.
 - As F4DConverter is developed for pure CLI mode, more screen logs will be supported.
+- Replacing curerent version of IfcPlusPlus library with latest version is undergoing.
