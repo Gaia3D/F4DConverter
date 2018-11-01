@@ -42,8 +42,10 @@ This situation is not so recommended in the point of development style. But we d
 - boost 1.62 : http://www.boost.org/users/history/version_1_62_0.html
 - glew 2.0 : http://glew.sourceforge.net/
 - proj4 4.9.3 : https://proj4.org
+- libcitygml-2.0.9 : https://github.com/jklimke/libcitygml
+- xerces-c-3.2.2 : http://xerces.apache.org/xerces-c/
 
-> ifcplusplus, Assimp, and glew are for F4DConverter directly.
+> ifcplusplus, Assimp, and glew are for F4DConverter directly.  
 >
 > Carve, boost, and OpenSceneGraph are for ifcplusplus.
 
