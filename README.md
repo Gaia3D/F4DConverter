@@ -5,13 +5,18 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 
 ## developer's comments before reading more ##
 - F4DConverter runs only in Windows 7 or later version of 64-bit OS.
+- LOD numbering in F4D spec is reversed in comparison with conventional LOD numbering.
+- Officially released window installer(SetupF4DConverter.msi on www.mago3d.com) and source codes of this project are for conversion of 3D models of geographically normal size.
+So, it takes so long to convert 3D models of geographically large size. Of course, so many parameters were introduced and defined, which are used in controlling conversion process.
+Just we didn't expose them through API or arguments passed into this console application. As we mentioned in 『stuffs under development or to be developed』, these parameters will be accessible on configuration script file. 
 - Recently we changed this converter very much and opened this Github repository with the repository of previous version deprecated.
   This converter runs in pure console mode and makes newer version of F4D.
 - We discarded Lego structure and introduced NSM(Net Surface Mesh) for rougher LOD data structure. Detailed information about NSM will be released in www.mago3d.com
 - Resource files of proj4(proj4 parameters for EPSG code, datum files, and etc) should be in '[executable full path]/proj' when you set up this Visual Studio solution.
 This means that you have to copy the folder of proj4 resouce into the binary output folder manually.(Of course, this resource folder is included in the .msi file.)
 This situation is not so recommended in the point of development style. But we don't want mandatory proj4 installation before installing the converter.
-(We are still considering whether we have to insert step of proj4 installation into the whole installation process.) 
+(We are still considering whether we have to insert step of proj4 installation into the whole installation process.)
+- 
 
 ## supported input formats ##
 - .ifc
