@@ -86,7 +86,7 @@ This situation is not so recommended in the point of development style. But we d
 - When "#epsg" and "#referenceLonLat" are used at same time, "#referenceLonLat" is ignored.
 - When "#epsg" or "#referenceLonLat" are used, 3D models are moved to their origins along x-y plane so that their bounding box centers coincide with thier origin in x-y plane, and
   'lonsLats.json' is created, in which geo-referencing information of each F4D are written.
-- When converting citygml, 'lonsLats.json' is created.
+- When citygml files are converted, 'lonsLats.json' is created by using the embedded SRS information in citygml files.
 - When "#epsg" or "#referenceLonLat" are used in converting citygml, the embedded SRS information in citygml is ignored.
 - All folder paths injected MUST exist before running the converter. F4DConverter doesn't create folders automatically.
 
@@ -97,4 +97,4 @@ This situation is not so recommended in the point of development style. But we d
 - Data packing including tiling will be supported by F4D spec and request/response protocol of mago3d to reduce network traffic.
 - Flexible LOD will be supported to handle 3D models of various geometric sizes.
 - As F4DConverter is developed for pure CLI mode, more screen logs will be supported.
-- Replacing curerent version of IfcPlusPlus library with latest version is undergoing.
+- Replacement of curerent version of IfcPlusPlus library to latest version is under development. After this work, the dependency on OSG(Open Scene Graph) will be dropped.
