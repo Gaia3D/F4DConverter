@@ -7,22 +7,28 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 - F4DConverter runs only in Windows 7 or later version of 64-bit OS.
 - LOD numbering in F4D spec is reversed in comparison with conventional LOD numbering.
 - Officially released window installer(SetupF4DConverter.msi on www.mago3d.com) and source codes of this project are for conversion of 3D models of geographically normal size.
-So, it takes so long to convert 3D models of geographically large size. Of course, so many parameters were introduced and defined, which are used in controlling conversion process.
-Just we didn't expose them through API or arguments passed into this console application. As we mentioned in 『stuffs under development or to be developed』, these parameters will be accessible on configuration script file. 
+So, it takes so long to convert 3D models of geographically large size. Of course, so many parameters were introduced and defined, which are used in controlling conversion process
+and you can control conversion time by modifing these parameters regardless of geographical size of 3D models. Just we didn't expose them through API or arguments passed into
+this console application, because they are so complicated. As we mentioned in 『stuffs under development or to be developed』, we will offer ways to access to and modify these
+parameters on configuration script files.
 - Recently we changed this converter very much and opened this Github repository with the repository of previous version deprecated.
   This converter runs in pure console mode and makes newer version of F4D.
 - We discarded Lego structure and introduced NSM(Net Surface Mesh) for rougher LOD data structure. Detailed information about NSM will be released in www.mago3d.com
 - Resource files of proj4(proj4 parameters for EPSG code, datum files, and etc) should be in '[executable full path]/proj' when you set up this Visual Studio solution.
 This means that you have to copy the folder of proj4 resouce into the binary output folder manually.(Of course, this resource folder is included in the .msi file.)
 This situation is not so recommended in the point of development style. But we don't want mandatory proj4 installation before installing the converter.
-(We are still considering whether we have to insert step of proj4 installation into the whole installation process.)
-- 
+(We are still considering whether we have to insert step of proj4 installation into the whole installation process or not.)
+- Conversion from citygml to F4D is prototype-level. Currently, there are 3 things to be kept in mind.
+-- 1. Only geometries of most detailed LOD are converted to F4D.
+-- 2. Geometries without any id in original files are assigned randomly-created id by libcitygml and the converter accepts them as they are.
+-- 3. A geometry can have multiple texture themes but the converter accepts only 1-st theme by the '1 mesh on 1 texture material' rule in F4D spec.
 
 ## supported input formats ##
 - .ifc
 - .3ds
 - .obj
 - .dae
+- .gml / .xml / .citygml
 
 > Beside above formats, other formats which are supported by Assimp may be supported.(NOT TESTED!!)
 >
