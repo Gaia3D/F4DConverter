@@ -35,7 +35,7 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 	if(dotPosition == std::string::npos)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(INVALID_TRIANGLE_COUNT), false);
+		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
 		return NULL;
 	}
 
