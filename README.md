@@ -6,7 +6,7 @@ This project is of Microsoft Visual Studio 2015 C++ project.
 ## developer's comments before reading more ##
 - F4DConverter runs only in Windows 7 or later version of 64-bit OS.
 - LOD numbering in F4D spec is reversed in comparison with conventional LOD numbering.
-- Officially released window installer(SetupF4DConverter.msi on www.mago3d.com) and source codes of this project are for conversion of 3D models of geographically normal size.
+- Officially released window installer(SetupF4DConverter.msi on www.mago3d.com and /install) and source codes of this project are for conversion of 3D models of geographically normal size.
 So, it takes so long to convert 3D models of geographically large size. Of course, so many parameters were introduced and defined, which are used in controlling conversion process
 and you can control conversion time by modifing these parameters regardless of geographical size of 3D models. Just we didn't expose them through API or arguments passed into
 this console application, because they are so complicated. As we mentioned in 『stuffs under development or to be developed』, we will offer ways to access to and modify these
