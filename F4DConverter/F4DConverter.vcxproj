@@ -77,6 +77,7 @@
     <OutDir>$(SolutionDir)bin/</OutDir>
     <TargetName>$(ProjectName)d</TargetName>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -85,6 +86,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin/</OutDir>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -104,15 +106,16 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;C:/OSGeo4W64/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)external/proj/lib/proj_i.lib;$(SolutionDir)external/proj/lib/proj.lib;$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:/OSGeo4W64/lib/gdal_i.lib;C:/OSGeo4W64/lib/proj_i.lib;C:/OSGeo4W64/lib/proj_5_2.lib;$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)external/boost_1_68_0/lib64-msvc-14.0;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -139,9 +142,9 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;C:/OSGeo4W64/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -149,7 +152,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)external/proj/lib/proj_i.lib;$(SolutionDir)external/proj/lib/proj.lib;$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:/OSGeo4W64/lib/gdal_i.lib;C:/OSGeo4W64/lib/proj_i.lib;C:/OSGeo4W64/lib/proj_5_2.lib;$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)external/boost_1_68_0/lib64-msvc-14.0;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -180,6 +184,7 @@
     <ClInclude Include="converter\reader\CitygmlReader.h" />
     <ClInclude Include="converter\reader\ClassicFormatReader.h" />
     <ClInclude Include="converter\reader\IfcReader.h" />
+    <ClInclude Include="converter\reader\PointCloudReader.h" />
     <ClInclude Include="converter\reader\ReaderFactory.h" />
     <ClInclude Include="converter\util\json\autolink.h" />
     <ClInclude Include="converter\util\json\config.h" />
@@ -223,6 +228,7 @@
     <ClCompile Include="converter\reader\CitygmlReader.cpp" />
     <ClCompile Include="converter\reader\ClassicFormatReader.cpp" />
     <ClCompile Include="converter\reader\IfcReader.cpp" />
+    <ClCompile Include="converter\reader\PointCloudReader.cpp" />
     <ClCompile Include="converter\reader\ReaderFactory.cpp" />
     <ClCompile Include="converter\util\json\json_reader.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

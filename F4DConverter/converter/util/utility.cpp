@@ -396,6 +396,87 @@ namespace gaia3d
 		return true;
 	}
 
+	void GeometryUtility::wgs84ToAbsolutePosition(double&lon, double& lat, double& alt, double* result)
+	{
+		//WGS 84.***************************************************
+		// Extracted from WikiPedia "Geodetic datum".
+		// WGS 84 Defining Parameters
+		// semi-major axis	a	6378137.0 m
+		// Reciprocal of flattening	1/f	298.257223563
+
+		// WGS 84 derived geometric constants
+		// Semi-minor axis	b = a(1 − f)	6356752.3142 m
+		// First eccentricity squared	e2 = (1 − b2/a2 = 2f − f2) =	6.69437999014 x 10−3
+		// Second eccentricity squared	e′2	= (a2/b2 − 1 = f(2 − f)/(1 − f)2) = 6.73949674228 x 10−3
+		//----------------------------------------------------------
+
+		// defined in the LINZ standard LINZS25000 (Standard for New Zealand Geodetic Datum 2000)
+		// https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/geodetic-datum-conversions/equations-used-datum
+		// a = semi-major axis.
+		// e2 = firstEccentricitySquared.
+		// v = a / sqrt(1 - e2 * sin2(lat)).
+		// x = (v+h)*cos(lat)*cos(lon).
+		// y = (v+h)*cos(lat)*sin(lon).
+		// z = [v*(1-e2)+h]*sin(lat).
+
+		double degToRadFactor = 0.017453292519943296; // 3.141592653589793 / 180.0;
+		double equatorialRadius = 6378137.0;
+		double firstEccentricitySquared = 6.69437999014E-3;
+		double lonRad = lon *degToRadFactor;
+		double latRad = lat * degToRadFactor;
+		double cosLon = cos(lonRad);
+		double cosLat = cos(latRad);
+		double sinLon = sin(lonRad);
+		double sinLat = sin(latRad);
+		double a = equatorialRadius;
+		double e2 = firstEccentricitySquared;
+		double v = a / sqrt(1.0 - e2 * sinLat * sinLat);
+		double h = alt;
+
+		result[0] = (v + h)*cosLat*cosLon;
+		result[1] = (v + h)*cosLat*sinLon;
+		result[2] = (v*(1.0 - e2) + h)*sinLat;
+	}
+
+	void GeometryUtility::normalAtAbsolutePosition(double& x, double& y, double& z, double* result)
+	{
+		gaia3d::Point3D normal;
+
+		double equatorialRadiusSquared = 40680631590769.0;
+		double polarRadiusSquared = 6356752.3142;
+
+		normal.set(x / equatorialRadiusSquared, y / equatorialRadiusSquared, z / polarRadiusSquared);
+		normal.normalize();
+
+		result[0] = normal.x;
+		result[1] = normal.y;
+		result[2] = normal.z;
+	}
+
+	void GeometryUtility::transformMatrixAtAbsolutePosition(double& x, double& y, double& z, double* m)
+	{
+		gaia3d::Matrix4 matrix;
+
+		gaia3d::Point3D xAxis, yAxis, zAxis;
+
+		double normal[3];
+		normalAtAbsolutePosition(x, y, z, normal);
+		zAxis.set(normal[0], normal[1], normal[2]);
+
+		xAxis.set(-y, x, 0.0);
+		xAxis.normalize();
+
+		yAxis = zAxis ^ xAxis;
+		yAxis.normalize();
+
+		matrix.set(	xAxis.x,	xAxis.y,	xAxis.z,	0.0,
+					yAxis.x,	yAxis.y,	yAxis.z,	0.0,
+					zAxis.x,	zAxis.y,	zAxis.z,	0.0,
+					x,			y,			z,			1.0);
+
+		matrix.getDoubleArray(m);
+	}
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif

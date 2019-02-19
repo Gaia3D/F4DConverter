@@ -31,6 +31,8 @@ namespace gaia3d
 
 		void getAllLeafBoxes(std::vector<OctreeBox*>& container, bool bExceptEmptyBox = false);
 
+		void getAllBoxes(std::vector<OctreeBox*>& container, bool bExceptEmptyBox);
+
 		void copyDimensionsFromOtherOctreeBox(OctreeBox& input);
 
 		void makeTree(unsigned char depth);
@@ -71,6 +73,8 @@ namespace gaia3d
 		virtual OctreeBox* makeChild() {return new SpatialOctreeBox(this);}
 
 		virtual void makeTreeOfUnfixedDepth(double minSize, bool isObjectInOnlyOneLeaf, bool bSplitMesh = false);
+
+		void makeFullCubePyramid(double minCubeSize, bool bObjectInOnlyOneCube, bool bBasedOnMesh);
 
 		void setOctreeId(size_t parentId = 0, size_t orderOfChild = 0);
 

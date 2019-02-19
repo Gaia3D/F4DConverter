@@ -20,6 +20,9 @@
 #ifdef CITYGMLFORMAT
 #include "CitygmlReader.h"
 #endif
+#ifdef POINTCLOUDFORMAT
+#include "PointCloudReader.h"
+#endif
 
 ReaderFactory::ReaderFactory()
 {
@@ -74,6 +77,13 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 		fileExt.compare(std::string("citygml")) == 0)
 	{
 		return new CitygmlReader;
+	}
+#endif
+
+#ifdef POINTCLOUDFORMAT
+	if (fileExt.compare(std::string("las")) == 0)
+	{
+		return new PointCloudReader;
 	}
 #endif
 

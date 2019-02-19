@@ -350,6 +350,9 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 	case 2:
 		convertSplittedRealisticMesh(originalMeshes, originalTextureInfo);
 		return true;
+	case 3:
+		convertPointCloud(originalMeshes);
+		return true;
 	default:
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
@@ -873,6 +876,53 @@ void ConversionProcessor::convertSingleRealisticMesh(std::vector<gaia3d::Triangl
 	}
 }
 
+void ConversionProcessor::convertPointCloud(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes)
+{
+	if (originalMeshes.size() != 1)
+	{
+		printf("[Error]The count of polyhedrons MUST be 1 for point cloud.\n");
+		return;
+	}
+	// copy data from original to this container
+	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
+
+	// change up axis from y to z
+	if (settings.bYAxisUp)
+	{
+		rotateAllMeshesAroundXAxisByQuater(allMeshes);
+		printf("[Info]Y and Z coordinates are changed to each other.\n");
+		size_t meshCount = allMeshes.size();
+		for (size_t i = 0; i < meshCount; i++)
+		{
+			allMeshes[i]->setHasNormals(false);
+		}
+	}
+
+	// calculate original bounding box
+	calculateBoundingBox(allMeshes, originalFullBbox);
+	fullBbox.addBox(originalFullBbox);
+
+	// assign points into each octree cube
+	std::random_shuffle(allMeshes[0]->getVertices().begin(), allMeshes[0]->getVertices().end());
+	assignObjectsIntoEachCubeInPyramid(thisSpatialOctree, allMeshes, fullBbox, settings.leafSpatialOctreeSize, false, false);
+
+	// collect newly created meshes
+	std::vector<gaia3d::OctreeBox*> allCubes;
+	thisSpatialOctree.getAllBoxes(allCubes, true);
+	allMeshes.clear();
+	size_t cubeCount = allCubes.size();
+	for (size_t i = 0; i < cubeCount; i++)
+	{
+		size_t meshCount = allCubes[i]->meshes.size();
+		for (size_t j = 0; j < meshCount; j++)
+		{
+			allCubes[i]->meshes[j]->setId(allMeshes.size());
+			calculateBoundingBox(allCubes[i]->meshes[j]);
+			allMeshes.push_back(allCubes[i]->meshes[j]);
+		}
+	}
+}
+
 void ConversionProcessor::trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
 {
 	size_t meshCount = meshes.size();
@@ -1236,6 +1286,25 @@ void ConversionProcessor::splitOriginalMeshIntoEachSpatialOctrees(gaia3d::Spatia
 	spatialOctree.meshes.insert(spatialOctree.meshes.end(), meshes.begin(), meshes.end());
 
 	spatialOctree.makeTreeOfUnfixedDepth(leafBoxSize, !bAllowDuplication, true);
+
+	spatialOctree.setOctreeId();
+}
+
+void ConversionProcessor::assignObjectsIntoEachCubeInPyramid(gaia3d::SpatialOctreeBox& spatialOctree,
+															std::vector<gaia3d::TrianglePolyhedron*>& meshes,
+															gaia3d::BoundingBox& bbox,
+															double leafBoxSize,
+															bool bAllowDuplication,
+															bool bBasedOnMesh)
+{
+	if (!bbox.isInitialized)
+		return;
+
+	double maxLength = bbox.getMaxLength();
+	spatialOctree.setSize(bbox.minX, bbox.minY, bbox.minZ, bbox.minX + maxLength, bbox.minY + maxLength, bbox.minZ + maxLength);
+	spatialOctree.meshes.insert(spatialOctree.meshes.end(), meshes.begin(), meshes.end());
+
+	spatialOctree.makeFullCubePyramid(leafBoxSize, !bAllowDuplication, bBasedOnMesh);
 
 	spatialOctree.setOctreeId();
 }

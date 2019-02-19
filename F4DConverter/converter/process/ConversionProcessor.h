@@ -37,6 +37,7 @@ public:
 	void setYAxisUp(bool bUp) { settings.bYAxisUp = bUp; }
 	void setAlignPostionToCenter(bool bAlign) { settings.bAlignPositionToCenter = bAlign; }
 	void setMeshType(int type) { settings.meshType = type; }
+	int getMeshType() { return settings.meshType; }
 
 protected:
 	SceneControlVariables* scv;
@@ -119,6 +120,8 @@ public:
 
 protected:
 	// main processing steps - start
+	void convertPointCloud(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes);
+
 	void convertSemanticData(std::vector<gaia3d::TrianglePolyhedron*>& originalMeshes,
 							std::map<std::string, std::string>& originalTextureInfo);
 
@@ -155,6 +158,13 @@ protected:
 												bool bFixedDepth,
 												double leafBoxSize,
 												bool bAllowDuplication);
+
+	void assignObjectsIntoEachCubeInPyramid(gaia3d::SpatialOctreeBox& spatialOctree,
+											std::vector<gaia3d::TrianglePolyhedron*>& meshes,
+											gaia3d::BoundingBox& bbox,
+											double leafBoxSize,
+											bool bAllowDuplication,
+											bool bBasedOnMesh);
 
 	void makeOcclusionInformation(std::vector<gaia3d::TrianglePolyhedron*>& meshes,
 									gaia3d::VisionOctreeBox& interiorOcclusionOctree,

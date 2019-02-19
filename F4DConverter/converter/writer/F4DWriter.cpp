@@ -17,7 +17,7 @@
 F4DWriter::F4DWriter(ConversionProcessor* conversionResult)
 :processor(conversionResult)
 {
-	version = "0.0.1";
+	version = "0.0.2";
 	guid = "abcdefghi";
 	guidLength = 9;
 }
@@ -26,6 +26,21 @@ F4DWriter::~F4DWriter()
 {}
 
 bool F4DWriter::write()
+{
+	switch (processor->getMeshType())
+	{
+	case 3:
+		return writePoints();
+	case 0:
+	case 1:
+	case 2:
+		return writeMeshes();
+	}
+
+	return false;
+}
+
+bool F4DWriter::writeMeshes()
 {
 	// make target root folder
 	bool outputFolderExist = false;
@@ -143,7 +158,7 @@ bool F4DWriter::write()
 	// net surface mesh lod 3~5
 	std::map<unsigned char, gaia3d::TrianglePolyhedron*>::iterator iterNetSurfaceMesh = processor->getNetSurfaceMeshes().begin();
 	for (; iterNetSurfaceMesh != processor->getNetSurfaceMeshes().end(); iterNetSurfaceMesh++)
-	{ 
+	{
 		unsigned char lod = iterNetSurfaceMesh->first;
 		gaia3d::TrianglePolyhedron* netSurfaceMesh = iterNetSurfaceMesh->second;
 		std::string filePath = resultPath + "/lod" + std::to_string(lod);
@@ -154,6 +169,61 @@ bool F4DWriter::write()
 
 	// mosaic textures for net surface mesh lod 2 ~ 5
 	writeNetSurfaceTextures(resultPath);
+
+	return true;
+}
+
+bool F4DWriter::writePoints()
+{
+	// make target root folder
+	bool outputFolderExist = false;
+	std::string resultPath = folder + "/F4D_" + processor->getAttribute(F4DID);
+	if (_access(resultPath.c_str(), 0) == 0)
+	{
+		struct stat status;
+		stat(resultPath.c_str(), &status);
+		if (status.st_mode & S_IFDIR)
+			outputFolderExist = true;
+	}
+	if (!outputFolderExist)
+	{
+		if (_mkdir(resultPath.c_str()) != 0)
+		{
+			LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
+			LogWriter::getLogWriter()->addContents(std::string(CANNOT_CREATE_DIRECTORY), false);
+			return false;
+		}
+	}
+
+	std::string headerPath = resultPath + "/HeaderAsimetric.hed";
+	FILE* file = fopen(headerPath.c_str(), "wb");
+	// write header and get order of texture recorded
+	std::map<std::string, size_t> textureIndices;
+	writeHeader(file, textureIndices);
+	fclose(file);
+
+	// create reference directory
+	outputFolderExist = false;
+	std::string referencePath = resultPath + "/References";
+	if (_access(referencePath.c_str(), 0) == 0)
+	{
+		struct stat status;
+		stat(referencePath.c_str(), &status);
+		if (status.st_mode & S_IFDIR)
+			outputFolderExist = true;
+	}
+	if (!outputFolderExist)
+	{
+		if (_mkdir(referencePath.c_str()) != 0)
+		{
+			LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
+			LogWriter::getLogWriter()->addContents(std::string(CANNOT_CREATE_DIRECTORY), false);
+			return false;
+		}
+	}
+
+	bool bShouldCompress = true;
+	writePointPartition(processor->getSpatialOctree(), referencePath, bShouldCompress);
 
 	return true;
 }
@@ -179,6 +249,33 @@ bool F4DWriter::writeHeader(FILE* f, std::map<std::string, size_t>& textureIndic
 	fwrite(&minX, sizeof(float), 1, f); fwrite(&minY, sizeof(float), 1, f); fwrite(&minZ, sizeof(float), 1, f);
 	fwrite(&maxX, sizeof(float), 1, f); fwrite(&maxY, sizeof(float), 1, f); fwrite(&maxZ, sizeof(float), 1, f);
 
+	// data type
+	// Project_data_type (new in version 002).***
+	// 1 = 3d model data type (normal 3d with interior & exterior data).***
+	// 2 = single building skin data type (as vWorld or googleEarth data).***
+	// 3 = multi building skin data type (as Shibuya & Odaiba data).***
+	// 4 = pointsCloud data type.***
+	// 5 = pointsCloud data type pyramidOctree test.***
+	unsigned short dataType = 1;
+	switch (processor->getMeshType())
+	{
+	case 3: // point cloud
+		dataType = 5;
+		break;
+	case 0: // semantic 3d mesh
+	case 1: // single random-shaped 3d mesh
+	case 2: // splitted random-shaped 3d mesh
+		dataType = 1;
+		break;
+	}
+	fwrite(&dataType, sizeof(unsigned short), 1, f);
+
+	// dummy 3 double
+	double dummyFloat = 0.0;
+	fwrite(&dummyFloat, sizeof(double), 1, f);
+	fwrite(&dummyFloat, sizeof(double), 1, f);
+	fwrite(&dummyFloat, sizeof(double), 1, f);
+
 	// spatial octree info
 	writeOctreeInfo(processor->getSpatialOctree(), f);
 
@@ -202,7 +299,9 @@ bool F4DWriter::writeHeader(FILE* f, std::map<std::string, size_t>& textureIndic
 	}
 
 	// lod info
-	unsigned char geomLodCount = 6;
+	unsigned char geomLodCount = 0;
+	if(dataType == 1)
+		geomLodCount = 6;
 	fwrite(&geomLodCount, sizeof(unsigned char), 1, f);
 	unsigned char lod;
 	bool bDividedBySpatialOctree;
@@ -980,5 +1079,109 @@ void F4DWriter::writeNetSurfaceTextures(std::string resultPath)
 		filePath = resultPath + "/mosaicTextureLod" + std::to_string(lod) + ".jpg";
 
 		stbi_write_jpg(filePath.c_str(), width, height, bpp, texture, 0);
+	}
+}
+
+void F4DWriter::writePointPartition(gaia3d::OctreeBox* octree, std::string& referencePath, bool bShouldCompress)
+{
+	gaia3d::SpatialOctreeBox* spatialOctree = (gaia3d::SpatialOctreeBox*) octree;
+
+	if (!spatialOctree->meshes.empty())
+	{
+		size_t partitionCount = spatialOctree->meshes.size();
+		for (size_t i = 0; i < partitionCount; i++)
+		{
+			gaia3d::TrianglePolyhedron* partition = spatialOctree->meshes[i];
+			std::string referenceFilePath = referencePath + "/" + std::to_string((long long)(spatialOctree->octreeId)) + std::string("_Ref_") + std::to_string((long long)i);
+
+			FILE* file = NULL;
+			file = fopen(referenceFilePath.c_str(), "wb");
+
+			// point count
+			unsigned int vertexCount = (unsigned int) partition->getVertices().size();
+			fwrite(&vertexCount, sizeof(unsigned int), 1, file);
+
+			// bounding box
+			float minX, minY, minZ, maxX, maxY, maxZ;
+			minX = (float)partition->getBoundingBox().minX;
+			fwrite(&minX, sizeof(float), 1, file);
+			minY = (float)partition->getBoundingBox().minY;
+			fwrite(&minY, sizeof(float), 1, file);
+			minZ = (float)partition->getBoundingBox().minZ;
+			fwrite(&minZ, sizeof(float), 1, file);
+			maxX = (float)partition->getBoundingBox().maxX;
+			fwrite(&maxX, sizeof(float), 1, file);
+			maxY = (float)partition->getBoundingBox().maxY;
+			fwrite(&maxY, sizeof(float), 1, file);
+			maxZ = (float)partition->getBoundingBox().maxZ;
+			fwrite(&maxZ, sizeof(float), 1, file);
+
+			// wheter compressed
+			fwrite(&bShouldCompress, sizeof(bool), 1, file);
+
+			// point position
+			if (bShouldCompress)
+			{
+				unsigned short ux, uy, uz;
+				for (unsigned int j = 0; j < vertexCount; j++)
+				{
+					ux = (unsigned short)(65535.0 * (partition->getVertices()[j]->position.x - partition->getBoundingBox().minX) / partition->getBoundingBox().getXLength());
+					uy = (unsigned short)(65535.0 * (partition->getVertices()[j]->position.y - partition->getBoundingBox().minY) / partition->getBoundingBox().getYLength());
+					uz = (unsigned short)(65535.0 * (partition->getVertices()[j]->position.z - partition->getBoundingBox().minZ) / partition->getBoundingBox().getZLength());
+
+					fwrite(&ux, sizeof(unsigned short), 1, file); // write.*********
+					fwrite(&uy, sizeof(unsigned short), 1, file); // write.*********
+					fwrite(&uz, sizeof(unsigned short), 1, file); // write.*********
+				}
+			}
+			else
+			{
+				float x, y, z;
+				for (unsigned int j = 0; j < vertexCount; j++)
+				{
+					x = (float)partition->getVertices()[j]->position.x;
+					y = (float)partition->getVertices()[j]->position.y;
+					z = (float)partition->getVertices()[j]->position.z;
+					fwrite(&x, sizeof(float), 1, file); // write.*********
+					fwrite(&y, sizeof(float), 1, file); // write.*********
+					fwrite(&z, sizeof(float), 1, file); // write.*********
+				}
+			}
+
+			// normal
+			bool bNormal = false;
+			fwrite(&bNormal, sizeof(bool), 1, file);
+
+			// color
+			bool bColor = true;
+			fwrite(&bColor, sizeof(bool), 1, file);
+			unsigned int colorBufferLength = vertexCount * 4;
+			unsigned char* colorBuffer = new unsigned char[colorBufferLength];
+			memset(colorBuffer, 0x00, sizeof(unsigned char)* colorBufferLength);
+			for (unsigned int j = 0; j < vertexCount; j++)
+			{
+				colorBuffer[j * 4] = GetRedValue(partition->getVertices()[j]->color); // red
+				colorBuffer[j * 4 + 1] = GetGreenValue(partition->getVertices()[j]->color); // green
+				colorBuffer[j * 4 + 2] = GetBlueValue(partition->getVertices()[j]->color); // blue
+				colorBuffer[j * 4 + 3] = 255; // alpha
+			}
+			fwrite(colorBuffer, sizeof(unsigned char), colorBufferLength, file);
+			delete[] colorBuffer;
+
+			// texture coordinate
+			bool hasTexCoords = false;
+			fwrite(&hasTexCoords, sizeof(bool), 1, file);
+
+			// indices
+			bool hasIndices = false;
+			fwrite(&hasIndices, sizeof(bool), 1, file);
+
+			fclose(file);
+		}
+	}
+
+	for (size_t i = 0; i < spatialOctree->children.size(); i++)
+	{
+		writePointPartition((gaia3d::SpatialOctreeBox*)(spatialOctree->children[i]), referencePath, bShouldCompress);
 	}
 }

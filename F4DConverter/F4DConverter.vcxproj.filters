@@ -174,6 +174,9 @@
     <ClInclude Include="converter\reader\CitygmlReader.h">
       <Filter>converter\reader</Filter>
     </ClInclude>
+    <ClInclude Include="converter\reader\PointCloudReader.h">
+      <Filter>converter\reader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -270,6 +273,9 @@
       <Filter>converter\util\json</Filter>
     </ClCompile>
     <ClCompile Include="converter\reader\CitygmlReader.cpp">
+      <Filter>converter\reader</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\reader\PointCloudReader.cpp">
       <Filter>converter\reader</Filter>
     </ClCompile>
   </ItemGroup>

@@ -28,20 +28,22 @@ void createCityObject(const citygml::CityObject& object,
 					std::string& folderPath,
 					std::vector<gaia3d::TrianglePolyhedron*>& container,
 					std::map<std::string, std::string>& textureContainer,
-					gaia3d::Point3D& bboxCenter);
+					projPJ pjSrc, projPJ pjWgs84, gaia3d::Matrix4& inverseGlobalTransMat);
 unsigned int getMostDetailedLod(const citygml::CityObject& object);
 void convertGeometryToTrianglePolyhedrons(const citygml::Geometry& geometry,
 										std::string& folderPath,
 										std::vector<gaia3d::TrianglePolyhedron*>& container,
 										std::map<std::string, std::string>& textureContainer,
 										gaia3d::Matrix4* mat,
-										gaia3d::Point3D& bboxCenter);
+										projPJ pjSrc, projPJ pjWgs84, gaia3d::Matrix4& inverseGlobalTransMat);
 
 CitygmlReader::CitygmlReader()
 {
 	unitScaleFactor = 1.0;
 
 	bHasGeoReferencingInfo = false;
+
+	bCoordinateInfoInjected = false;
 }
 
 CitygmlReader::~CitygmlReader()
@@ -173,12 +175,24 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 	lon *= RAD_TO_DEG;
 	lat *= RAD_TO_DEG;
 
+	double absPosOfCenterXY[3];
+	alt = 0.0;
+	gaia3d::GeometryUtility::wgs84ToAbsolutePosition(lon, lat, alt, absPosOfCenterXY);
+	double m[16];
+	gaia3d::GeometryUtility::transformMatrixAtAbsolutePosition(absPosOfCenterXY[0], absPosOfCenterXY[1], absPosOfCenterXY[2], m);
+	gaia3d::Matrix4 globalTransformMatrix;
+	globalTransformMatrix.set(m[0], m[4], m[8], m[12],
+		m[1], m[5], m[9], m[13],
+		m[2], m[6], m[10], m[14],
+		m[3], m[7], m[11], m[15]);
+	gaia3d::Matrix4 inverseGlobalTransMatrix = globalTransformMatrix.inverse();
+
 	// transform objects in citygml into triangle polyhedrons
 	for (size_t i = 0; i < roots.size(); i++)
 	{
 		const citygml::CityObject &cityObject = *roots[i];
 
-		createCityObject(cityObject, folderPath, container, textureContainer, bboxCenter);
+		createCityObject(cityObject, folderPath, container, textureContainer, pjSrc, pjDst, inverseGlobalTransMatrix);
 	}
 
 	return true;
@@ -188,7 +202,7 @@ void createCityObject(const citygml::CityObject& object,
 					std::string& folderPath,
 					std::vector<gaia3d::TrianglePolyhedron*>& container,
 					std::map<std::string, std::string>& textureContainer,
-					gaia3d::Point3D& bboxCenter)
+					projPJ pjSrc, projPJ pjWgs84, gaia3d::Matrix4& inverseGlobalTransMat)
 {
 	unsigned int mostDetailedLod = getMostDetailedLod(object);
 
@@ -199,7 +213,7 @@ void createCityObject(const citygml::CityObject& object,
 		if (geometry.getLOD() < mostDetailedLod)
 			continue;
 
-		convertGeometryToTrianglePolyhedrons(geometry, folderPath, container, textureContainer, NULL, bboxCenter);
+		convertGeometryToTrianglePolyhedrons(geometry, folderPath, container, textureContainer, NULL, pjSrc, pjWgs84, inverseGlobalTransMat);
 	}
 
 	// do same thing if implicit geometries exist
@@ -225,14 +239,14 @@ void createCityObject(const citygml::CityObject& object,
 			transformMatrix.m[3][0] += refPoint.x;
 			transformMatrix.m[3][1] += refPoint.y;
 			transformMatrix.m[3][2] += refPoint.z;
-			convertGeometryToTrianglePolyhedrons(geometry, folderPath, container, textureContainer, &transformMatrix, bboxCenter);
+			convertGeometryToTrianglePolyhedrons(geometry, folderPath, container, textureContainer, &transformMatrix, pjSrc, pjWgs84, inverseGlobalTransMat);
 		}
 	}
 
 	// do same thing if childre exist
 	for (unsigned int i = 0; i < object.getChildCityObjectsCount(); ++i)
 	{
-		createCityObject(object.getChildCityObject(i), folderPath, container, textureContainer, bboxCenter);
+		createCityObject(object.getChildCityObject(i), folderPath, container, textureContainer, pjSrc, pjWgs84, inverseGlobalTransMat);
 	}
 }
 
@@ -241,7 +255,7 @@ void convertGeometryToTrianglePolyhedrons(const citygml::Geometry& geometry,
 										std::vector<gaia3d::TrianglePolyhedron*>& container,
 										std::map<std::string, std::string>& textureContainer,
 										gaia3d::Matrix4* mat,
-										gaia3d::Point3D& bboxCenter)
+										projPJ pjSrc, projPJ pjWgs84, gaia3d::Matrix4& inverseGlobalTransMat)
 {
 	// A geometry should be converted into multiple triangle polyhedrons(mesh == triangle polyhedron) when mutiple textures are used in the geometry.
 	// (by the rule of 1 polyhedron on 1 texture)
@@ -292,17 +306,37 @@ void convertGeometryToTrianglePolyhedrons(const citygml::Geometry& geometry,
 
 		// vertices
 		std::vector<gaia3d::Vertex*> verticesInPolygon;
+		double px, py, pz;
 		for (size_t j = 0; j < vertices.size(); j++)
 		{
 			TVec3d v = vertices[j];
 			gaia3d::Vertex* vertex = new gaia3d::Vertex;
-			vertex->position.set(v.x, v.y, v.z);
-
+			
 			if (mat != NULL)
 			{
-				vertex->position = (*mat) * vertex->position;
+				gaia3d::Point3D srsPos;
+				srsPos.set(v.x, v.y, v.z);
+				srsPos = (*mat) * srsPos;
+				px = srsPos.x;
+				py = srsPos.y;
+				pz = srsPos.z;
 			}
-			vertex->position -= bboxCenter;
+			else
+			{
+				px = v.x;
+				py = v.y;
+				pz = v.z;
+			}
+
+			pj_transform(pjSrc, pjWgs84, 1, 1, &px, &py, &pz);
+			px *= RAD_TO_DEG;
+			py *= RAD_TO_DEG;
+
+			double absPosOfTargetPointArray[3];
+			gaia3d::GeometryUtility::wgs84ToAbsolutePosition(px, py, pz, absPosOfTargetPointArray);
+			gaia3d::Point3D absPosOfTargetPoint;
+			absPosOfTargetPoint.set(absPosOfTargetPointArray[0], absPosOfTargetPointArray[1], absPosOfTargetPointArray[2]);
+			vertex->position = inverseGlobalTransMat * absPosOfTargetPoint;
 
 			verticesInPolygon.push_back(vertex);
 			masterPolyhedron->getVertices().push_back(vertex);
@@ -378,7 +412,7 @@ void convertGeometryToTrianglePolyhedrons(const citygml::Geometry& geometry,
 	// do same things if children exist
 	for (unsigned int i = 0; i < geometry.getGeometriesCount(); i++)
 	{
-		convertGeometryToTrianglePolyhedrons(geometry.getGeometry(i), folderPath, container, textureContainer, mat, bboxCenter);
+		convertGeometryToTrianglePolyhedrons(geometry.getGeometry(i), folderPath, container, textureContainer, mat, pjSrc, pjWgs84, inverseGlobalTransMat);
 	}
 }
 

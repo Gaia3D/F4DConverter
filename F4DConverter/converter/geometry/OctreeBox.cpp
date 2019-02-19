@@ -6,6 +6,7 @@
 #include "BoundingBox.h"
 
 #include "../util/utility.h"
+#include <algorithm>
 
 namespace gaia3d
 {
@@ -58,6 +59,20 @@ namespace gaia3d
 				container.push_back(this);
 
 		}
+	}
+
+	void OctreeBox::getAllBoxes(std::vector<OctreeBox*>& container, bool bExceptEmptyBox)
+	{
+		for (size_t i = 0; i < 8; i++)
+			children[i]->getAllBoxes(container, bExceptEmptyBox);
+
+		if (bExceptEmptyBox)
+		{
+			if (!meshes.empty())
+				container.push_back(this);
+		}
+		else
+			container.push_back(this);
 	}
 
 	void OctreeBox::copyDimensionsFromOtherOctreeBox(OctreeBox& input)
@@ -183,6 +198,7 @@ namespace gaia3d
 		double tolerance = minSize * 0.4;
 		if(maxEdgeLength > minSize + tolerance)
 		{
+			// 1) make 8 children
 			for(size_t i = 0; i < 8; i++)
 			{
 				OctreeBox* child = makeChild();
@@ -580,6 +596,152 @@ namespace gaia3d
 		}
 	}
 
+	void SpatialOctreeBox::makeFullCubePyramid(double minCubeSize, bool bObjectInOnlyOneCube, bool bBasedOnMesh)
+	{
+		if (bBasedOnMesh) // full cube pyramid for meshes
+		{
+			// TODO(khj 20190218) : NYI must implement making full cube pyramid for 3d meshes
+		}
+		else // full cube pyramid for point cloud
+		{
+			size_t maxVertexCountInOneCube = 100000;
+
+			double xLength = maxX - minX, yLength = maxY - minY, zLength = maxZ - minZ;
+			double maxEdgeLength = (xLength > yLength) ? ((xLength > zLength) ? xLength : zLength) : ((yLength > zLength) ? yLength : zLength);
+			double tolerance = minCubeSize * 0.4;
+
+			size_t vertexCount = meshes[0]->getVertices().size();
+
+			if (maxEdgeLength > minCubeSize + tolerance) // have to make children
+			{
+				// 1) make 8 children
+				for (size_t i = 0; i < 8; i++)
+				{
+					OctreeBox* child = makeChild();
+					children.push_back(child);
+				}
+
+				// 2) set size of each child octree
+				//this->Set_SizesSubBoxes();
+				double halfX, halfY, halfZ;
+				halfX = (maxX + minX) / 2.0;
+				halfY = (maxY + minY) / 2.0;
+				halfZ = (maxZ + minZ) / 2.0;
+				children[0]->setSize(minX, minY, minZ, halfX, halfY, halfZ);
+				children[1]->setSize(halfX, minY, minZ, maxX, halfY, halfZ);
+				children[2]->setSize(halfX, halfY, minZ, maxX, maxY, halfZ);
+				children[3]->setSize(minX, halfY, minZ, halfX, maxY, halfZ);
+				children[4]->setSize(minX, minY, halfZ, halfX, halfY, maxZ);
+				children[5]->setSize(halfX, minY, halfZ, maxX, halfY, maxZ);
+				children[6]->setSize(halfX, halfY, halfZ, maxX, maxY, maxZ);
+				children[7]->setSize(minX, halfY, halfZ, halfX, maxY, maxZ);
+
+				// 3) distribute points into each children
+				std::vector<gaia3d::Vertex*> verticesInThisCube;
+				std::vector<gaia3d::Vertex*> verticesInChildren;
+				size_t countThisCubeMustHave;
+				if (vertexCount > 2 * maxVertexCountInOneCube)
+					countThisCubeMustHave = maxVertexCountInOneCube;
+				else
+					countThisCubeMustHave = vertexCount / 2;
+
+				verticesInThisCube.assign(meshes[0]->getVertices().begin(), meshes[0]->getVertices().begin() + countThisCubeMustHave);
+				verticesInChildren.assign(meshes[0]->getVertices().begin() + countThisCubeMustHave, meshes[0]->getVertices().end());
+
+				std::random_shuffle(verticesInThisCube.begin(), verticesInThisCube.end());
+				meshes[0]->getVertices().clear();
+				meshes[0]->getVertices().assign(verticesInThisCube.begin(), verticesInThisCube.end());
+
+				size_t countChildrenMustHave = verticesInChildren.size();
+				OctreeBox* targetChild = NULL;
+				for (size_t i = 0; i < countChildrenMustHave; i++)
+				{
+					gaia3d::Point3D pos = verticesInChildren[i]->position;
+					if (pos.x < halfX)
+					{
+						if (pos.y < halfY)
+						{
+							if (pos.z < halfZ)
+								targetChild = children[0];
+							else
+								targetChild = children[4];
+						}
+						else
+						{
+							if (pos.z < halfZ)
+								targetChild = children[3];
+							else
+								targetChild = children[7];
+						}
+					}
+					else
+					{
+						if (pos.y < halfY)
+						{
+							if (pos.z < halfZ)
+								targetChild = children[1];
+							else
+								targetChild = children[5];
+						}
+						else
+						{
+							if (pos.z < halfZ)
+								targetChild = children[2];
+							else
+								targetChild = children[6];
+						}
+					}
+
+					if (targetChild->meshes.empty())
+					{
+						gaia3d::TrianglePolyhedron* childPolyhedron = new gaia3d::TrianglePolyhedron;
+						targetChild->meshes.push_back(childPolyhedron);
+					}
+
+					targetChild->meshes[0]->getVertices().push_back(verticesInChildren[i]);
+				}
+
+				// 4) Make tree for subBoxes.***
+				for (size_t i = 0; i < 8; i++)
+				{
+					if (children[i]->meshes.size() > 0)
+						((SpatialOctreeBox*)children[i])->makeFullCubePyramid(minCubeSize, bObjectInOnlyOneCube, bBasedOnMesh);
+				}
+			}
+
+			// 5) divide vertices in this cube into partitions if the vertex count is ver the max count
+			if(vertexCount > maxVertexCountInOneCube)
+			{
+				size_t partitionCount;
+				if (vertexCount % maxVertexCountInOneCube == 0)
+					partitionCount = vertexCount / maxVertexCountInOneCube;
+				else
+					partitionCount = vertexCount / maxVertexCountInOneCube + 1;
+
+				std::vector<gaia3d::Vertex*> allVertices;
+				allVertices.assign(meshes[0]->getVertices().begin(), meshes[0]->getVertices().end());
+				meshes[0]->getVertices().clear();
+				delete meshes[0];
+				meshes.clear();
+
+				for (size_t i = 0; i < partitionCount; i++)
+				{
+					gaia3d::TrianglePolyhedron* partition = new gaia3d::TrianglePolyhedron;
+					if (i == partitionCount - 1)
+					{
+						partition->getVertices().assign(allVertices.begin(), allVertices.end());
+						allVertices.clear();
+					}
+					else
+					{
+						partition->getVertices().assign(allVertices.begin(), allVertices.begin() + maxVertexCountInOneCube);
+						allVertices.erase(allVertices.begin(), allVertices.begin() + +maxVertexCountInOneCube);
+					}
+				}
+			}
+		}
+	}
+
 	PointDistributionOctree::PointDistributionOctree(PointDistributionOctree* owner)
 		:parent(owner)
 	{
@@ -600,6 +762,7 @@ namespace gaia3d
 		double tolerance = minSize * 0.4;
 		if (maxEdgeLength > minSize + tolerance)
 		{
+			// 1) make 8 children
 			for (size_t i = 0; i < 8; i++)
 			{
 				PointDistributionOctree* child = new PointDistributionOctree(this);

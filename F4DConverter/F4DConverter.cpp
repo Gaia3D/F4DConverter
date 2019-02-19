@@ -278,6 +278,13 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			return false;
 	}
 
+	if (arguments.find(ReferenceLonLat) != arguments.end() &&
+		arguments.find(Epsg) != arguments.end())
+	{
+		printf("[ERROR]EPSG and Reference Lon/Lat CANNOT be used at the same time.\n");
+		return false;
+	}
+
 	if (arguments.find(ReferenceLonLat) != arguments.end())
 	{
 		size_t lonLatLength = arguments[ReferenceLonLat].length();
@@ -325,8 +332,9 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			int meshType = std::stoi(arguments[MeshType]);
 
 			//if(meshType != 1 && meshType != 2) // AIT version
-			if (meshType != 0) // release version
+			//if (meshType != 0) // release version
 			//if (meshType != 2 && meshType != 0) // for romania
+			if(meshType > 3 || meshType < 0) // for full type.
 				return false;
 		}
 		catch (const std::invalid_argument& error)

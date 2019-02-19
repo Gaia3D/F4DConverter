@@ -65,9 +65,7 @@ private:
 
 	bool processDataFile(std::string& filePath, aReader* reader);
 
-	std::string makeProj4String();
-
-	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs, std::string proj4String);
+	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);
 };
 
 
