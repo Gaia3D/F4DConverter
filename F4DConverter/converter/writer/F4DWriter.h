@@ -51,7 +51,7 @@ protected:
 
 	bool writeReferencesAndModels(std::string& referencePath, std::string& modelPath, std::string& lod2Path, std::map<std::string, size_t>& textureIndices);
 
-	bool writeOctreeInfo(gaia3d::OctreeBox* octree, FILE* f);
+	bool writeOctreeInfo(gaia3d::OctreeBox* octree, unsigned short dataType, FILE* f);
 
 	void writeColor(unsigned long color, unsigned short type, bool bAlpha, FILE* file);
 

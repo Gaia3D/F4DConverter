@@ -277,7 +277,7 @@ bool F4DWriter::writeHeader(FILE* f, std::map<std::string, size_t>& textureIndic
 	fwrite(&dummyFloat, sizeof(double), 1, f);
 
 	// spatial octree info
-	writeOctreeInfo(processor->getSpatialOctree(), f);
+	writeOctreeInfo(processor->getSpatialOctree(), dataType, f);
 
 	// material info
 	unsigned int textureCount = (unsigned int)processor->getTextureInfo().size();
@@ -715,7 +715,7 @@ bool F4DWriter::writeVisibilityIndices(FILE* f, gaia3d::OctreeBox* octree)
 	return true;
 }
 
-bool F4DWriter::writeOctreeInfo(gaia3d::OctreeBox* octree, FILE* f)
+bool F4DWriter::writeOctreeInfo(gaia3d::OctreeBox* octree, unsigned short dataType, FILE* f)
 {
 	unsigned int level = octree->level;
 	fwrite(&level, sizeof(unsigned int), 1, f);
@@ -737,20 +737,33 @@ bool F4DWriter::writeOctreeInfo(gaia3d::OctreeBox* octree, FILE* f)
 	unsigned char childCount = (unsigned char)octree->children.size();
 	fwrite(&childCount, sizeof(unsigned char), 1, f);
 
-	unsigned int triangleCount = 0;
-	size_t meshCount = octree->meshes.size();
-	size_t surfaceCount;
-	for(size_t i = 0; i < meshCount; i++)
+	if (dataType == 1)
 	{
-		surfaceCount = octree->meshes[i]->getSurfaces().size();
-		for(size_t j = 0; j < surfaceCount; j++)
-			triangleCount += (unsigned int)octree->meshes[i]->getSurfaces()[j]->getTriangles().size();
+		unsigned int triangleCount = 0;
+		size_t meshCount = octree->meshes.size();
+		size_t surfaceCount;
+		for (size_t i = 0; i < meshCount; i++)
+		{
+			surfaceCount = octree->meshes[i]->getSurfaces().size();
+			for (size_t j = 0; j < surfaceCount; j++)
+				triangleCount += (unsigned int)octree->meshes[i]->getSurfaces()[j]->getTriangles().size();
+		}
+		fwrite(&triangleCount, sizeof(unsigned int), 1, f);
 	}
-	fwrite(&triangleCount, sizeof(unsigned int), 1, f);
+	else if (dataType == 5)
+	{
+		unsigned int partitionCount = (unsigned int) octree->meshes.size();
+		unsigned int vertexCount = 0;
+		for (size_t i = 0; i < partitionCount; i++)
+			vertexCount += (unsigned int)octree->meshes[i]->getVertices().size();
+
+		fwrite(&vertexCount, sizeof(unsigned int), 1, f);
+		fwrite(&partitionCount, sizeof(unsigned int), 1, f);
+	}
 
 	for(unsigned char i = 0; i < childCount; i++)
 	{
-		writeOctreeInfo(octree->children[i], f);
+		writeOctreeInfo(octree->children[i], dataType, f);
 	}
 
 	return true;

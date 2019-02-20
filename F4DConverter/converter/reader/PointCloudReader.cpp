@@ -135,6 +135,8 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 	// retrieve point geometries
 	gaia3d::TrianglePolyhedron* polyhedron = new gaia3d::TrianglePolyhedron;
 	double px, py, pz;
+	unsigned short maxColorChannelValue = 0;
+	std::vector<unsigned short> reds, greens, blues;
 	while (reader.ReadNextPoint())
 	{
 		gaia3d::Vertex* vertex = new gaia3d::Vertex;
@@ -157,22 +159,64 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 
 		// color
 		liblas::Color const &color = p.GetColor();
-		unsigned char r, g, b;
+		unsigned short or , og, ob;
 		if (color.GetRed() != 0 || color.GetGreen() != 0 || color.GetBlue() != 0)
 		{
-			r = color.GetRed() >> 8;
-			g = color.GetGreen() >> 8;
-			b = color.GetBlue() >> 8;
+			or = color.GetRed(); og = color.GetGreen(); ob = color.GetBlue();
+			if (maxColorChannelValue < or )
+				maxColorChannelValue = or ;
+			if (maxColorChannelValue < og )
+				maxColorChannelValue = og ;
+			if (maxColorChannelValue < ob )
+				maxColorChannelValue = ob ;
+
+			reds.push_back(or);
+			greens.push_back(og);
+			blues.push_back(ob);
 		}
 		else
 		{
-			p.GetIntensity();
-			r = g = b = p.GetIntensity() >> 8;
+			or = p.GetIntensity();
+			if (maxColorChannelValue < or )
+				maxColorChannelValue = or ;
+
+			reds.push_back(or );
+			greens.push_back(or );
+			blues.push_back(or );
 		}
-		vertex->color = MakeColorU4(r, g, b);
 
 		polyhedron->getVertices().push_back(vertex);
 	}
+
+	if (maxColorChannelValue > 255)
+	{
+		size_t vertexCount = polyhedron->getVertices().size();
+		unsigned char r, g, b;
+		for (size_t i = 0; i < vertexCount; i++)
+		{
+			r = (unsigned char)(reds[i] >> 8);
+			g = (unsigned char)(greens[i] >> 8);
+			b = (unsigned char)(blues[i] >> 8);
+			polyhedron->getVertices()[i]->color = MakeColorU4(r, g, b);
+		}
+	}
+	else
+	{
+		size_t vertexCount = polyhedron->getVertices().size();
+		unsigned char r, g, b;
+		for (size_t i = 0; i < vertexCount; i++)
+		{
+			r = (unsigned char)(reds[i]);
+			g = (unsigned char)(greens[i]);
+			b = (unsigned char)(blues[i]);
+			polyhedron->getVertices()[i]->color = MakeColorU4(r, g, b);
+		}
+	}
+
+	printf("[Info]input point count : %zd\n", polyhedron->getVertices().size());
+
+	polyhedron->setId(container.size());
+	container.push_back(polyhedron);
 
 	ifs.close();
 

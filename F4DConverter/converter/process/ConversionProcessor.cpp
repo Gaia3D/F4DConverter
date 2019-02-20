@@ -911,6 +911,7 @@ void ConversionProcessor::convertPointCloud(std::vector<gaia3d::TrianglePolyhedr
 	thisSpatialOctree.getAllBoxes(allCubes, true);
 	allMeshes.clear();
 	size_t cubeCount = allCubes.size();
+	printf("[Info]Count of created cubes : %zd\n", cubeCount);
 	for (size_t i = 0; i < cubeCount; i++)
 	{
 		size_t meshCount = allCubes[i]->meshes.size();

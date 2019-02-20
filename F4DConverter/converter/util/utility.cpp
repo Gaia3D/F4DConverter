@@ -443,7 +443,7 @@ namespace gaia3d
 		gaia3d::Point3D normal;
 
 		double equatorialRadiusSquared = 40680631590769.0;
-		double polarRadiusSquared = 6356752.3142;
+		double polarRadiusSquared = 40408299984087.05552164;
 
 		normal.set(x / equatorialRadiusSquared, y / equatorialRadiusSquared, z / polarRadiusSquared);
 		normal.normalize();

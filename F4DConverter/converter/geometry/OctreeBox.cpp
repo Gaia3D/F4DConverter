@@ -63,7 +63,7 @@ namespace gaia3d
 
 	void OctreeBox::getAllBoxes(std::vector<OctreeBox*>& container, bool bExceptEmptyBox)
 	{
-		for (size_t i = 0; i < 8; i++)
+		for (size_t i = 0; i < children.size(); i++)
 			children[i]->getAllBoxes(container, bExceptEmptyBox);
 
 		if (bExceptEmptyBox)
@@ -709,7 +709,8 @@ namespace gaia3d
 				}
 			}
 
-			// 5) divide vertices in this cube into partitions if the vertex count is ver the max count
+			// 5) divide vertices in this cube into partitions if the vertex count is over the max count
+			vertexCount = meshes[0]->getVertices().size();
 			if(vertexCount > maxVertexCountInOneCube)
 			{
 				size_t partitionCount;
@@ -729,15 +730,18 @@ namespace gaia3d
 					gaia3d::TrianglePolyhedron* partition = new gaia3d::TrianglePolyhedron;
 					if (i == partitionCount - 1)
 					{
-						partition->getVertices().assign(allVertices.begin(), allVertices.end());
-						allVertices.clear();
+						partition->getVertices().assign(allVertices.begin()+ i*maxVertexCountInOneCube, allVertices.end());
+						//allVertices.clear();
 					}
 					else
 					{
-						partition->getVertices().assign(allVertices.begin(), allVertices.begin() + maxVertexCountInOneCube);
-						allVertices.erase(allVertices.begin(), allVertices.begin() + +maxVertexCountInOneCube);
+						partition->getVertices().assign(allVertices.begin() + i*maxVertexCountInOneCube, allVertices.begin() + (i+1)*maxVertexCountInOneCube);
+						//allVertices.erase(allVertices.begin(), allVertices.begin() + maxVertexCountInOneCube);
 					}
+					meshes.push_back(partition);
 				}
+
+				allVertices.clear();
 			}
 		}
 	}

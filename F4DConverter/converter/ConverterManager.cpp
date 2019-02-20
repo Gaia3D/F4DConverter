@@ -251,7 +251,6 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 		break;
 	case 3: // point cloud
 		processor->setLeafSpatialOctreeSize(40.0f);
-		processor->setAlignPostionToCenter(true);
 		break;
 	}
 	// TODO(khj 20180417) end
