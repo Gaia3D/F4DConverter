@@ -67,7 +67,7 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 		for (size_t j = 0; j < vertexCount; j++)
 		{
 			vertex = new gaia3d::Vertex;
-			vertex->position.set(vertexPositions[3*j] * unitScaleFactor, vertexPositions[3 * j + 1] * unitScaleFactor, vertexPositions[3 * j + 2] * unitScaleFactor);
+			vertex->position.set(vertexPositions[3*j] * unitScaleFactor + offsetX, vertexPositions[3*j + 1] * unitScaleFactor + offsetY, vertexPositions[3*j + 2] * unitScaleFactor + offsetZ);
 			polyhedron->getVertices().push_back(vertex);
 		}
 

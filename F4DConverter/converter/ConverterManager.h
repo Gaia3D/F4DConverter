@@ -34,6 +34,7 @@ private:
 	int meshType;
 	bool bUseEpsg;
 	std::string epsgCode;
+	double offsetX, offsetY, offsetZ;
 
 	std::string inputFolderPath, outputFolderPath;
 

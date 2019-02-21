@@ -85,7 +85,10 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 
 	size_t tokenCount = tokens.size();
 	if (tokenCount % 2 != 0)
+	{
+		printf("[ERROR][Invalid Arguments] Unmatched Key-Value pair\n");
 		return false;
+	}
 
 	for (size_t i = 0; i < tokenCount; i++)
 	{
@@ -191,21 +194,54 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 				i++;
 				continue;
 			}
+
+			if (tokens[i] == std::wstring(OffsetXW))
+			{
+				arguments[OffsetX] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(OffsetYW))
+			{
+				arguments[OffsetY] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(OffsetZW))
+			{
+				arguments[OffsetZ] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
 		}
 		else
+		{
+			printf("[ERROR][Invalid Arguments] Argument sentence error.\n");
 			return false;
+		}
 	}
 
 	if (arguments.find(OutputFolder) == arguments.end())
+	{
+		printf("[ERROR][Invalid Arguments] #outputFolder MUST be entered.\n");
 		return false;
+	}
 
 	if (arguments.find(InputFolder) == arguments.end() && arguments.find(CreateIndex) == arguments.end())
+	{
+		printf("[ERROR][Invalid Arguments] One of #inputFolder and #indexing MUST be entered.\n");
 		return false;
+	}
 
 	if (arguments.find(InputFolder) != arguments.end())
 	{
 		if (arguments.find(LogFilePath) == arguments.end() || arguments.find(MeshType) == arguments.end())
+		{
+			printf("[ERROR][Invalid Arguments] #log and #meshType are MANDATORY when #inputFolder is used.\n");
 			return false;
+		}
 	}
 
 	if (arguments.find(CreateIndex) != arguments.end())
@@ -214,7 +250,10 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			arguments[CreateIndex] != std::string("y") &&
 			arguments[CreateIndex] != std::string("N") &&
 			arguments[CreateIndex] != std::string("n"))
+		{
+			printf("[ERROR][Invalid Arguments] Value of #indexing MUST be one of [Y, y, N, n].\n");
 			return false;
+		}
 	}
 
 	if (arguments.find(PerformOC) != arguments.end())
@@ -223,7 +262,11 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			arguments[PerformOC] != std::string("y") &&
 			arguments[PerformOC] != std::string("N") &&
 			arguments[PerformOC] != std::string("n"))
+		{
+			printf("[ERROR][Invalid Arguments] Value of #oc MUST be one of [Y, y, N, n].\n");
 			return false;
+		}
+			
 	}
 
 	if (arguments.find(UnitScaleFactor) != arguments.end())
@@ -233,16 +276,21 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			double scaleFactor = std::stod(arguments[UnitScaleFactor]);
 
 			if (scaleFactor < 0.001)
+			{
+				printf("[ERROR][Invalid Arguments] Value of #usf MUST be over or equal to 0.001.\n");
 				return false;
+			}
 		}
 		catch (const std::invalid_argument& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #usf : %s.\n", errorMessage.c_str());
 			return false;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #usf : %s.\n", errorMessage.c_str());
 			return false;
 		}
 	}
@@ -255,16 +303,21 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			int nSkinLevel = std::stoi(skinLevel);
 
 			if (nSkinLevel > 4 || nSkinLevel < 1)
+			{
+				printf("[ERROR][Invalid Arguments] Value of #skinLevel MUST be one of [1, 2, 3, 4].\n");
 				return false;
+			}
 		}
 		catch (const std::invalid_argument& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #skinLevel : %s.\n", errorMessage.c_str());
 			return false;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #skinLevel : %s.\n", errorMessage.c_str());
 			return false;
 		}
 	}
@@ -275,13 +328,30 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			arguments[IsYAxisUp] != std::string("y") &&
 			arguments[IsYAxisUp] != std::string("N") &&
 			arguments[IsYAxisUp] != std::string("n"))
+		{
+			printf("[ERROR][Invalid Arguments] Value of #isYAxisUp MUST be one of [Y, y, N, n].\n");
 			return false;
+		}
 	}
 
 	if (arguments.find(ReferenceLonLat) != arguments.end() &&
 		arguments.find(Epsg) != arguments.end())
 	{
-		printf("[ERROR]EPSG and Reference Lon/Lat CANNOT be used at the same time.\n");
+		printf("[ERROR][Invalid Arguments] #epsg and #referenceLonLat CANNOT be used at the same time.\n");
+		return false;
+	}
+
+	if (arguments.find(ReferenceLonLat) != arguments.end() &&
+		(arguments.find(OffsetX) != arguments.end() || arguments.find(OffsetY) != arguments.end()))
+	{
+		printf("[ERROR][Invalid Arguments] #referenceLonLan CANNOT be used with #offsetX or #offsetY.\n");
+		return false;
+	}
+
+	if (arguments.find(AlignToCenter) != arguments.end() &&
+		(arguments.find(Epsg) != arguments.end() || arguments.find(ReferenceLonLat) != arguments.end()))
+	{
+		printf("[ERROR][Invalid Arguments] #alignToCenter CANNOT be used with #epsg or #referenceLonLat.\n");
 		return false;
 	}
 
@@ -295,12 +365,14 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		if (lon == NULL)
 		{
 			delete[] original;
+			printf("[ERROR][Invalid Arguments] Value of #referenceLonLat MUST be of [numericValue,numericValue] format.\n");
 			return false;
 		}
 		char* lat = std::strtok(NULL, ",");
 		if (lat == NULL)
 		{
 			delete[] original;
+			printf("[ERROR][Invalid Arguments] Value of #referenceLonLat MUST be of [numericValue,numericValue] format.\n");
 			return false;
 		}
 
@@ -313,12 +385,14 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		{
 			std::string errorMessage = error.what();
 			delete[] original;
+			printf("[ERROR][Invalid Arguments] Value of #referenceLonLat : %s\n", errorMessage.c_str());
 			return false;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
 			delete[] original;
+			printf("[ERROR][Invalid Arguments] Value of #referenceLonLat : %s\n", errorMessage.c_str());
 			return false;
 		}
 
@@ -334,17 +408,22 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			//if(meshType != 1 && meshType != 2) // AIT version
 			//if (meshType != 0) // release version
 			//if (meshType != 2 && meshType != 0) // for romania
-			if(meshType > 3 || meshType < 0) // for full type.
+			if (meshType > 3 || meshType < 0) // for full type.
+			{
+				printf("[ERROR][Invalid Arguments] Value of #meshType MUST be one of [0, 1, 2, 3].\n");
 				return false;
+			}
 		}
 		catch (const std::invalid_argument& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #meshType : %s.\n", errorMessage.c_str());
 			return false;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #meshType : %s.\n", errorMessage.c_str());
 			return false;
 		}
 	}
@@ -355,7 +434,10 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			arguments[AlignToCenter] != std::string("y") &&
 			arguments[AlignToCenter] != std::string("N") &&
 			arguments[AlignToCenter] != std::string("n"))
+		{
+			printf("[ERROR][Invalid Arguments] Value of #alignToCenter MUST be one of [Y, y, N, n].\n");
 			return false;
+		}
 	}
 
 	if (arguments.find(Epsg) != arguments.end())
@@ -367,11 +449,73 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		catch (const std::invalid_argument& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #epsg : %s.\n", errorMessage.c_str());
 			return false;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #epsg : %s.\n", errorMessage.c_str());
+			return false;
+		}
+	}
+
+	if (arguments.find(OffsetX) != arguments.end())
+	{
+		try
+		{
+			double offsetX = std::stod(arguments[OffsetX]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #offsetX : %s.\n", errorMessage.c_str());
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #offsetX : %s.\n", errorMessage.c_str());
+			return false;
+		}
+	}
+
+	if (arguments.find(OffsetY) != arguments.end())
+	{
+		try
+		{
+			double offsetY = std::stod(arguments[OffsetY]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #offsetY : %s.\n", errorMessage.c_str());
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #offsetY : %s.\n", errorMessage.c_str());
+			return false;
+		}
+	}
+
+	if (arguments.find(OffsetZ) != arguments.end())
+	{
+		try
+		{
+			double offsetZ = std::stod(arguments[OffsetZ]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #offsetZ : %s.\n", errorMessage.c_str());
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #offsetZ : %s.\n", errorMessage.c_str());
 			return false;
 		}
 	}
@@ -539,9 +683,30 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 				continue;
 			}
 
-			if (tokens[i] == std::wstring(Epsg))
+			if (tokens[i] == std::string(Epsg))
 			{
 				arguments[Epsg] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(OffsetX))
+			{
+				arguments[OffsetX] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(OffsetY))
+			{
+				arguments[OffsetY] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(OffsetZ))
+			{
+				arguments[OffsetZ] = tokens[i + 1];
 				i++;
 				continue;
 			}
@@ -675,6 +840,60 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 		try
 		{
 			int nEpsgCode = std::stoi(arguments[Epsg]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
+
+	if (arguments.find(OffsetX) != arguments.end())
+	{
+		try
+		{
+			double offsetX = std::stod(arguments[OffsetX]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
+
+	if (arguments.find(OffsetY) != arguments.end())
+	{
+		try
+		{
+			double offsetY = std::stod(arguments[OffsetY]);
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			return false;
+		}
+	}
+
+	if (arguments.find(OffsetZ) != arguments.end())
+	{
+		try
+		{
+			double offsetY = std::stod(arguments[OffsetZ]);
 		}
 		catch (const std::invalid_argument& error)
 		{

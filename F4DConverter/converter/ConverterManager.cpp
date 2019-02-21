@@ -45,6 +45,8 @@ CConverterManager::CConverterManager()
 	bUseReferenceLonLat = false;
 
 	bUseEpsg = false;
+
+	offsetX = offsetY = offsetZ = 0.0;
 }
 
 CConverterManager::~CConverterManager()
@@ -297,6 +299,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 		LogWriter::getLogWriter()->numberOfFilesToBeConverted += 1;
 		reader->setUnitScaleFactor(unitScaleFactor);
+		reader->setOffset(offsetX, offsetY, offsetZ);
 
 		// 1-1. inject coordinate information into reader before reading
 		if (bUseEpsg)
@@ -313,17 +316,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 			continue;
 		}
 
-		// 1.1 get embedded representative lon/lat of original dataset
-		if (reader->doesHasGeoReferencingInfo())
-		{
-			double lon, lat;
-			reader->getGeoReferencingInfo(lon, lat);
-			centerXs[dataFile] = lon;
-			centerYs[dataFile] = lat;
-		}
-
-		delete reader;
-
+		// 1.1 change F4D ID with prefix and suffix
 		std::string::size_type dotPosition = dataFile.rfind(".");
 		fullId = dataFile.substr(0, dotPosition);
 		if (!idPrefix.empty())
@@ -331,6 +324,17 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 		if (!idSuffix.empty())
 			fullId += idSuffix;
+
+		// 1.2 get representative lon/lat of original dataset
+		if (reader->doesHasGeoReferencingInfo())
+		{
+			double lon, lat;
+			reader->getGeoReferencingInfo(lon, lat);
+			centerXs[fullId] = lon;
+			centerYs[fullId] = lat;
+		}
+
+		delete reader;
 
 		processor->addAttribute(std::string(F4DID), fullId);
 
@@ -418,6 +422,73 @@ bool CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 
 		if (arguments.find(SkinLevelNsm) != arguments.end())
 			skinLevel = (unsigned char)(unsigned int)std::stoi(arguments[SkinLevelNsm]);
+
+		if (arguments.find(IdPrefix) != arguments.end())
+			idPrefix = arguments[IdPrefix];
+
+		if (arguments.find(IdSuffix) != arguments.end())
+			idSuffix = arguments[IdSuffix];
+
+		if (arguments.find(IsYAxisUp) != arguments.end())
+		{
+			if (arguments[IsYAxisUp] == std::string("Y") ||
+				arguments[IsYAxisUp] == std::string("y"))
+				bYAxisUp = true;
+			else
+				bYAxisUp = false;
+		}
+
+		if (arguments.find(ReferenceLonLat) != arguments.end())
+		{
+			size_t lonLatLength = arguments[ReferenceLonLat].length();
+			char* original = new char[lonLatLength + 1];
+			memset(original, 0x00, sizeof(char)*(lonLatLength + 1));
+			memcpy(original, arguments[ReferenceLonLat].c_str(), lonLatLength);
+			char* lon = std::strtok(original, ",");
+			char* lat = std::strtok(NULL, ",");
+			referenceLon = std::stod(lon);
+			referenceLat = std::stod(lat);
+			delete[] original;
+			bUseReferenceLonLat = true;
+		}
+
+		if (arguments.find(AlignToCenter) != arguments.end())
+		{
+			if (arguments[AlignToCenter] == std::string("Y") ||
+				arguments[AlignToCenter] == std::string("y"))
+				bAlignPostionToCenter = true;
+			else
+				bAlignPostionToCenter = false;
+		}
+
+		if (arguments.find(Epsg) != arguments.end())
+		{
+			epsgCode = arguments[Epsg];
+
+			std::string proj4String = std::string("+init=epsg:") + epsgCode;
+
+			projPJ pjEpsg;
+			pjEpsg = pj_init_plus(proj4String.c_str());
+			if (pjEpsg == NULL)
+			{
+				char* errorMsg = pj_strerrno(pj_errno);
+				LogWriter::getLogWriter()->addContents(std::string(UNSUPPERTED_EPSG_CODE), false);
+				LogWriter::getLogWriter()->addContents(epsgCode, true);
+
+				return false;
+			}
+
+			bUseEpsg = true;
+		}
+
+		if (arguments.find(OffsetX) != arguments.end())
+			offsetX = std::stod(arguments[OffsetX]);
+
+		if (arguments.find(OffsetY) != arguments.end())
+			offsetY = std::stod(arguments[OffsetY]);
+
+		if (arguments.find(OffsetZ) != arguments.end())
+			offsetY = std::stod(arguments[OffsetZ]);
 	}
 	else
 		bConversion = false;
@@ -437,64 +508,6 @@ bool CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 	}
 	else
 		bCreateIndices = false;
-
-	if (arguments.find(IdPrefix) != arguments.end())
-		idPrefix = arguments[IdPrefix];
-
-	if (arguments.find(IdSuffix) != arguments.end())
-		idSuffix = arguments[IdSuffix];
-
-	if (arguments.find(IsYAxisUp) != arguments.end())
-	{
-		if (arguments[IsYAxisUp] == std::string("Y") ||
-			arguments[IsYAxisUp] == std::string("y"))
-			bYAxisUp = true;
-		else
-			bYAxisUp = false;
-	}
-
-	if (arguments.find(ReferenceLonLat) != arguments.end())
-	{
-		size_t lonLatLength = arguments[ReferenceLonLat].length();
-		char* original = new char[lonLatLength + 1];
-		memset(original, 0x00, sizeof(char)*(lonLatLength + 1));
-		memcpy(original, arguments[ReferenceLonLat].c_str(), lonLatLength);
-		char* lon = std::strtok(original, ",");
-		char* lat = std::strtok(NULL, ",");
-		referenceLon = std::stod(lon);
-		referenceLat = std::stod(lat);
-		delete[] original;
-		bUseReferenceLonLat = true;
-	}
-
-	if (arguments.find(AlignToCenter) != arguments.end())
-	{
-		if (arguments[AlignToCenter] == std::string("Y") ||
-			arguments[AlignToCenter] == std::string("y"))
-			bAlignPostionToCenter = true;
-		else
-			bAlignPostionToCenter = false;
-	}
-
-	if (arguments.find(Epsg) != arguments.end())
-	{
-		epsgCode = arguments[Epsg];
-
-		std::string proj4String = std::string("+init=epsg:") + epsgCode;
-
-		projPJ pjEpsg;
-		pjEpsg = pj_init_plus(proj4String.c_str());
-		if (pjEpsg == NULL)
-		{
-			char* errorMsg = pj_strerrno(pj_errno);
-			LogWriter::getLogWriter()->addContents(std::string(UNSUPPERTED_EPSG_CODE), false);
-			LogWriter::getLogWriter()->addContents(epsgCode, true);
-
-			return false;
-		}
-
-		bUseEpsg = true;
-	}
 
 	return true;
 }
@@ -572,9 +585,7 @@ void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string
 		Json::Value f4d(Json::objectValue);
 
 		// data_key
-		std::string fileName = iter->first;
-		std::string::size_type dotPosition = fileName.rfind(".");
-		std::string dataKey = fileName.substr(0, dotPosition);
+		std::string dataKey = iter->first;
 		f4d["data_key"] = dataKey;
 
 		// longitude and latitude

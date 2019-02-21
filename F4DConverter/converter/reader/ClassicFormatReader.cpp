@@ -251,10 +251,10 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 		folder = filePath.substr(0, slashPosition);
 
 	gaia3d::Matrix4 scaleMatrix;
-	scaleMatrix.set(scaleMatrix.m[0][0]*unitScaleFactor, scaleMatrix.m[0][1], scaleMatrix.m[0][2], scaleMatrix.m[0][3],
-					scaleMatrix.m[1][0], scaleMatrix.m[1][1] * unitScaleFactor, scaleMatrix.m[1][2], scaleMatrix.m[1][3],
-					scaleMatrix.m[2][0], scaleMatrix.m[2][1], scaleMatrix.m[2][2] * unitScaleFactor, scaleMatrix.m[2][3],
-					scaleMatrix.m[3][0], scaleMatrix.m[3][1], scaleMatrix.m[3][2], scaleMatrix.m[3][3]);
+	scaleMatrix.set(scaleMatrix.m[0][0]*unitScaleFactor, scaleMatrix.m[0][1],					scaleMatrix.m[0][2],					scaleMatrix.m[0][3],
+					scaleMatrix.m[1][0],				 scaleMatrix.m[1][1] * unitScaleFactor, scaleMatrix.m[1][2],					scaleMatrix.m[1][3],
+					scaleMatrix.m[2][0],				 scaleMatrix.m[2][1],					scaleMatrix.m[2][2] * unitScaleFactor,  scaleMatrix.m[2][3],
+					scaleMatrix.m[3][0]+offsetX,		 scaleMatrix.m[3][1]+offsetY,			scaleMatrix.m[3][2]+offsetZ,			scaleMatrix.m[3][3]);
 	if (!proceedNode(scene->mRootNode, scene, scaleMatrix, container, textureContainer))
 		return false;
 

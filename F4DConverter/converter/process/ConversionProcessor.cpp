@@ -282,9 +282,6 @@ void ConversionProcessor::clear()
 	fullBbox.isInitialized = false;
 	fullBbox.minX = fullBbox.minY = fullBbox.minZ = 10E9;
 	fullBbox.maxX = fullBbox.maxY = fullBbox.maxZ = -10E9;
-	originalFullBbox.isInitialized = false;
-	originalFullBbox.minX = originalFullBbox.minY = originalFullBbox.minZ = 10E9;
-	originalFullBbox.maxX = originalFullBbox.maxY = originalFullBbox.maxZ = -10E9;
 
 	attributes.clear();
 
@@ -395,8 +392,7 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 	}
 
 	// calculate original bounding box
-	calculateBoundingBox(allMeshes, originalFullBbox);
-	fullBbox.addBox(originalFullBbox);
+	calculateBoundingBox(allMeshes, fullBbox);
 
 	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
 	if (settings.bAlignPositionToCenter)
@@ -573,8 +569,7 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 	}
 
 	// calculate original bounding box
-	calculateBoundingBox(allMeshes, originalFullBbox);
-	fullBbox.addBox(originalFullBbox);
+	calculateBoundingBox(allMeshes, fullBbox);
 
 	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
 	if (settings.bAlignPositionToCenter)
@@ -718,8 +713,7 @@ void ConversionProcessor::convertSingleRealisticMesh(std::vector<gaia3d::Triangl
 	}
 
 	// calculate original bounding box
-	calculateBoundingBox(allMeshes, originalFullBbox);
-	fullBbox.addBox(originalFullBbox);
+	calculateBoundingBox(allMeshes, fullBbox);
 
 	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
 	if (settings.bAlignPositionToCenter)
@@ -899,8 +893,7 @@ void ConversionProcessor::convertPointCloud(std::vector<gaia3d::TrianglePolyhedr
 	}
 
 	// calculate original bounding box
-	calculateBoundingBox(allMeshes, originalFullBbox);
-	fullBbox.addBox(originalFullBbox);
+	calculateBoundingBox(allMeshes, fullBbox);
 
 	// assign points into each octree cube
 	std::random_shuffle(allMeshes[0]->getVertices().begin(), allMeshes[0]->getVertices().end());

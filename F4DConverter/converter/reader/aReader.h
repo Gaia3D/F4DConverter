@@ -24,6 +24,8 @@ public:
 
 	virtual void setUnitScaleFactor(double factor) { unitScaleFactor = factor; }
 
+	virtual void setOffset(double x, double y, double z) { offsetX = x; offsetY = y; offsetZ = z; }
+
 	virtual bool doesHasGeoReferencingInfo() { return bHasGeoReferencingInfo; }
 
 	virtual void getGeoReferencingInfo(double& lon, double& lat) { lon = refLon; lat = refLat; }
@@ -38,6 +40,8 @@ protected:
 	std::map<std::string, std::string> textureContainer;
 
 	double unitScaleFactor;
+
+	double offsetX, offsetY, offsetZ;
 
 	bool bHasGeoReferencingInfo;
 
