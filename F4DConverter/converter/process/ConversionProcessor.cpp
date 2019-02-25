@@ -378,19 +378,6 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 	if (!originalTextureInfo.empty())
 		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
 
-
-	// change up axis from y to z
-	if (settings.bYAxisUp)
-	{
-		rotateAllMeshesAroundXAxisByQuater(allMeshes);
-		printf("[Info]Y and Z coordinates are changed to each other.\n");
-		size_t meshCount = allMeshes.size();
-		for (size_t i = 0; i < meshCount; i++)
-		{
-			allMeshes[i]->setHasNormals(false);
-		}
-	}
-
 	// calculate original bounding box
 	calculateBoundingBox(allMeshes, fullBbox);
 
@@ -556,18 +543,6 @@ void ConversionProcessor::convertSemanticData(std::vector<gaia3d::TrianglePolyhe
 	if (!originalTextureInfo.empty())
 		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
 
-	// change up axis from y to z
-	if (settings.bYAxisUp)
-	{
-		rotateAllMeshesAroundXAxisByQuater(allMeshes);
-		printf("[Info]Y and Z coordinates are changed to each other.\n");
-		size_t meshCount = allMeshes.size();
-		for (size_t i = 0; i < meshCount; i++)
-		{
-			allMeshes[i]->setHasNormals(false);
-		}
-	}
-
 	// calculate original bounding box
 	calculateBoundingBox(allMeshes, fullBbox);
 
@@ -699,18 +674,6 @@ void ConversionProcessor::convertSingleRealisticMesh(std::vector<gaia3d::Triangl
 	// copy texture info
 	if (!originalTextureInfo.empty())
 		allTextureInfo.insert(originalTextureInfo.begin(), originalTextureInfo.end());
-
-	// change up axis from y to z
-	if (settings.bYAxisUp)
-	{
-		rotateAllMeshesAroundXAxisByQuater(allMeshes);
-		printf("[Info]Y and Z coordinates are changed to each other.\n");
-		size_t meshCount = allMeshes.size();
-		for (size_t i = 0; i < meshCount; i++)
-		{
-			allMeshes[i]->setHasNormals(false);
-		}
-	}
 
 	// calculate original bounding box
 	calculateBoundingBox(allMeshes, fullBbox);
@@ -879,18 +842,6 @@ void ConversionProcessor::convertPointCloud(std::vector<gaia3d::TrianglePolyhedr
 	}
 	// copy data from original to this container
 	allMeshes.insert(allMeshes.end(), originalMeshes.begin(), originalMeshes.end());
-
-	// change up axis from y to z
-	if (settings.bYAxisUp)
-	{
-		rotateAllMeshesAroundXAxisByQuater(allMeshes);
-		printf("[Info]Y and Z coordinates are changed to each other.\n");
-		size_t meshCount = allMeshes.size();
-		for (size_t i = 0; i < meshCount; i++)
-		{
-			allMeshes[i]->setHasNormals(false);
-		}
-	}
 
 	// calculate original bounding box
 	calculateBoundingBox(allMeshes, fullBbox);
@@ -2796,24 +2747,6 @@ void ConversionProcessor::normalizeMosiacTextures(std::map<unsigned char, unsign
 		mosaicTextures[iterTexture->first] = resizedImage;
 		mosaicTextureWidth[iterTexture->first] = resizedWidth;
 		mosaicTextureHeight[iterTexture->first] = resizedHeight;
-	}
-}
-
-void ConversionProcessor::rotateAllMeshesAroundXAxisByQuater(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
-{
-	size_t meshCount = meshes.size();
-	for (size_t i = 0; i < meshCount; i++)
-	{
-		gaia3d::TrianglePolyhedron* mesh = meshes[i];
-		size_t vertexCount = mesh->getVertices().size();
-		for (size_t j = 0; j < vertexCount; j++)
-		{
-			gaia3d::Vertex* vertex = mesh->getVertices()[j];
-
-			double tmpZ = vertex->position.z;
-			vertex->position.z = vertex->position.y;
-			vertex->position.y = -tmpZ;
-		}
 	}
 }
 

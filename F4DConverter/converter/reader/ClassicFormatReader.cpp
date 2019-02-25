@@ -14,6 +14,7 @@
 #include "../util/utility.h"
 
 std::string folder;
+bool bMustChangeYZCoordinate = false;
 
 bool proceedMesh(aiMesh* mesh,
 				const aiScene* scene,
@@ -86,6 +87,7 @@ bool proceedMesh(aiMesh* mesh,
 		polyhedron->setHasNormals(true);
 
 	// access to vertices
+	double tmpZ;
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
 		gaia3d::Vertex* vertex = new gaia3d::Vertex;
@@ -94,6 +96,13 @@ bool proceedMesh(aiMesh* mesh,
 		vertex->position.y = mesh->mVertices[i].y;
 		vertex->position.z = mesh->mVertices[i].z;
 
+		if (bMustChangeYZCoordinate)
+		{
+			tmpZ = vertex->position.z;
+			vertex->position.z = vertex->position.y;
+			vertex->position.y = -tmpZ;
+		}
+
 		vertex->position = transform * vertex->position;
 
 		if (mesh->HasNormals())
@@ -101,6 +110,13 @@ bool proceedMesh(aiMesh* mesh,
 			vertex->normal.x = mesh->mNormals[i].x;
 			vertex->normal.y = mesh->mNormals[i].y;
 			vertex->normal.z = mesh->mNormals[i].z;
+
+			if (bMustChangeYZCoordinate)
+			{
+				tmpZ = vertex->normal.z;
+				vertex->normal.z = vertex->normal.y;
+				vertex->normal.y = -tmpZ;
+			}
 
 			transform.applyOnlyRotationOnPoint(vertex->normal);
 
@@ -212,11 +228,6 @@ bool proceedNode(aiNode* node,
 
 ClassicFormatReader::ClassicFormatReader()
 {
-	unitScaleFactor = 1.0;
-
-	bHasGeoReferencingInfo = false;
-
-	bCoordinateInfoInjected = false;
 }
 
 
@@ -251,6 +262,10 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 		folder = filePath.substr(0, slashPosition);
 
 	gaia3d::Matrix4 scaleMatrix;
+	/*if (bYAxisUp)
+		scaleMatrix.rotationInDegree(90.0, 1.0, 0.0, 0.0);*/
+	bMustChangeYZCoordinate = bYAxisUp;
+
 	scaleMatrix.set(scaleMatrix.m[0][0]*unitScaleFactor, scaleMatrix.m[0][1],					scaleMatrix.m[0][2],					scaleMatrix.m[0][3],
 					scaleMatrix.m[1][0],				 scaleMatrix.m[1][1] * unitScaleFactor, scaleMatrix.m[1][2],					scaleMatrix.m[1][3],
 					scaleMatrix.m[2][0],				 scaleMatrix.m[2][1],					scaleMatrix.m[2][2] * unitScaleFactor,  scaleMatrix.m[2][3],

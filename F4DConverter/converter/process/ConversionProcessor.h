@@ -34,7 +34,6 @@ public:
 	void setExteriorVisibilityIndexingOctreeDepth(unsigned char depth) { settings.exteriorVisibilityIndexingOctreeDepth = depth; }
 	void clearNsmSettings() { settings.clearNsmSettings(); }
 	void setSkinLevel(unsigned char level) { settings.netSurfaceMeshSettingIndex = level; }
-	void setYAxisUp(bool bUp) { settings.bYAxisUp = bUp; }
 	void setAlignPostionToCenter(bool bAlign) { settings.bAlignPositionToCenter = bAlign; }
 	void setMeshType(int type) { settings.meshType = type; }
 	int getMeshType() { return settings.meshType; }
@@ -226,8 +225,6 @@ protected:
 	void normalizeMosiacTextures(std::map<unsigned char, unsigned char*>& mosaicTextures,
 								std::map<unsigned char, int>& mosaicTextureWidth,
 								std::map<unsigned char, int>& mosaicTextureHeight);
-
-	void rotateAllMeshesAroundXAxisByQuater(std::vector<gaia3d::TrianglePolyhedron*>& meshes);
 
 	void changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(std::vector<gaia3d::TrianglePolyhedron*>& meshes, gaia3d::BoundingBox& bbox);
 

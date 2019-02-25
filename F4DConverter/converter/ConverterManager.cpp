@@ -238,8 +238,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	// now, only set wheter do occlusion culling or not
 	processor->setVisibilityIndexing(bOcclusionCulling);
 	processor->setSkinLevel(skinLevel);
-	processor->setYAxisUp(bYAxisUp);
-	processor->setAlignPostionToCenter(bAlignPostionToCenter);
+	//processor->setAlignPostionToCenter(bAlignPostionToCenter);
 	processor->setMeshType(meshType);
 	switch (meshType)
 	{
@@ -300,6 +299,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 		LogWriter::getLogWriter()->numberOfFilesToBeConverted += 1;
 		reader->setUnitScaleFactor(unitScaleFactor);
 		reader->setOffset(offsetX, offsetY, offsetZ);
+		reader->setYAxisUp(bYAxisUp);
 
 		// 1-1. inject coordinate information into reader before reading
 		if (bUseEpsg)

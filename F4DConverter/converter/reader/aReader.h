@@ -11,7 +11,16 @@ class aReader abstract
 public:
 	aReader() {}
 
-	virtual ~aReader() {}
+	virtual ~aReader()
+	{
+		unitScaleFactor = 1.0;
+
+		bHasGeoReferencingInfo = false;
+
+		bCoordinateInfoInjected = false;
+
+		bYAxisUp = false;
+	}
 
 public:
 	virtual bool readRawDataFile(std::string& filePath) = 0;
@@ -26,6 +35,8 @@ public:
 
 	virtual void setOffset(double x, double y, double z) { offsetX = x; offsetY = y; offsetZ = z; }
 
+	virtual void setYAxisUp(bool bUp) { bYAxisUp = bUp; }
+
 	virtual bool doesHasGeoReferencingInfo() { return bHasGeoReferencingInfo; }
 
 	virtual void getGeoReferencingInfo(double& lon, double& lat) { lon = refLon; lat = refLat; }
@@ -38,6 +49,8 @@ protected:
 	std::vector<gaia3d::TrianglePolyhedron*> container;
 
 	std::map<std::string, std::string> textureContainer;
+
+	bool bYAxisUp;
 
 	double unitScaleFactor;
 
