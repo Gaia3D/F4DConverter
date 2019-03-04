@@ -785,6 +785,7 @@ void ConversionProcessor::convertSingleRealisticMesh(std::vector<gaia3d::Triangl
 	lodMadeOfOriginalMesh[2] = 2;
 	lodMadeOfOriginalMesh[3] = 3;
 	lodMadeOfOriginalMesh[4] = 4;
+	lodMadeOfOriginalMesh[5] = 5;
 	makeNetSurfaceMeshes(thisSpatialOctree, resizedTextures, allTextureWidths, allTextureHeights, lodMadeOfOriginalMesh);
 	printf("[Info]Net Surface Mesh created.\n");
 
