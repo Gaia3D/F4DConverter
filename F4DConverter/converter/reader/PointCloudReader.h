@@ -5,7 +5,7 @@
 #include "aReader.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "../external/liblas/lib/liblasD.lib")
+#pragma comment(lib, "../external/liblas/lib/liblasd.lib")
 #else
 #pragma comment(lib, "../external/liblas/lib/liblas.lib")
 #endif

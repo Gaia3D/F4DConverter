@@ -375,6 +375,7 @@ bool CConverterManager::processDataFile(std::string& filePath, aReader* reader)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CANNOT_LOAD_FILE), false);
+		printf("[ERROR]%s\n", std::string(CANNOT_LOAD_FILE).c_str());
 		return false;
 	}
 
@@ -382,6 +383,7 @@ bool CConverterManager::processDataFile(std::string& filePath, aReader* reader)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_IN_RAW_DATA), false);
+		printf("[ERROR]%s\n", std::string(NO_DATA_IN_RAW_DATA).c_str());
 		return false;
 	}
 
@@ -389,6 +391,7 @@ bool CConverterManager::processDataFile(std::string& filePath, aReader* reader)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CONVERSION_FAILURE), false);
+		printf("[ERROR]%s\n", std::string(CONVERSION_FAILURE).c_str());
 		return false;
 	}
 

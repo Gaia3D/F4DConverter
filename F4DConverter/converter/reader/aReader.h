@@ -6,6 +6,8 @@
 
 #include "../geometry/TrianglePolyhedron.h"
 
+#pragma comment(lib, "../external/proj/lib/proj_5_2.lib")
+
 class aReader abstract
 {
 public:

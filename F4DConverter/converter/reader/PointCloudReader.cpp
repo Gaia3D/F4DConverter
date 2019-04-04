@@ -8,7 +8,7 @@
 #include "liblas/liblas.hpp"
 #include <fstream>  // std::ifstream
 #include <proj_api.h>
-#include <ogr_spatialref.h>
+//#include <ogr_spatialref.h>
 
 #include "../util/utility.h"
 
@@ -37,51 +37,54 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 
 	// find CRS info of this .las for georeferencing
 	std::string originalSrsProjString;
-	const std::vector<liblas::VariableRecord> vlrs = header.GetVLRs();
-	std::string const lasProjId("LASF_Projection");
-	std::string const liblasId("liblas");
+//	const std::vector<liblas::VariableRecord> vlrs = header.GetVLRs();
+//	std::string const lasProjId("LASF_Projection");
+//	std::string const liblasId("liblas");
+//
+//	size_t vlrCount = vlrs.size();
+//	for (size_t i = 0; i < vlrCount; i++)
+//	{
+//		liblas::VariableRecord vlr = vlrs[i];
+//
+//		unsigned short recordId = vlr.GetRecordId();
+//		if (recordId == 2112) //OGR Wkt
+//		{
+//			const liblas::IndexVLRData data = vlr.GetData();
+//			size_t wktLength = data.size();
+//			unsigned char* poWkt = new unsigned char[wktLength];
+//			memset(poWkt, 0x00, sizeof(unsigned char)*wktLength);
+//			for (size_t j = 0; j < wktLength; j++)
+//			{
+//				poWkt[j] = data[j];
+//			}
+//
+//				
+//			std::string stringWkt((char*)poWkt);
+//			delete[] poWkt;
+//			const char* finalWkt = stringWkt.c_str();
+//
+//			OGRSpatialReference srs(NULL);
+//#if GDAL_VERSION_MAJOR > 2 || (GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR >= 3)
+//			if (OGRERR_NONE != srs.importFromWkt(stringWkt.c_str()))
+//#else
+//			if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
+//#endif
+//			{
+//				break;
+//			}
+//
+//			char* proj4;
+//			srs.exportToProj4(&proj4);
+//			originalSrsProjString = std::string(proj4);
+//			CPLFree(proj4);
+//		}
+//		else // geotiff
+//		{
+//		}
+//	}
 
-	size_t vlrCount = vlrs.size();
-	for (size_t i = 0; i < vlrCount; i++)
-	{
-		liblas::VariableRecord vlr = vlrs[i];
-
-		unsigned short recordId = vlr.GetRecordId();
-		if (recordId == 2112) //OGR Wkt
-		{
-			const liblas::IndexVLRData data = vlr.GetData();
-			size_t wktLength = data.size();
-			unsigned char* poWkt = new unsigned char[wktLength];
-			memset(poWkt, 0x00, sizeof(unsigned char)*wktLength);
-			for (size_t j = 0; j < wktLength; j++)
-			{
-				poWkt[j] = data[j];
-			}
-
-				
-			std::string stringWkt((char*)poWkt);
-			delete[] poWkt;
-			const char* finalWkt = stringWkt.c_str();
-
-			OGRSpatialReference srs(NULL);
-#if GDAL_VERSION_MAJOR > 2 || (GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR >= 3)
-			if (OGRERR_NONE != srs.importFromWkt(stringWkt.c_str()))
-#else
-			if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
-#endif
-			{
-				break;
-			}
-
-			char* proj4;
-			srs.exportToProj4(&proj4);
-			originalSrsProjString = std::string(proj4);
-			CPLFree(proj4);
-		}
-		else // geotiff
-		{
-		}
-	}
+	liblas::SpatialReference spatialReference = header.GetSRS();
+	originalSrsProjString = spatialReference.GetProj4();
 
 	if (originalSrsProjString.empty())
 		return false;
