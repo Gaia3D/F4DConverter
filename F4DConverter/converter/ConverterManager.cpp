@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include "proj_api.h"
+#include "cpl_serv.h"
 
 #include "../argumentDefinition.h"
 #include "./reader/ReaderFactory.h"
@@ -57,6 +58,20 @@ CConverterManager::~CConverterManager()
 
 
 // CConverterManager 멤버 함수
+#ifdef _DEBUG
+#pragma comment(lib, "../external/geotiff/lib/geotiff_d.lib")
+#else
+#pragma comment(lib, "../external/geotiff/lib/geotiff.lib")
+#endif
+std::string csvFullPath;
+static const char* CSVFileFullPathOverride(const char* baseFile)
+{
+	static char szPath[1024];
+
+	sprintf(szPath, "%s/%s", csvFullPath.c_str(), baseFile);
+
+	return szPath;
+}
 
 bool CConverterManager::initialize(std::map<std::string, std::string>& arguments)
 {
@@ -74,6 +89,10 @@ bool CConverterManager::initialize(std::map<std::string, std::string>& arguments
 		pj_set_searchpath(0, NULL);
 		return false;
 	}
+
+	csvFullPath = programFolder + std::string("csv");
+
+	SetCSVFilenameHook(CSVFileFullPathOverride);
 
 	if(processor == NULL)
 		processor = new ConversionProcessor();
