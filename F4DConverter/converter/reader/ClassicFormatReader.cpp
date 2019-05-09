@@ -237,6 +237,22 @@ ClassicFormatReader::~ClassicFormatReader()
 
 bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 {
+	// before processing more, check if the georeferencing information is valid
+	projPJ pjSrc = NULL, pjWgs84 = NULL;
+	if (bCoordinateInfoInjected)
+	{
+		std::string originalSrsProjString = makeProj4String();
+		std::string wgs84ProjString("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
+
+		pjSrc = pj_init_plus(originalSrsProjString.c_str());
+		pjWgs84 = pj_init_plus(wgs84ProjString.c_str());
+		if (pjSrc == NULL || pjWgs84 == NULL)
+		{
+			printf("[ERROR][proj4]CANNOT initialize SRS\n");
+			return false;
+		}
+	}
+	
 	Assimp::Importer importer;
 
 	const aiScene* scene = importer.ReadFile(filePath,
@@ -276,21 +292,6 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 	// transform coordinates if information for georeferencing is injected.
 	if (bCoordinateInfoInjected)
 	{
-		std::string originalSrsProjString = makeProj4String();
-		std::string wgs84ProjString("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
-
-		projPJ pjSrc = pj_init_plus(originalSrsProjString.c_str());
-		projPJ pjWgs84 = pj_init_plus(wgs84ProjString.c_str());
-		if (pjSrc == NULL || pjWgs84 == NULL)
-		{
-			printf("[ERROR][proj4]CANNOT initialize SRS\n");
-			size_t meshCount = container.size();
-			for (size_t i = 0; i < meshCount; i++)
-				delete container[i];
-			container.clear();
-			return false;
-		}
-
 		gaia3d::BoundingBox bbox;
 		size_t meshCount = container.size();
 		for (size_t i = 0; i < meshCount; i++)

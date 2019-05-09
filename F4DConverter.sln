@@ -11,6 +11,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IfcLoader", "IfcLoader\IfcLoader.vcxproj", "{C165D128-F816-4CD1-B168-C099D2BA7D28}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "SetupF4DConverter", "SetupF4DConverter\SetupF4DConverter.vdproj", "{F719F2A2-B506-48AA-88A1-C75C27CC7360}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C165D128-F816-4CD1-B168-C099D2BA7D28} = {C165D128-F816-4CD1-B168-C099D2BA7D28}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
