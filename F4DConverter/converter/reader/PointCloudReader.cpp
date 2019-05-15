@@ -5,10 +5,20 @@
 
 #include "PointCloudReader.h"
 
-#include "liblas/liblas.hpp"
 #include <fstream>  // std::ifstream
+
 #include <proj_api.h>
-//#include <ogr_spatialref.h>
+
+#include <ogr_spatialref.h>
+#include <cpl_conv.h>
+
+//#include <geotiff.h>
+//#include <geo_simpletags.h>
+#include <geo_normalize.h>
+//#include <geo_simpletags.h>
+//#include <geovalues.h>
+
+#include "liblas/liblas.hpp"
 
 #include "../util/utility.h"
 
@@ -87,7 +97,70 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 	originalSrsProjString = spatialReference.GetProj4();
 
 	if (originalSrsProjString.empty())
-		return false;
+	{
+		// in this case, must get srs info through wkt or geotiff api
+
+		std::string wkt = spatialReference.GetWKT();
+		if (!wkt.empty())
+		{
+			// in this case, must change wkt info into proj4
+			const char* poWKT = wkt.c_str();
+			OGRSpatialReference srs(NULL);
+			if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
+				return false;
+
+			char* pszProj4 = NULL;
+			srs.exportToProj4(&pszProj4);
+			if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
+				return false;
+
+			originalSrsProjString = std::string(pszProj4);
+			CPLFree(pszProj4);
+
+			if (originalSrsProjString.empty())
+				return false;
+		}
+		else
+		{
+			// in this case, must change geotiff info into proj4
+			const GTIF* originalGtif = spatialReference.GetGTIF();
+			if (originalGtif == NULL)
+				return false;
+
+			GTIF* temp = NULL;
+			memcpy(&temp, &originalGtif, sizeof(GTIF*));
+			GTIFDefn defn;
+			if (GTIFGetDefn(temp, &defn) == 0)
+				return false;
+
+			char* pszWKT = GTIFGetOGISDefn(temp, &defn);
+			if (pszWKT == NULL)
+				return false;
+
+			OGRSpatialReference srs(NULL);
+			char* pOriginalWkt = pszWKT;
+			if (OGRERR_NONE != srs.importFromWkt(&pOriginalWkt))
+			{
+				CPLFree(pszWKT);
+				return false;
+			}
+
+			char* pszProj4 = NULL;
+			if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
+			{
+				CPLFree(pszWKT);
+				return false;
+			}
+
+			originalSrsProjString = std::string(pszProj4);
+			
+			CPLFree(pszProj4);
+			CPLFree(pszWKT);
+
+			if (originalSrsProjString.empty())
+				return false;
+		}
+	}
 
 	projPJ pjSrc = pj_init_plus(originalSrsProjString.c_str());
 	if (!pjSrc)

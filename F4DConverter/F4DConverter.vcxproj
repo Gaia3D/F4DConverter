@@ -108,13 +108,13 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;$(SolutionDir)external/geotiff/lib/geotiff_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)external/boost_1_68_0/lib64-msvc-14.0;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -144,7 +144,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -152,7 +152,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external/glew-2.0.0/lib/Release/x64/glew32.lib;glu32.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;$(SolutionDir)external/geotiff/lib/geotiff.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)external/boost_1_68_0/lib64-msvc-14.0;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

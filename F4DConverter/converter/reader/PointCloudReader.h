@@ -10,6 +10,8 @@
 #pragma comment(lib, "../external/liblas/lib/liblas.lib")
 #endif
 
+#pragma comment(lib, "../external/gdal/lib/gdal_i.lib")
+
 
 class PointCloudReader : public aReader
 {
