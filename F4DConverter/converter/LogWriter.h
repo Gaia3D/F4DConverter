@@ -32,6 +32,7 @@
 #define UNLOADABLE_MESH_EXISTS		"[At least 1 unloadable mesh exists]"
 #define INVAID_ORIGINAL_MESH_TYPE	"[Invalid original mesh type]"
 #define UNSUPPERTED_EPSG_CODE		"[Unable to understand the EPSG code]"
+#define CANNOT_DELETE_FILE			"[Unable to delete a file]"
 
 class LogWriter
 {

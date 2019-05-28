@@ -12,11 +12,7 @@
 #include <ogr_spatialref.h>
 #include <cpl_conv.h>
 
-//#include <geotiff.h>
-//#include <geo_simpletags.h>
 #include <geo_normalize.h>
-//#include <geo_simpletags.h>
-//#include <geovalues.h>
 
 #include "liblas/liblas.hpp"
 
@@ -34,6 +30,25 @@ PointCloudReader::~PointCloudReader()
 
 bool PointCloudReader::readRawDataFile(std::string& filePath)
 {
+	std::string::size_type dotPosition = filePath.rfind(".");
+	std::string::size_type fileExtLength = filePath.length() - dotPosition - 1;
+	std::string fileExt = filePath.substr(dotPosition + 1, fileExtLength);
+	std::transform(fileExt.begin(), fileExt.end(), fileExt.begin(), towlower);
+
+	if (fileExt.compare(std::string("las")) == 0)
+		return readLasFile(filePath);
+	else if (fileExt.compare(std::string("tpc")) == 0)
+		return readTemporaryPointCloudFile(filePath);
+	else
+		return false;
+}
+
+#define ALLOWED_MAX_POINT_COUNT 100000000
+
+void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer);
+
+bool PointCloudReader::readLasFile(std::string& filePath)
+{
 	// open a .las file with input file stream
 	std::ifstream ifs;
 	ifs.open(filePath, std::ios::in | std::ios::binary);
@@ -47,51 +62,6 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 
 	// find CRS info of this .las for georeferencing
 	std::string originalSrsProjString;
-//	const std::vector<liblas::VariableRecord> vlrs = header.GetVLRs();
-//	std::string const lasProjId("LASF_Projection");
-//	std::string const liblasId("liblas");
-//
-//	size_t vlrCount = vlrs.size();
-//	for (size_t i = 0; i < vlrCount; i++)
-//	{
-//		liblas::VariableRecord vlr = vlrs[i];
-//
-//		unsigned short recordId = vlr.GetRecordId();
-//		if (recordId == 2112) //OGR Wkt
-//		{
-//			const liblas::IndexVLRData data = vlr.GetData();
-//			size_t wktLength = data.size();
-//			unsigned char* poWkt = new unsigned char[wktLength];
-//			memset(poWkt, 0x00, sizeof(unsigned char)*wktLength);
-//			for (size_t j = 0; j < wktLength; j++)
-//			{
-//				poWkt[j] = data[j];
-//			}
-//
-//				
-//			std::string stringWkt((char*)poWkt);
-//			delete[] poWkt;
-//			const char* finalWkt = stringWkt.c_str();
-//
-//			OGRSpatialReference srs(NULL);
-//#if GDAL_VERSION_MAJOR > 2 || (GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR >= 3)
-//			if (OGRERR_NONE != srs.importFromWkt(stringWkt.c_str()))
-//#else
-//			if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
-//#endif
-//			{
-//				break;
-//			}
-//
-//			char* proj4;
-//			srs.exportToProj4(&proj4);
-//			originalSrsProjString = std::string(proj4);
-//			CPLFree(proj4);
-//		}
-//		else // geotiff
-//		{
-//		}
-//	}
 
 	liblas::SpatialReference spatialReference = header.GetSRS();
 	originalSrsProjString = spatialReference.GetProj4();
@@ -167,6 +137,15 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 	{
 		ifs.close();
 		return false;
+	}
+
+	unsigned int pointCount = header.GetPointRecordsCount();
+	if (pointCount > ALLOWED_MAX_POINT_COUNT)
+	{
+		splitOriginalDataIntoSubDivisionsAndDump(reader, originalSrsProjString, temporaryFiles);
+		ifs.close();
+
+		return true;
 	}
 	
 	std::string wgs84ProjString("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
@@ -299,11 +278,20 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 	return true;
 }
 
+bool PointCloudReader::readTemporaryPointCloudFile(std::string& filePath)
+{
+	return false;
+}
+
 void PointCloudReader::clear()
 {
 	container.clear();
 
 	textureContainer.clear();
+}
+
+void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer)
+{
 }
 
 #endif

@@ -47,6 +47,8 @@ public:
 
 	virtual void injectSrsInfo(std::string& epsg) { this->epsg = epsg; bCoordinateInfoInjected = true; }
 
+	virtual std::map<std::string, std::string>& getTemporaryFiles() { return temporaryFiles; }
+
 protected:
 	std::vector<gaia3d::TrianglePolyhedron*> container;
 
@@ -85,4 +87,6 @@ protected:
 
 		return proj4String;
 	}
+
+	std::map<std::string, std::string> temporaryFiles;
 };

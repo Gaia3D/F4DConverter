@@ -67,6 +67,8 @@ private:
 	bool processDataFile(std::string& filePath, aReader* reader);
 
 	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);
+
+	void processSingleLoop(std::map<std::string, std::string>& targetFiles, std::map<std::string, double>& centerXs, std::map<std::string, double>& centerYs, unsigned char depth);
 };
 
 

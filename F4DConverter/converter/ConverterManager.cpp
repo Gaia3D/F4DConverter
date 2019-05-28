@@ -298,10 +298,33 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	//processor->setAlignPostionToCenter(true);
 	//processor->setLeafSpatialOctreeSize(422.0f);
 
+	std::map<std::string, double> centerXs, centerYs;
+	processSingleLoop(targetFiles, centerXs, centerYs, 0);
+
+	// save representative lon / lat of F4D if a reference file exists
+	if (!centerXs.empty() && !centerYs.empty())
+	{
+		writeRepresentativeLonLatOfEachData(centerXs, centerYs);
+	}
+}
+
+bool CConverterManager::writeIndexFile()
+{
+	F4DWriter writer(NULL);
+	writer.setWriteFolder(outputFolderPath);
+	writer.writeIndexFile();
+
+	return true;
+}
+
+void CConverterManager::processSingleLoop(std::map<std::string, std::string>& targetFiles,
+										std::map<std::string, double>& centerXs,
+										std::map<std::string, double>& centerYs,
+										unsigned char depth)
+{
 	std::string outputFolder = outputFolderPath;
 
 	std::string fullId;
-	std::map<std::string, double> centerXs, centerYs;
 	std::map<std::string, std::string>::iterator iter = targetFiles.begin();
 	for (; iter != targetFiles.end(); iter++)
 	{
@@ -315,7 +338,9 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 		printf("===== Start processing this file : %s\n", dataFile.c_str());
 
-		LogWriter::getLogWriter()->numberOfFilesToBeConverted += 1;
+		if(depth == 0)
+			LogWriter::getLogWriter()->numberOfFilesToBeConverted += 1;
+
 		reader->setUnitScaleFactor(unitScaleFactor);
 		reader->setOffset(offsetX, offsetY, offsetZ);
 		reader->setYAxisUp(bYAxisUp);
@@ -332,6 +357,25 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 			LogWriter::getLogWriter()->addContents(dataFileFullPath, true);
 			delete reader;
 			processor->clear();
+			continue;
+		}
+
+		if (!reader->getTemporaryFiles().empty())
+		{
+			// run recursively
+			processSingleLoop(reader->getTemporaryFiles(), centerXs, centerYs, depth + 1);
+
+			// delete temporary files
+			std::map<std::string, std::string>::iterator tmpFileIter = reader->getTemporaryFiles().begin();
+			for (; tmpFileIter != reader->getTemporaryFiles().end(); tmpFileIter++)
+			{
+				if (remove(tmpFileIter->second.c_str()) != 0)
+				{
+					LogWriter::getLogWriter()->addContents(std::string(CANNOT_DELETE_FILE), false);
+					LogWriter::getLogWriter()->addContents(tmpFileIter->second, true);
+				}
+			}
+
 			continue;
 		}
 
@@ -369,23 +413,9 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 		// 3. processor clear
 		processor->clear();
-		LogWriter::getLogWriter()->numberOfFilesConverted += 1;
+		if(depth == 0)
+			LogWriter::getLogWriter()->numberOfFilesConverted += 1;
 	}
-
-	// save representative lon / lat of F4D if a reference file exists
-	if (!centerXs.empty() && !centerYs.empty())
-	{
-		writeRepresentativeLonLatOfEachData(centerXs, centerYs);
-	}
-}
-
-bool CConverterManager::writeIndexFile()
-{
-	F4DWriter writer(NULL);
-	writer.setWriteFolder(outputFolderPath);
-	writer.writeIndexFile();
-
-	return true;
 }
 
 bool CConverterManager::processDataFile(std::string& filePath, aReader* reader)
@@ -397,6 +427,9 @@ bool CConverterManager::processDataFile(std::string& filePath, aReader* reader)
 		printf("[ERROR]%s\n", std::string(CANNOT_LOAD_FILE).c_str());
 		return false;
 	}
+
+	if (!reader->getTemporaryFiles().empty())
+		return true;
 
 	if (reader->getDataContainer().size() == 0)
 	{

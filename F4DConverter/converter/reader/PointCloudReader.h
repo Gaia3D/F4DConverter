@@ -23,6 +23,10 @@ public:
 	virtual bool readRawDataFile(std::string& filePath);
 
 	virtual void clear();
+
+private:
+	bool readLasFile(std::string& filePath);
+	bool readTemporaryPointCloudFile(std::string& filePath);
 };
 
 #endif
