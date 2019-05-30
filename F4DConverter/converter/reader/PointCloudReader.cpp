@@ -45,7 +45,7 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 
 #define ALLOWED_MAX_POINT_COUNT 100000000
 
-void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer);
+void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer, std::string& originalFilePath);
 
 bool PointCloudReader::readLasFile(std::string& filePath)
 {
@@ -142,8 +142,10 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 	unsigned int pointCount = header.GetPointRecordsCount();
 	if (pointCount > ALLOWED_MAX_POINT_COUNT)
 	{
-		splitOriginalDataIntoSubDivisionsAndDump(reader, originalSrsProjString, temporaryFiles);
+		splitOriginalDataIntoSubDivisionsAndDump(reader, originalSrsProjString, temporaryFiles, filePath);
 		ifs.close();
+
+		printf("[Info]Original file is splitted into %zd sub files and dumped.\n", temporaryFiles.size());
 
 		return true;
 	}
@@ -280,7 +282,180 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 
 bool PointCloudReader::readTemporaryPointCloudFile(std::string& filePath)
 {
-	return false;
+	FILE* file = NULL;
+	file = fopen(filePath.c_str(), "rb");
+
+	unsigned int proj4StringLength;
+	fread(&proj4StringLength, sizeof(unsigned int), 1, file);
+
+	char szProj4String[1024];
+	memset(szProj4String, 0x00, 1024);
+	fread(szProj4String, sizeof(char), proj4StringLength, file);
+
+	std::string originalSrsProjString = std::string(szProj4String);
+	projPJ pjSrc = pj_init_plus(originalSrsProjString.c_str());
+	if (!pjSrc)
+	{
+		fclose(file);
+		return false;
+	}
+
+	std::string wgs84ProjString("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
+	projPJ pjDst = pj_init_plus(wgs84ProjString.c_str());
+	if (!pjDst)
+	{
+		fclose(file);
+		return false;
+	}
+
+	double x, y, z;
+	unsigned short or, og, ob, maxColorComponent = 0;
+	gaia3d::TrianglePolyhedron* polyhedron = new gaia3d::TrianglePolyhedron;
+	gaia3d::Vertex* vertex = NULL;
+	double minx, miny, minz, maxx, maxy, maxz;
+	bool bboxInitialized = false;
+	unsigned short* reds = new unsigned short[ALLOWED_MAX_POINT_COUNT];
+	memset(reds, 0x00, sizeof(unsigned short) * ALLOWED_MAX_POINT_COUNT);
+	unsigned short* greens = new unsigned short[ALLOWED_MAX_POINT_COUNT];
+	memset(greens, 0x00, sizeof(unsigned short) * ALLOWED_MAX_POINT_COUNT);
+	unsigned short* blues = new unsigned short[ALLOWED_MAX_POINT_COUNT];
+	memset(blues, 0x00, sizeof(unsigned short) * ALLOWED_MAX_POINT_COUNT);
+	unsigned int pointCount = 0;
+	while (!feof(file))
+	{
+		fread(&x, sizeof(double), 1, file);
+		fread(&y, sizeof(double), 1, file);
+		fread(&z, sizeof(double), 1, file);
+
+		fread(&or, sizeof(unsigned short), 1, file);
+		fread(&og, sizeof(unsigned short), 1, file);
+		fread(&ob, sizeof(unsigned short), 1, file);
+		
+		if (maxColorComponent < or)
+			maxColorComponent = or;
+		if (maxColorComponent < og )
+			maxColorComponent = og ;
+		if (maxColorComponent < ob )
+			maxColorComponent = ob ;
+
+		if (!bboxInitialized)
+		{
+			minx = maxx = x;
+			miny = maxy = y;
+			minz = maxz = z;
+
+			bboxInitialized = true;
+		}
+		else
+		{
+			if (minx > x)
+				minx = x;
+			if (maxx < x)
+				maxx = x;
+			if (miny > y)
+				miny = y;
+			if (maxy < y)
+				maxy = y;
+			if (minz > z)
+				minz = z;
+			if (maxz < z)
+				maxz = z;
+		}
+
+		vertex = new gaia3d::Vertex;
+		vertex->position.set(x, y, z);
+		polyhedron->getVertices().push_back(vertex);
+		reds[pointCount] = or;
+		greens[pointCount] = og;
+		blues[pointCount] = ob;
+
+		pointCount++;
+	}
+
+	fclose(file);
+
+	double cx = (maxx + minx) / 2.0;
+	double cy = (maxy + miny) / 2.0;
+	double cz = (maxz + minz) / 2.0;
+	refLon = cx, refLat = cy;
+	double alt = cz;
+	int errorCode = pj_transform(pjSrc, pjDst, 1, 1, &refLon, &refLat, &alt);
+	char* errorMessage = pj_strerrno(errorCode);
+	if (errorMessage != NULL)
+	{
+		printf("[ERROR]%s\n", errorMessage);
+		delete reds;
+		delete greens;
+		delete blues;
+
+		return false;
+	}
+
+	refLon *= RAD_TO_DEG;
+	refLat *= RAD_TO_DEG;
+
+	bHasGeoReferencingInfo = true;
+
+	double absPosOfCenterXY[3];
+	alt = 0.0;
+	gaia3d::GeometryUtility::wgs84ToAbsolutePosition(refLon, refLat, alt, absPosOfCenterXY);
+	double m[16];
+	gaia3d::GeometryUtility::transformMatrixAtAbsolutePosition(absPosOfCenterXY[0], absPosOfCenterXY[1], absPosOfCenterXY[2], m);
+	gaia3d::Matrix4 globalTransformMatrix;
+	globalTransformMatrix.set(m[0], m[4], m[8], m[12],
+		m[1], m[5], m[9], m[13],
+		m[2], m[6], m[10], m[14],
+		m[3], m[7], m[11], m[15]);
+	gaia3d::Matrix4 inverseGlobalTransMatrix = globalTransformMatrix.inverse();
+
+	bool bDownsizeColorByte = (maxColorComponent > 255) ? true : false;
+	if (bDownsizeColorByte)
+	{
+		size_t vertexCount = polyhedron->getVertices().size();
+		unsigned char r, g, b;
+		double absPosOfTargetPointArray[3];
+		for (size_t i = 0; i < vertexCount; i++)
+		{
+			vertex = polyhedron->getVertices()[i];
+
+			gaia3d::GeometryUtility::wgs84ToAbsolutePosition(vertex->position.x, vertex->position.y, vertex->position.z, absPosOfTargetPointArray);
+			gaia3d::Point3D absPosOfTargetPoint;
+			absPosOfTargetPoint.set(absPosOfTargetPointArray[0], absPosOfTargetPointArray[1], absPosOfTargetPointArray[2]);
+			vertex->position = inverseGlobalTransMatrix * absPosOfTargetPoint;
+
+			r = (unsigned char)(reds[i] >> 8);
+			g = (unsigned char)(greens[i] >> 8);
+			b = (unsigned char)(blues[i] >> 8);
+
+			vertex->color = MakeColorU4(r, g, b);
+		}
+	}
+	else
+	{
+		size_t vertexCount = polyhedron->getVertices().size();
+		unsigned char r, g, b;
+		double absPosOfTargetPointArray[3];
+		for (size_t i = 0; i < vertexCount; i++)
+		{
+			vertex = polyhedron->getVertices()[i];
+
+			gaia3d::GeometryUtility::wgs84ToAbsolutePosition(vertex->position.x, vertex->position.y, vertex->position.z, absPosOfTargetPointArray);
+			gaia3d::Point3D absPosOfTargetPoint;
+			absPosOfTargetPoint.set(absPosOfTargetPointArray[0], absPosOfTargetPointArray[1], absPosOfTargetPointArray[2]);
+			vertex->position = inverseGlobalTransMatrix * absPosOfTargetPoint;
+
+			r = (unsigned char)reds[i];
+			g = (unsigned char)greens[i];
+			b = (unsigned char)blues[i];
+
+			vertex->color = MakeColorU4(r, g, b);
+		}
+	}
+
+	polyhedron->setId(container.size());
+	container.push_back(polyhedron);
+
+	return true;
 }
 
 void PointCloudReader::clear()
@@ -290,8 +465,72 @@ void PointCloudReader::clear()
 	textureContainer.clear();
 }
 
-void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer)
+void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
+											std::string& proj4String,
+											std::map<std::string, std::string>& fileContainer,
+											std::string& originalFilePath)
 {
+	// make some strings for names and full paths of sub files
+	size_t dotPosition = originalFilePath.rfind(".");
+	size_t slashPosition = originalFilePath.find_last_of("\\/");
+	std::string subFileNamePrefix = originalFilePath.substr(slashPosition + 1, dotPosition - slashPosition);
+	std::string savePath = originalFilePath.substr(0, slashPosition + 1);
+	
+	unsigned int proj4StringLength = (unsigned int)proj4String.length();
+
+	unsigned int subFileIndex = 0;
+	unsigned int readPointCount = 0;
+	std::string subFileName;
+	std::string subFileFullPath;
+	FILE* file = NULL;
+	double x, y, z;
+	unsigned short r, g, b;
+	while (reader.ReadNextPoint())
+	{
+		if (file == NULL)
+		{
+			subFileName = subFileNamePrefix + std::string("_") + std::to_string(subFileIndex) + std::string(".tpc");
+			subFileFullPath = savePath + subFileName;
+			FILE* file = fopen(subFileFullPath.c_str(), "wb");
+			fwrite(&proj4StringLength, sizeof(unsigned int), 1, file);
+			fwrite(proj4String.c_str(), sizeof(char), proj4StringLength, file);
+		}
+
+		liblas::Point const& p = reader.GetPoint();
+		x = p.GetX(); y = p.GetY(); z = p.GetZ();
+
+		liblas::Color const &color = p.GetColor();
+		r = color.GetRed(); g = color.GetGreen(); b = color.GetBlue();
+		if (r == 0 && g == 0 && b == 0)
+			r = g = b = p.GetIntensity();
+
+		fwrite(&x, sizeof(double), 1, file);
+		fwrite(&y, sizeof(double), 1, file);
+		fwrite(&z, sizeof(double), 1, file);
+
+		fwrite(&r, sizeof(unsigned short), 1, file);
+		fwrite(&g, sizeof(unsigned short), 1, file);
+		fwrite(&b, sizeof(unsigned short), 1, file);
+
+		readPointCount++;
+
+		if (readPointCount == ALLOWED_MAX_POINT_COUNT)
+		{
+			readPointCount = 0;
+			fclose(file);
+			file = NULL;
+			fileContainer[subFileName] = subFileFullPath;
+
+			subFileIndex++;
+		}
+	}
+
+	if (file != NULL)
+	{
+		fclose(file);
+		file = NULL;
+		fileContainer[subFileName] = subFileFullPath;
+	}
 }
 
 #endif

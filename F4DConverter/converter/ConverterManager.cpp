@@ -376,6 +376,8 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 				}
 			}
 
+			delete reader;
+
 			continue;
 		}
 

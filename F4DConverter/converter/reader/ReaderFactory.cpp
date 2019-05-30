@@ -81,7 +81,8 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 #endif
 
 #ifdef POINTCLOUDFORMAT
-	if (fileExt.compare(std::string("las")) == 0)
+	if (fileExt.compare(std::string("las")) == 0 ||
+		fileExt.compare(std::string("tpc")) == 0)
 	{
 		return new PointCloudReader;
 	}
