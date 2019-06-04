@@ -45,7 +45,7 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 
 #define ALLOWED_MAX_POINT_COUNT 50000000
 
-bool splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer, std::string& originalFilePath);
+bool splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, unsigned int maxPointCountDumped, std::string& proj4String, std::map<std::string, std::string>& fileContainer, std::string& originalFilePath);
 
 bool PointCloudReader::readLasFile(std::string& filePath)
 {
@@ -148,7 +148,9 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 	unsigned int pointCount = header.GetPointRecordsCount();
 	if (pointCount > ALLOWED_MAX_POINT_COUNT)
 	{
-		if (!splitOriginalDataIntoSubDivisionsAndDump(reader, originalSrsProjString, temporaryFiles, filePath))
+		unsigned int dumpedFileCount = static_cast<unsigned int>(ceil(static_cast<double>(pointCount) / ALLOWED_MAX_POINT_COUNT));
+		unsigned int maxPointCountDumped = static_cast<unsigned int>(ceil(static_cast<double>(pointCount) / dumpedFileCount));
+		if (!splitOriginalDataIntoSubDivisionsAndDump(reader, maxPointCountDumped, originalSrsProjString, temporaryFiles, filePath))
 		{
 			ifs.close();
 			printf("[ERROR]Splitting original data failed : %s.\n", filePath.c_str());
@@ -490,6 +492,7 @@ void PointCloudReader::clear()
 }
 
 bool splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
+											unsigned int maxPointCountDumped,
 											std::string& proj4String,
 											std::map<std::string, std::string>& fileContainer,
 											std::string& originalFilePath)
@@ -541,7 +544,7 @@ bool splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
 
 		readPointCount++;
 
-		if (readPointCount == ALLOWED_MAX_POINT_COUNT)
+		if (readPointCount == maxPointCountDumped)
 		{
 			readPointCount = 0;
 			fclose(file);
