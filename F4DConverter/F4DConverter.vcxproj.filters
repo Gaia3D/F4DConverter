@@ -117,9 +117,6 @@
     <ClInclude Include="converter\writer\F4DWriter.h">
       <Filter>converter\writer</Filter>
     </ClInclude>
-    <ClInclude Include="argumentDefinition.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="converter\util\stb_image.h">
       <Filter>converter\util</Filter>
     </ClInclude>
@@ -176,6 +173,9 @@
     </ClInclude>
     <ClInclude Include="converter\reader\PointCloudReader.h">
       <Filter>converter\reader</Filter>
+    </ClInclude>
+    <ClInclude Include="argumentDefinition.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

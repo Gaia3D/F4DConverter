@@ -43,9 +43,9 @@ bool PointCloudReader::readRawDataFile(std::string& filePath)
 		return false;
 }
 
-#define ALLOWED_MAX_POINT_COUNT 100000000
+#define ALLOWED_MAX_POINT_COUNT 50000000
 
-void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer, std::string& originalFilePath);
+bool splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader, std::string& proj4String, std::map<std::string, std::string>& fileContainer, std::string& originalFilePath);
 
 bool PointCloudReader::readLasFile(std::string& filePath)
 {
@@ -62,73 +62,79 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 
 	// find CRS info of this .las for georeferencing
 	std::string originalSrsProjString;
-
-	liblas::SpatialReference spatialReference = header.GetSRS();
-	originalSrsProjString = spatialReference.GetProj4();
-
-	if (originalSrsProjString.empty())
+	if (bCoordinateInfoInjected)
 	{
-		// in this case, must get srs info through wkt or geotiff api
+		originalSrsProjString = makeProj4String();
+	}
+	else
+	{
+		liblas::SpatialReference spatialReference = header.GetSRS();
+		originalSrsProjString = spatialReference.GetProj4();
 
-		std::string wkt = spatialReference.GetWKT();
-		if (!wkt.empty())
+		if (originalSrsProjString.empty())
 		{
-			// in this case, must change wkt info into proj4
-			const char* poWKT = wkt.c_str();
-			OGRSpatialReference srs(NULL);
-			if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
-				return false;
+			// in this case, must get srs info through wkt or geotiff api
 
-			char* pszProj4 = NULL;
-			srs.exportToProj4(&pszProj4);
-			if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
-				return false;
-
-			originalSrsProjString = std::string(pszProj4);
-			CPLFree(pszProj4);
-
-			if (originalSrsProjString.empty())
-				return false;
-		}
-		else
-		{
-			// in this case, must change geotiff info into proj4
-			const GTIF* originalGtif = spatialReference.GetGTIF();
-			if (originalGtif == NULL)
-				return false;
-
-			GTIF* temp = NULL;
-			memcpy(&temp, &originalGtif, sizeof(GTIF*));
-			GTIFDefn defn;
-			if (GTIFGetDefn(temp, &defn) == 0)
-				return false;
-
-			char* pszWKT = GTIFGetOGISDefn(temp, &defn);
-			if (pszWKT == NULL)
-				return false;
-
-			OGRSpatialReference srs(NULL);
-			char* pOriginalWkt = pszWKT;
-			if (OGRERR_NONE != srs.importFromWkt(&pOriginalWkt))
+			std::string wkt = spatialReference.GetWKT();
+			if (!wkt.empty())
 			{
-				CPLFree(pszWKT);
-				return false;
-			}
+				// in this case, must change wkt info into proj4
+				const char* poWKT = wkt.c_str();
+				OGRSpatialReference srs(NULL);
+				if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
+					return false;
 
-			char* pszProj4 = NULL;
-			if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
+				char* pszProj4 = NULL;
+				srs.exportToProj4(&pszProj4);
+				if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
+					return false;
+
+				originalSrsProjString = std::string(pszProj4);
+				CPLFree(pszProj4);
+
+				if (originalSrsProjString.empty())
+					return false;
+			}
+			else
 			{
+				// in this case, must change geotiff info into proj4
+				const GTIF* originalGtif = spatialReference.GetGTIF();
+				if (originalGtif == NULL)
+					return false;
+
+				GTIF* temp = NULL;
+				memcpy(&temp, &originalGtif, sizeof(GTIF*));
+				GTIFDefn defn;
+				if (GTIFGetDefn(temp, &defn) == 0)
+					return false;
+
+				char* pszWKT = GTIFGetOGISDefn(temp, &defn);
+				if (pszWKT == NULL)
+					return false;
+
+				OGRSpatialReference srs(NULL);
+				char* pOriginalWkt = pszWKT;
+				if (OGRERR_NONE != srs.importFromWkt(&pOriginalWkt))
+				{
+					CPLFree(pszWKT);
+					return false;
+				}
+
+				char* pszProj4 = NULL;
+				if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
+				{
+					CPLFree(pszWKT);
+					return false;
+				}
+
+				originalSrsProjString = std::string(pszProj4);
+
+				CPLFree(pszProj4);
 				CPLFree(pszWKT);
-				return false;
+
+				if (originalSrsProjString.empty())
+					return false;
 			}
-
-			originalSrsProjString = std::string(pszProj4);
-			
-			CPLFree(pszProj4);
-			CPLFree(pszWKT);
-
-			if (originalSrsProjString.empty())
-				return false;
 		}
 	}
 
@@ -142,9 +148,15 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 	unsigned int pointCount = header.GetPointRecordsCount();
 	if (pointCount > ALLOWED_MAX_POINT_COUNT)
 	{
-		splitOriginalDataIntoSubDivisionsAndDump(reader, originalSrsProjString, temporaryFiles, filePath);
-		ifs.close();
+		if (!splitOriginalDataIntoSubDivisionsAndDump(reader, originalSrsProjString, temporaryFiles, filePath))
+		{
+			ifs.close();
+			printf("[ERROR]Splitting original data failed : %s.\n", filePath.c_str());
 
+			return false;
+		}
+
+		ifs.close();
 		printf("[Info]Original file is splitted into %zd sub files and dumped.\n", temporaryFiles.size());
 
 		return true;
@@ -418,6 +430,10 @@ bool PointCloudReader::readTemporaryPointCloudFile(std::string& filePath)
 		{
 			vertex = polyhedron->getVertices()[i];
 
+			pj_transform(pjSrc, pjDst, 1, 1, &(vertex->position.x), &(vertex->position.y), &(vertex->position.z));
+			vertex->position.x *= RAD_TO_DEG;
+			vertex->position.y *= RAD_TO_DEG;
+
 			gaia3d::GeometryUtility::wgs84ToAbsolutePosition(vertex->position.x, vertex->position.y, vertex->position.z, absPosOfTargetPointArray);
 			gaia3d::Point3D absPosOfTargetPoint;
 			absPosOfTargetPoint.set(absPosOfTargetPointArray[0], absPosOfTargetPointArray[1], absPosOfTargetPointArray[2]);
@@ -439,6 +455,10 @@ bool PointCloudReader::readTemporaryPointCloudFile(std::string& filePath)
 		{
 			vertex = polyhedron->getVertices()[i];
 
+			pj_transform(pjSrc, pjDst, 1, 1, &(vertex->position.x), &(vertex->position.y), &(vertex->position.z));
+			vertex->position.x *= RAD_TO_DEG;
+			vertex->position.y *= RAD_TO_DEG;
+
 			gaia3d::GeometryUtility::wgs84ToAbsolutePosition(vertex->position.x, vertex->position.y, vertex->position.z, absPosOfTargetPointArray);
 			gaia3d::Point3D absPosOfTargetPoint;
 			absPosOfTargetPoint.set(absPosOfTargetPointArray[0], absPosOfTargetPointArray[1], absPosOfTargetPointArray[2]);
@@ -455,6 +475,10 @@ bool PointCloudReader::readTemporaryPointCloudFile(std::string& filePath)
 	polyhedron->setId(container.size());
 	container.push_back(polyhedron);
 
+	delete reds;
+	delete greens;
+	delete blues;
+
 	return true;
 }
 
@@ -465,7 +489,7 @@ void PointCloudReader::clear()
 	textureContainer.clear();
 }
 
-void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
+bool splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
 											std::string& proj4String,
 											std::map<std::string, std::string>& fileContainer,
 											std::string& originalFilePath)
@@ -473,7 +497,7 @@ void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
 	// make some strings for names and full paths of sub files
 	size_t dotPosition = originalFilePath.rfind(".");
 	size_t slashPosition = originalFilePath.find_last_of("\\/");
-	std::string subFileNamePrefix = originalFilePath.substr(slashPosition + 1, dotPosition - slashPosition);
+	std::string subFileNamePrefix = originalFilePath.substr(slashPosition + 1, dotPosition - slashPosition - 1);
 	std::string savePath = originalFilePath.substr(0, slashPosition + 1);
 	
 	unsigned int proj4StringLength = (unsigned int)proj4String.length();
@@ -491,7 +515,10 @@ void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
 		{
 			subFileName = subFileNamePrefix + std::string("_") + std::to_string(subFileIndex) + std::string(".tpc");
 			subFileFullPath = savePath + subFileName;
-			FILE* file = fopen(subFileFullPath.c_str(), "wb");
+			file = fopen(subFileFullPath.c_str(), "wb");
+			if (file == NULL)
+				return false;
+			
 			fwrite(&proj4StringLength, sizeof(unsigned int), 1, file);
 			fwrite(proj4String.c_str(), sizeof(char), proj4StringLength, file);
 		}
@@ -531,6 +558,8 @@ void splitOriginalDataIntoSubDivisionsAndDump(liblas::Reader& reader,
 		file = NULL;
 		fileContainer[subFileName] = subFileFullPath;
 	}
+
+	return true;
 }
 
 #endif
