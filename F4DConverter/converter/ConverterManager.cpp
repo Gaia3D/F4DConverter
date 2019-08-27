@@ -8,7 +8,10 @@
 #include <sys/stat.h>
 
 #include "proj_api.h"
+
+#ifdef POINTCLOUDFORMAT
 #include "cpl_serv.h"
+#endif
 
 #include "../argumentDefinition.h"
 #include "./reader/ReaderFactory.h"
@@ -58,6 +61,7 @@ CConverterManager::~CConverterManager()
 
 
 // CConverterManager 멤버 함수
+#ifdef POINTCLOUDFORMAT
 #ifdef _DEBUG
 #pragma comment(lib, "../external/geotiff/lib/geotiff_d.lib")
 #else
@@ -72,6 +76,7 @@ static const char* CSVFileFullPathOverride(const char* baseFile)
 
 	return szPath;
 }
+#endif
 
 bool CConverterManager::initialize(std::map<std::string, std::string>& arguments)
 {
@@ -90,9 +95,11 @@ bool CConverterManager::initialize(std::map<std::string, std::string>& arguments
 		return false;
 	}
 
+#ifdef POINTCLOUDFORMAT
 	csvFullPath = programFolder + std::string("csv");
 
 	SetCSVFilenameHook(CSVFileFullPathOverride);
+#endif
 
 	if(processor == NULL)
 		processor = new ConversionProcessor();

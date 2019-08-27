@@ -64,8 +64,9 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 
 #ifdef CLASSICFORMAT
 	if (fileExt.compare(std::string("obj")) == 0 ||
-		fileExt.compare(std::string("dae")) == 0||
-		fileExt.compare(std::string("3ds")) == 0)
+		fileExt.compare(std::string("dae")) == 0 ||
+		fileExt.compare(std::string("3ds")) == 0 ||
+		fileExt.compare(std::string("fbx")) == 0)
 	{
 		return new ClassicFormatReader;
 	}

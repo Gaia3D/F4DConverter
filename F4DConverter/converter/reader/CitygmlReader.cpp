@@ -1,6 +1,6 @@
 ﻿#include "stdafx.h"
 
-#if defined(CLASSICFORMAT)
+#if defined(CITYGMLFORMAT)
 
 #include "CitygmlReader.h"
 
