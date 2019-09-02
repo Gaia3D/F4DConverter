@@ -3,6 +3,9 @@ This application, F4DConverter, is for converting popular 3D model formats into 
 which is devised for Mago3D - 3D web geo-platform. (www.mago3d.com).
 This project is of Microsoft Visual Studio 2015 C++ project.
 
+## Only source codes and installer were updated in 2019 09 02
+## Following contents will be updated SOON!
+
 ## developer's comments before reading more ##
 - F4DConverter runs only in Windows 7 or later version of 64-bit OS.
 - LOD numbering in F4D spec is reversed in comparison with conventional LOD numbering.
