@@ -108,7 +108,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-4.1/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -144,7 +144,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-3.2/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-4.1/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
