@@ -35,6 +35,7 @@ private:
 	bool bUseEpsg;
 	std::string epsgCode;
 	double offsetX, offsetY, offsetZ;
+	bool bDumpObjectPosition;
 
 	std::string inputFolderPath, outputFolderPath;
 

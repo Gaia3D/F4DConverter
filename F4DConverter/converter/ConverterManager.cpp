@@ -51,6 +51,8 @@ CConverterManager::CConverterManager()
 	bUseEpsg = false;
 
 	offsetX = offsetY = offsetZ = 0.0;
+
+	bDumpObjectPosition = false;
 }
 
 CConverterManager::~CConverterManager()
@@ -420,6 +422,32 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			continue;
 		}
 
+		// 2.1 dump object positions
+		if (bDumpObjectPosition)
+		{
+			std::string dumpFileName = outputFolder + std::string("/") + fullId + std::string("_objectPositions.txt");
+			FILE* dumpFile = NULL;
+			dumpFile = fopen(dumpFileName.c_str(), "wt");
+			std::string guid;
+			double cx, cy, cz, xLength, yLength, zLength, radius;
+			//float fx, fy, fz, fradius;
+			for (size_t i = 0; i < processor->getAllMeshes().size(); i++)
+			{
+				guid = processor->getAllMeshes()[i]->getStringAttribute(std::string(ObjectGuid));
+				processor->getAllMeshes()[i]->getBoundingBox().getCenterPoint(cx, cy, cz);
+				//fx = (float)cx; fy = (float)cy; fz = (float)cz;
+				xLength = processor->getAllMeshes()[i]->getBoundingBox().getXLength();
+				yLength = processor->getAllMeshes()[i]->getBoundingBox().getYLength();
+				zLength = processor->getAllMeshes()[i]->getBoundingBox().getZLength();
+
+				radius = sqrt(xLength*xLength + yLength*yLength + zLength*zLength)/2.0;
+				//fradius = (float)radius;
+
+				fprintf(dumpFile, "%s %f %f %f %f\n", guid.c_str(), cx, cy, cz, radius);
+			}
+			fclose(dumpFile);
+		}
+
 		// 3. processor clear
 		processor->clear();
 		if(depth == 0)
@@ -553,6 +581,15 @@ bool CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 
 		if (arguments.find(OffsetZ) != arguments.end())
 			offsetY = std::stod(arguments[OffsetZ]);
+
+		if (arguments.find(DumpObjectPosition) != arguments.end())
+		{
+			if (arguments[DumpObjectPosition] == std::string("Y") ||
+				arguments[DumpObjectPosition] == std::string("y"))
+				bDumpObjectPosition = true;
+			else
+				bDumpObjectPosition = false;
+		}
 	}
 	else
 		bConversion = false;

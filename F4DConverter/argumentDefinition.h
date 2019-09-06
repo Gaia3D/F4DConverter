@@ -17,6 +17,7 @@
 #define OffsetXW			L"#offsetX"
 #define OffsetYW			L"#offsetY"
 #define OffsetZW			L"#offsetZ"
+#define DumpObjectPositionW	L"#dumpObjectPos"
 
 #define ProgramPath		"programPath"
 #define InputFolder		"#inputFolder"
@@ -36,3 +37,4 @@
 #define OffsetX			"#offsetX"
 #define OffsetY			"#offsetY"
 #define OffsetZ			"#offsetZ"
+#define DumpObjectPosition	"#dumpObjectPos"

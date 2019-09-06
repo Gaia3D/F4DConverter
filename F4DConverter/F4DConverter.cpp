@@ -215,6 +215,13 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 				i++;
 				continue;
 			}
+
+			if (tokens[i] == std::wstring(DumpObjectPositionW))
+			{
+				arguments[DumpObjectPosition] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
 		}
 		else
 		{
