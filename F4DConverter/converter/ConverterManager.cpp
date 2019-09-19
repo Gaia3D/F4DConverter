@@ -425,23 +425,33 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 		// 2.1 dump object positions
 		if (bDumpObjectPosition)
 		{
-			std::string dumpFileName = outputFolder + std::string("/") + fullId + std::string("_objectPositions.txt");
-			FILE* dumpFile = NULL;
-			dumpFile = fopen(dumpFileName.c_str(), "wt");
+			std::map<std::string, gaia3d::BoundingBox> bboxes;
 			std::string guid;
-			double cx, cy, cz, xLength, yLength, zLength, radius;
-			//float fx, fy, fz, fradius;
 			for (size_t i = 0; i < processor->getAllMeshes().size(); i++)
 			{
 				guid = processor->getAllMeshes()[i]->getStringAttribute(std::string(ObjectGuid));
-				processor->getAllMeshes()[i]->getBoundingBox().getCenterPoint(cx, cy, cz);
-				//fx = (float)cx; fy = (float)cy; fz = (float)cz;
-				xLength = processor->getAllMeshes()[i]->getBoundingBox().getXLength();
-				yLength = processor->getAllMeshes()[i]->getBoundingBox().getYLength();
-				zLength = processor->getAllMeshes()[i]->getBoundingBox().getZLength();
+				if (bboxes.find(guid) != bboxes.end())
+					bboxes[guid].addBox(processor->getAllMeshes()[i]->getBoundingBox());
+				else
+					bboxes[guid] = processor->getAllMeshes()[i]->getBoundingBox();
+			}
+			
+			std::string dumpFileName = outputFolder + std::string("/") + fullId + std::string("_objectPositions.txt");
+			FILE* dumpFile = NULL;
+			dumpFile = fopen(dumpFileName.c_str(), "wt");
+			double cx, cy, cz, xLength, yLength, zLength, radius;
+			for (std::map<std::string, gaia3d::BoundingBox>::iterator iter = bboxes.begin();
+				iter != bboxes.end();
+				iter++)
+			{
+				guid = iter->first;
+				iter->second.getCenterPoint(cx, cy, cz);
+
+				xLength = iter->second.getXLength();
+				yLength = iter->second.getYLength();
+				zLength = iter->second.getZLength();
 
 				radius = sqrt(xLength*xLength + yLength*yLength + zLength*zLength)/2.0;
-				//fradius = (float)radius;
 
 				fprintf(dumpFile, "%s %f %f %f %f\n", guid.c_str(), cx, cy, cz, radius);
 			}

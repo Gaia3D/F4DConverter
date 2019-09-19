@@ -63,6 +63,7 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 	gaia3d::Surface* surface;
 	gaia3d::Triangle* triangle;
 	size_t vertexCount, surfaceCount, triangleCount;
+	wchar_t guidString[1024];
 	for (size_t i = 0; i < polyhedronCount; i++)
 	{
 		polyhedron = new gaia3d::TrianglePolyhedron;
@@ -121,7 +122,9 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 
 		polyhedron->setId(container.size());
 
-		std::wstring wObjectId = loader->getGuid(i);
+		memset(guidString, 0x00, sizeof(wchar_t) * 1024);
+		loader->getGuid(i, guidString);
+		std::wstring wObjectId(guidString);
 		std::string objectId = gaia3d::StringUtility::convertWideStringToUtf8(wObjectId);
 
 		polyhedron->addStringAttribute(std::string(ObjectGuid), objectId);

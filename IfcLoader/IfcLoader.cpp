@@ -15,6 +15,7 @@
 #include "ifcpp/IFC4/include/IfcIdentifier.h"
 #include "ifcpp/IFC4/include/IfcInteger.h"
 #include "ifcpp/IFC4/include/IfcLabel.h"
+#include "ifcpp/IFC4/include/IfcText.h"
 #include "ifcpp/IFC4/include/IfcLengthMeasure.h"
 #include "ifcpp/IFC4/include/IfcPlaneAngleMeasure.h"
 #include "ifcpp/IFC4/include/IfcPositiveLengthMeasure.h"
@@ -59,7 +60,7 @@ public:
 
 	virtual size_t getPolyhedronCount();
 	virtual float* getRepresentativeColor(size_t polyhedronIndex);
-	virtual std::wstring getGuid(size_t polyhedronIndex);
+	virtual void getGuid(size_t polyhedronIndex, wchar_t buffer[]);
 	virtual size_t getVertexCount(size_t polyhedronIndex);
 	virtual double* getVertexPositions(size_t polyhedronIndex);
 	virtual size_t getSurfaceCount(size_t polyhedronIndex);
@@ -189,6 +190,29 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 		shared_ptr<IfcSite> site_elem = dynamic_pointer_cast<IfcSite>(ifc_product);
 		if (site_elem != NULL)
 			continue;
+
+		// extract basic attributes of this IfcProduct
+		std::string productEntityName = ifc_product->className();
+		std::wstring productLabel = (ifc_product->m_Name != NULL) ? ifc_product->m_Name->m_value : L"";
+		std::wstring productDescription = (ifc_product->m_Description != NULL)? ifc_product->m_Description->m_value : L"";
+		std::wstring productGuid, productIdentifier;
+		std::vector<std::pair<std::string, shared_ptr<IfcPPObject> > > vec_attributes;
+		std::string ifcAttributeTitle, ifcAttributeClassName;
+		ifc_product->getAttributes(vec_attributes);
+		for (size_t i_attr = 0; i_attr < vec_attributes.size(); i_attr++)
+		{
+			ifcAttributeTitle = vec_attributes[i_attr].first;
+
+			shared_ptr<IfcPPObject> ifcPpObj = vec_attributes[i_attr].second;
+			if (ifcPpObj == NULL)
+				continue;
+
+			ifcAttributeClassName = ifcPpObj->className();
+			if (ifcAttributeClassName.compare("IfcGloballyUniqueId") == 0)
+				productGuid = dynamic_pointer_cast<IfcGloballyUniqueId>(ifcPpObj)->m_value;
+			else if (ifcAttributeClassName.compare("IfcIdentifier") == 0)
+				productIdentifier = dynamic_pointer_cast<IfcElement>(ifc_product)->m_Tag->m_value;
+		}
 
 		// for each IfcProduct, there can be mulitple geometric representation items:
 		std::vector<shared_ptr<ProductRepresentationData> >& vec_representations = shape_data->m_vec_representations;
@@ -389,7 +413,9 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 						memset(polyhedron->color, 0x00, sizeof(float) * 4);
 
 					// extract and allocate guid into this polyhedron
-					polyhedron->guid = ifc_product->m_GlobalId->m_value;
+					//polyhedron->guid = ifc_product->m_GlobalId->m_value;
+					//polyhedron->guid = productGuid;
+					polyhedron->guid = productIdentifier;
 
 					// add this polyhedron
 					polyhedrons.push_back(polyhedron);
@@ -484,9 +510,10 @@ float* IfcLoader::getRepresentativeColor(size_t polyhedronIndex)
 	return polyhedrons[polyhedronIndex]->color;
 }
 
-std::wstring IfcLoader::getGuid(size_t polyhedronIndex)
+void IfcLoader::getGuid(size_t polyhedronIndex, wchar_t buffer[])
 {
-	return polyhedrons[polyhedronIndex]->guid;
+	size_t length = polyhedrons[polyhedronIndex]->guid.size();
+	memcpy(buffer, polyhedrons[polyhedronIndex]->guid.c_str(), sizeof(wchar_t)*length);
 }
 
 size_t IfcLoader::getVertexCount(size_t polyhedronIndex)
@@ -559,6 +586,9 @@ void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Va
 
 		shared_ptr<IfcPropertySet> propertySet = dynamic_pointer_cast<IfcPropertySet>(propertySetWrapper->m_RelatingPropertyDefinition);
 
+		if (propertySet == NULL)
+			continue;
+
 		Json::Value aSet(Json::objectValue);
 
 		if (!propertySet->m_Name->m_value.empty())
@@ -577,6 +607,10 @@ void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Va
 				keyName = convertWideStringToUtf8(propertySet->m_HasProperties[j]->m_Name->m_value);
 			else
 				keyName = std::string("key") + std::to_string(j);
+
+			if (keyName.find(std::string("tag")) != std::string::npos ||
+				keyName.find(std::string("TAG")) != std::string::npos)
+				int xxx = 0;
 
 			// property value
 			if (dynamic_pointer_cast<IfcSimpleProperty>(propertySet->m_HasProperties[j]) != NULL)

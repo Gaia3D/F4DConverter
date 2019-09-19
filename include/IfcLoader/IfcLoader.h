@@ -18,7 +18,7 @@ public:
 
 	virtual size_t getPolyhedronCount() = 0;
 	virtual float* getRepresentativeColor(size_t polyhedronIndex) = 0;
-	virtual std::wstring getGuid(size_t polyhedronIndex) = 0;
+	virtual void getGuid(size_t polyhedronIndex, wchar_t buffer[]) = 0;
 	virtual size_t getVertexCount(size_t polyhedronIndex) = 0;
 	virtual double* getVertexPositions(size_t polyhedronIndex) = 0;
 	virtual size_t getSurfaceCount(size_t polyhedronIndex) = 0;
