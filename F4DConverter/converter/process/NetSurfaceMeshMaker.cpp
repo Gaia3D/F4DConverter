@@ -111,11 +111,11 @@ void NetSurfaceMeshMaker::makeNetSurfaceMesh(std::vector<gaia3d::OctreeBox*>& oc
 		octreeBbox.addPoint(octree->maxX, octree->maxY, octree->maxZ);
 		float octreeSize = (float)octreeBbox.getMaxLength();
 
-		int boxEdgeDivisionCount;
-		if (setting->subBoxSize > octreeSize)
-			boxEdgeDivisionCount = 1;
-		else
-			boxEdgeDivisionCount = (int)floorf(octreeSize / setting->subBoxSize);
+		int boxEdgeDivisionCount = 1;
+		//if (setting->subBoxSize > octreeSize)
+		//	boxEdgeDivisionCount = 1;
+		//else
+		//	boxEdgeDivisionCount = (int)floorf(octreeSize / setting->subBoxSize);
 
 		std::vector<gaia3d::BoundingBox> dividedBoxes;
 		octreeBbox.divideBbox(boxEdgeDivisionCount, dividedBoxes);

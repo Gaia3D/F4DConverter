@@ -22,6 +22,8 @@ public:
 		bCoordinateInfoInjected = false;
 
 		bYAxisUp = false;
+
+		offsetX = offsetY = offsetZ = 0.0;
 	}
 
 public:

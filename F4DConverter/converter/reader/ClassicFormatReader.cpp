@@ -96,12 +96,12 @@ bool proceedMesh(aiMesh* mesh,
 		vertex->position.y = mesh->mVertices[i].y;
 		vertex->position.z = mesh->mVertices[i].z;
 
-		if (bMustChangeYZCoordinate)
-		{
-			tmpZ = vertex->position.z;
-			vertex->position.z = vertex->position.y;
-			vertex->position.y = -tmpZ;
-		}
+		//if (bMustChangeYZCoordinate)
+		//{
+		//	tmpZ = vertex->position.z;
+		//	vertex->position.z = vertex->position.y;
+		//	vertex->position.y = -tmpZ;
+		//}
 
 		vertex->position = transform * vertex->position;
 
@@ -111,12 +111,12 @@ bool proceedMesh(aiMesh* mesh,
 			vertex->normal.y = mesh->mNormals[i].y;
 			vertex->normal.z = mesh->mNormals[i].z;
 
-			if (bMustChangeYZCoordinate)
-			{
-				tmpZ = vertex->normal.z;
-				vertex->normal.z = vertex->normal.y;
-				vertex->normal.y = -tmpZ;
-			}
+			//if (bMustChangeYZCoordinate)
+			//{
+			//	tmpZ = vertex->normal.z;
+			//	vertex->normal.z = vertex->normal.y;
+			//	vertex->normal.y = -tmpZ;
+			//}
 
 			transform.applyOnlyRotationOnPoint(vertex->normal);
 
@@ -277,16 +277,32 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 	else
 		folder = filePath.substr(0, slashPosition);
 
-	gaia3d::Matrix4 scaleMatrix;
-	/*if (bYAxisUp)
-		scaleMatrix.rotationInDegree(90.0, 1.0, 0.0, 0.0);*/
+	gaia3d::Matrix4 scaleMatrix, rotationMatrix, offsetMatrix, transformMatrix;
+	
 	bMustChangeYZCoordinate = bYAxisUp;
 
-	scaleMatrix.set(scaleMatrix.m[0][0]*unitScaleFactor, scaleMatrix.m[0][1],					scaleMatrix.m[0][2],					scaleMatrix.m[0][3],
-					scaleMatrix.m[1][0],				 scaleMatrix.m[1][1] * unitScaleFactor, scaleMatrix.m[1][2],					scaleMatrix.m[1][3],
-					scaleMatrix.m[2][0],				 scaleMatrix.m[2][1],					scaleMatrix.m[2][2] * unitScaleFactor,  scaleMatrix.m[2][3],
-					scaleMatrix.m[3][0]+offsetX,		 scaleMatrix.m[3][1]+offsetY,			scaleMatrix.m[3][2]+offsetZ,			scaleMatrix.m[3][3]);
-	if (!proceedNode(scene->mRootNode, scene, scaleMatrix, container, textureContainer))
+	scaleMatrix.set(unitScaleFactor,			 0.0,			  0.0, 0.0,
+								0.0, unitScaleFactor,			  0.0, 0.0,
+								0.0,			 0.0, unitScaleFactor, 0.0,
+								0.0,			 0.0,			  0.0, 1.0);
+
+	if (bYAxisUp)
+	{
+		rotationMatrix.set( 1.0,  0.0, 0.0, 0.0,
+							0.0,  0.0, 1.0, 0.0,
+							0.0, -1.0, 0.0, 0.0,
+							0.0,  0.0, 0.0, 1.0 );
+		//rotationMatrix.rotationInDegree(90.0, 1.0, 0.0, 0.0);
+	}
+
+	offsetMatrix.set(	1.0,	 0.0,	  0.0, 0.0,
+						0.0,	 1.0,	  0.0, 0.0,
+						0.0,	 0.0,	  1.0, 0.0,
+					offsetX, offsetY, offsetZ, 1.0);
+
+	transformMatrix = scaleMatrix * rotationMatrix * offsetMatrix;
+
+	if (!proceedNode(scene->mRootNode, scene, transformMatrix, container, textureContainer))
 		return false;
 
 	// transform coordinates if information for georeferencing is injected.
