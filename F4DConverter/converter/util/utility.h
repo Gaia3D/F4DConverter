@@ -36,8 +36,14 @@ namespace gaia3d
 												double& maxX, double& maxY, double& maxZ);
 
 		static void wgs84ToAbsolutePosition(double&lon, double& lat, double& alt, double* result);
+
 		static void normalAtAbsolutePosition(double& x, double& y, double& z, double* result);
+
 		static void transformMatrixAtAbsolutePosition(double& x, double& y, double& z, double* m);
+
+		static void earCut(double** xs, double** ys, double** zs, std::vector<size_t>& eachRingPointCount, std::vector<std::pair<size_t, size_t>>& result);
+
+		static void tessellate(double* xs, double* ys, double* zs, size_t vertexCount, std::vector<size_t>& polygonIndices, std::vector<size_t>& indices);
 	};
 
 	class StringUtility

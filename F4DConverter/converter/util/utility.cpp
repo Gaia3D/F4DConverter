@@ -477,6 +477,881 @@ namespace gaia3d
 		matrix.getDoubleArray(m);
 	}
 
+	void findConcavePointsAndNormal(double* pxs, double* pys,
+									std::vector<size_t>& indices,
+									std::vector<size_t>& concavePointIndicesOnAllPoints,
+									std::vector<size_t>& concavePointIndicesOnThisPolygon,
+									int& normal)
+	{
+		double crossProd, dotProd, angle;
+		size_t count = indices.size();
+		size_t prevIndex, nextIndex;
+		gaia3d::Point3D prevVector, nextVector;
+		double lfNormal = 0.0;
+		double tolerance = 1E-7;
+		for (size_t i = 0; i < count; i++)
+		{
+			prevIndex = (i == 0) ? count - 1 : i - 1;
+			nextIndex = (i == count - 1) ? 0 : i + 1;
+
+			prevVector.set(pxs[indices[i]] - pxs[indices[prevIndex]], pys[indices[i]] - pys[indices[prevIndex]], 0.0);
+			nextVector.set(pxs[indices[nextIndex]] - pxs[indices[i]], pys[indices[nextIndex]] - pys[indices[i]], 0.0);
+
+			if (!prevVector.normalize())
+				continue;
+			if (!nextVector.normalize())
+				continue;
+
+			crossProd = prevVector.x*nextVector.y - prevVector.y*nextVector.x;
+			dotProd = prevVector.x * nextVector.x + prevVector.y * nextVector.y;
+			if (crossProd > tolerance)
+			{
+				crossProd = 1.0;
+			}
+			else if (crossProd < -tolerance)
+			{
+				crossProd = -1.0;
+				concavePointIndicesOnAllPoints.push_back(indices[i]);
+				concavePointIndicesOnThisPolygon.push_back(i);
+			}
+			else
+				continue;
+
+			if (dotProd > 1.0)
+				dotProd = 1.0;
+			
+			if (dotProd < -1.0)
+				dotProd = -1.0;
+
+			angle = acos(dotProd);
+			
+			lfNormal += (crossProd * angle);
+		}
+
+		normal = (lfNormal > 0.0) ? 1 : -1;
+	}
+
+	bool intersectionTestOnTwoLineSegments( double x1Start, double y1Start, double x1End, double y1End,
+											double x2Start, double y2Start, double x2End, double y2End)
+	{
+		gaia3d::Point3D normalVector;
+		double dotProdLine1, dotProdLine2Start, dotProdLine2End;
+		double dotProdLine2, dotProdLine1Start, dotProdLine1End;
+		double tolerance = 1E-7;
+
+		// find vector normal to line 1
+		normalVector.set(-(y1End - y1Start), x1End - x1Start, 0.0);
+		normalVector.normalize();
+
+		// dot products of 4 nodes in 2 lines on this normal vector
+		// (dot products of 2 nodes in line 1 on this normal vector are same)
+		dotProdLine1 = normalVector.x * x1Start + normalVector.y * y1Start;
+		dotProdLine2Start = normalVector.x * x2Start + normalVector.y * y2Start;
+		dotProdLine2End = normalVector.x * x2End + normalVector.y * y2End;
+		if ((dotProdLine1 > dotProdLine2Start - tolerance && dotProdLine1 > dotProdLine2End - tolerance) ||
+			(dotProdLine1 < dotProdLine2Start + tolerance && dotProdLine1 < dotProdLine2End + tolerance))
+			return false;
+
+		// find vector normal to line 2
+		normalVector.set(-(y2End - y2Start), x2End - x2Start, 0.0);
+		normalVector.normalize();
+
+		// dot products of 4 nodes in 2 lines on this normal vector
+		// (dot products of 2 nodes in line 2 on this normal vector are same)
+		dotProdLine2 = normalVector.x * x2Start + normalVector.y * y2Start;
+		dotProdLine1Start = normalVector.x * x1Start + normalVector.y * y1Start;
+		dotProdLine1End = normalVector.x * x1End + normalVector.y * y1End;
+		if ((dotProdLine2 > dotProdLine1Start - tolerance && dotProdLine2 > dotProdLine1End - tolerance) ||
+			(dotProdLine2 < dotProdLine1Start + tolerance && dotProdLine2 < dotProdLine1End + tolerance))
+			return false;
+
+		return true;
+	}
+
+	void tessellateIntoSubPolygons(double* pxs, double* pys,
+									std::vector<size_t>& polygonVertexIndices,
+									std::vector<size_t>& concavePointIndicesOnAllPoints,
+									std::vector<size_t>& concavePointIndicesOnThisPolygon,
+									int thisPolygonNormal,
+									std::vector<std::vector<size_t>>& subPolygons)
+	{
+		// 0. use only 1st concave point.
+		size_t concavePointIndexOnAllPoints = concavePointIndicesOnAllPoints[0];
+		size_t concavePointIndexOnThisPolygon = concavePointIndicesOnThisPolygon[0];
+		size_t polygonPointCount = polygonVertexIndices.size();
+		gaia3d::Point3D concavePoint;
+		concavePoint.set(pxs[concavePointIndexOnAllPoints], pys[concavePointIndexOnAllPoints], 0.0);
+
+		// 1. sort all points by acsending distance from the concave point except the concave point and its 2 neighbor points.
+		std::map<double, std::vector<size_t>> sortedPointIndicesOnAllPointsMap, sortedPointIndicesOnThisPolygonMap;
+		size_t prevIndexOfConcavePointOnThisPolygon = (concavePointIndexOnThisPolygon == 0) ? polygonPointCount - 1 : concavePointIndexOnThisPolygon - 1;
+		size_t nextIndexOfConcavePointOnThisPolygon = (concavePointIndexOnThisPolygon == polygonPointCount - 1) ? 0 : concavePointIndexOnThisPolygon + 1;
+		gaia3d::Point3D targetPoint;
+		double squaredDist;
+		for (size_t i = 0; i < polygonVertexIndices.size(); i++)
+		{
+			if (i == concavePointIndexOnThisPolygon ||
+				i == prevIndexOfConcavePointOnThisPolygon ||
+				i == nextIndexOfConcavePointOnThisPolygon)
+				continue;
+
+			targetPoint.set(pxs[polygonVertexIndices[i]], pys[polygonVertexIndices[i]], 0.0);
+			squaredDist = targetPoint.squaredDistanceTo(concavePoint);
+			if (sortedPointIndicesOnAllPointsMap.find(squaredDist) == sortedPointIndicesOnAllPointsMap.end())
+			{
+				sortedPointIndicesOnAllPointsMap[squaredDist] = std::vector<size_t>();
+				sortedPointIndicesOnThisPolygonMap[squaredDist] = std::vector<size_t>();
+			}
+				
+
+			sortedPointIndicesOnAllPointsMap[squaredDist].push_back(polygonVertexIndices[i]);
+			sortedPointIndicesOnThisPolygonMap[squaredDist].push_back(i);
+		}
+		
+		std::vector<size_t> sortedPointIndicesOnAllPoints;
+		std::vector<size_t> sortedPointIndicesOnThisPolygon;
+		for (std::map<double, std::vector<size_t>>::iterator itr1 = sortedPointIndicesOnAllPointsMap.begin(), itr2 = sortedPointIndicesOnThisPolygonMap.begin();
+			itr1 != sortedPointIndicesOnAllPointsMap.end();
+			itr1++, itr2++)
+		{
+			for (size_t i = 0; i < itr1->second.size(); i++)
+			{
+				sortedPointIndicesOnAllPoints.push_back((itr1->second)[i]);
+				sortedPointIndicesOnThisPolygon.push_back((itr2->second)[i]);
+			}
+		}
+			
+
+		// 2. find a point of this polygon where line segment composed of the point and concave point can slices this polygon
+		double slicerStartX = pxs[concavePointIndexOnAllPoints], slicerStartY = pys[concavePointIndexOnAllPoints];
+		double slicerEndX, slicerEndY;
+		double targetStartX, targetStartY, targetEndX, targetEndY;
+		for (size_t i = 0; i < sortedPointIndicesOnAllPoints.size(); i++)
+		{
+			// 2.1 line interseciton test between the slicer and each edge of polygon
+			slicerEndX = pxs[sortedPointIndicesOnAllPoints[i]];
+			slicerEndY = pys[sortedPointIndicesOnAllPoints[i]];
+			bool bIntersected = false;
+			for (size_t j = 0; j < polygonPointCount-1; j++)
+			{
+				targetStartX = pxs[polygonVertexIndices[j]];
+				targetStartY = pys[polygonVertexIndices[j]];
+				targetEndX = pxs[polygonVertexIndices[j + 1]];
+				targetEndY = pys[polygonVertexIndices[j + 1]];
+
+				if (intersectionTestOnTwoLineSegments(  slicerStartX, slicerStartY, slicerEndX, slicerEndY,
+														targetStartX, targetStartY, targetEndX, targetEndY  ) )
+				{
+					bIntersected = true;
+					break;
+				}
+			}
+
+			if (bIntersected)
+				continue;
+
+			// 2.2 test if the sliced 2 sub-polygons have same plane normal directions with original polygon
+			std::vector<size_t> firstSubPolygonIndicesOnAllPoints;
+			firstSubPolygonIndicesOnAllPoints.push_back(concavePointIndexOnAllPoints);
+			firstSubPolygonIndicesOnAllPoints.push_back(polygonVertexIndices[sortedPointIndicesOnThisPolygon[i]]);
+			for (size_t j = 1; j < polygonPointCount; j++)
+			{
+				firstSubPolygonIndicesOnAllPoints.push_back(polygonVertexIndices[(sortedPointIndicesOnThisPolygon[i] + j) % polygonPointCount]);
+				if ((sortedPointIndicesOnThisPolygon[i] + j) % polygonPointCount == prevIndexOfConcavePointOnThisPolygon)
+					break;
+			}
+			std::vector<size_t> secondSubPolygonIndicesOnAllPoints;
+			secondSubPolygonIndicesOnAllPoints.push_back(polygonVertexIndices[sortedPointIndicesOnThisPolygon[i]]);
+			secondSubPolygonIndicesOnAllPoints.push_back(concavePointIndexOnAllPoints);
+			for (size_t j = 1; j < polygonPointCount; j++)
+			{
+				secondSubPolygonIndicesOnAllPoints.push_back(polygonVertexIndices[(concavePointIndexOnThisPolygon + j) % polygonPointCount]);
+				if ((concavePointIndexOnThisPolygon + j) % polygonPointCount ==
+					(sortedPointIndicesOnThisPolygon[i] + polygonPointCount - 1) % polygonPointCount)
+					break;
+			}
+	
+			int firstPolygonNormal, secondPolygonNormal;
+			std::vector<size_t> concavePointsOfSubPolygon1IndicesOnAllPoints, concavePointsOfSubPolygon1IndicesOnSubPolygon1;
+			std::vector<size_t> concavePointsOfSubPolygon2IndicesOnAllPoints, concavePointsOfSubPolygon2IndicesOnSubPolygon2;
+
+			findConcavePointsAndNormal(pxs, pys,
+										firstSubPolygonIndicesOnAllPoints,
+										concavePointsOfSubPolygon1IndicesOnAllPoints,
+										concavePointsOfSubPolygon1IndicesOnSubPolygon1,
+										firstPolygonNormal);
+			findConcavePointsAndNormal(pxs, pys,
+										secondSubPolygonIndicesOnAllPoints,
+										concavePointsOfSubPolygon2IndicesOnAllPoints,
+										concavePointsOfSubPolygon2IndicesOnSubPolygon2,
+										secondPolygonNormal);
+			if (thisPolygonNormal != firstPolygonNormal || thisPolygonNormal != secondPolygonNormal)
+				continue;
+
+			// 2.3 make sub-polygons or tessellate more
+			if (concavePointsOfSubPolygon1IndicesOnAllPoints.empty())
+				subPolygons.push_back(firstSubPolygonIndicesOnAllPoints);
+			else
+				tessellateIntoSubPolygons(pxs, pys,
+										firstSubPolygonIndicesOnAllPoints,
+										concavePointsOfSubPolygon1IndicesOnAllPoints,
+										concavePointsOfSubPolygon1IndicesOnSubPolygon1,
+										firstPolygonNormal,
+										subPolygons);
+
+			if (concavePointsOfSubPolygon2IndicesOnAllPoints.empty())
+				subPolygons.push_back(secondSubPolygonIndicesOnAllPoints);
+			else
+				tessellateIntoSubPolygons(pxs, pys,
+										secondSubPolygonIndicesOnAllPoints,
+										concavePointsOfSubPolygon2IndicesOnAllPoints,
+										concavePointsOfSubPolygon2IndicesOnSubPolygon2,
+										secondPolygonNormal,
+										subPolygons);
+			break;
+		}
+	}
+
+	void GeometryUtility::tessellate(double* xs, double* ys, double* zs, size_t vertexCount, std::vector<size_t>& polygonIndices, std::vector<size_t>& indices)
+	{
+		// 0. basic validation
+		size_t count = polygonIndices.size();
+		if (count < 3)
+			return;
+
+		if (count == 3)
+		{
+			indices.push_back(polygonIndices[0]);
+			indices.push_back(polygonIndices[1]);
+			indices.push_back(polygonIndices[2]);
+			return;
+		}
+
+		// 1. calculate normal of this polygon
+		gaia3d::Point3D normal, crossProd, prevVector, nextVector;
+		double dotProd, angle;
+		size_t prevIndex, curIndex, nextIndex;
+		normal.set(0.0, 0.0, 0.0);
+		for (size_t i = 0; i < count; i++)
+		{
+			prevIndex = (i == 0) ? polygonIndices[count - 1] : polygonIndices[i - 1];
+			curIndex = polygonIndices[i];
+			nextIndex = (i == count - 1) ? polygonIndices[0] : polygonIndices[i + 1];
+
+			prevVector.set(xs[curIndex] - xs[prevIndex], ys[curIndex] - ys[prevIndex], zs[curIndex] - zs[prevIndex]);
+			nextVector.set(xs[nextIndex] - xs[curIndex], ys[nextIndex] - ys[curIndex], zs[nextIndex] - zs[curIndex]);
+
+			if (!prevVector.normalize())
+				continue;
+
+			if (!nextVector.normalize())
+				continue;
+
+			crossProd = prevVector ^ nextVector;
+			if (!crossProd.normalize())
+				continue;
+
+			dotProd = prevVector.x * nextVector.x + prevVector.y * nextVector.y + prevVector.z * nextVector.z;
+			angle = acos(dotProd);
+
+			normal += (crossProd * angle);
+		}
+
+		if (!normal.normalize())
+			return;
+
+		// 2. make projected polygon
+		unsigned char projectionType; // 0 : onto x-y plane, 1 : onto y-z plane, 2 : onto z-x plane
+		double nx = abs(normal.x);
+		double ny = abs(normal.y);
+		double nz = abs(normal.z);
+
+		projectionType = (nz > nx) ? ((nz > ny) ? 0 : 2) : ((nx > ny) ? 1 : 2);
+		double* pxs = new double[vertexCount];
+		memset(pxs, 0x00, sizeof(double)*vertexCount);
+		double* pys = new double[vertexCount];
+		memset(pys, 0x00, sizeof(double)*vertexCount);
+
+		switch (projectionType)
+		{
+		case 0:
+		{
+			if (normal.z > 0)
+			{
+				for (size_t i = 0; i < vertexCount; i++)
+				{
+					pxs[i] = xs[i];
+					pys[i] = ys[i];
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < vertexCount; i++)
+				{
+					pxs[i] = xs[i];
+					pys[i] = -ys[i];
+				}
+			}
+		}
+		break;
+		case 1:
+		{
+			if (normal.x > 0)
+			{
+				for (size_t i = 0; i < vertexCount; i++)
+				{
+					pxs[i] = ys[i];
+					pys[i] = zs[i];
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < vertexCount; i++)
+				{
+					pxs[i] = ys[i];
+					pys[i] = -zs[i];
+				}
+			}
+		}
+		break;
+		case 2:
+		{
+			if (normal.y > 0)
+			{
+				for (size_t i = 0; i < vertexCount; i++)
+				{
+					pxs[i] = zs[i];
+					pys[i] = xs[i];
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < vertexCount; i++)
+				{
+					pxs[i] = zs[i];
+					pys[i] = -xs[i];
+				}
+			}
+		}
+		break;
+		}
+
+		// 3. find concave points and normal of this projected polygon
+		std::vector<size_t> concavePointIndicesOnAllPoints;
+		std::vector<size_t> concavePointIndicesOnThisPolygon;
+		int projectedPolygonNormal;
+		std::vector<size_t> polygonVertexIndices;
+		for (size_t i = 0; i < count; i++)
+			polygonVertexIndices.push_back(polygonIndices[i]);
+
+		findConcavePointsAndNormal(pxs, pys, polygonVertexIndices, concavePointIndicesOnAllPoints, concavePointIndicesOnThisPolygon, projectedPolygonNormal);
+
+		if (concavePointIndicesOnAllPoints.empty())
+		{
+			for (size_t i = 1; i < count - 1; i++)
+			{
+				indices.push_back(polygonIndices[0]);
+				indices.push_back(polygonIndices[i]);
+				indices.push_back(polygonIndices[i + 1]);
+			}
+
+			delete[] pxs;
+			delete[] pys;
+			return;
+		}
+
+		// 4. split this polygon into convex sub-polygons
+		std::vector<std::vector<size_t>> subPolygons;
+		tessellateIntoSubPolygons(pxs, pys, polygonVertexIndices, concavePointIndicesOnAllPoints, concavePointIndicesOnThisPolygon, projectedPolygonNormal, subPolygons);
+
+		delete[] pxs;
+		delete[] pys;
+
+		// 5. split sub-polygons into triangles
+		for (size_t i = 0; i < subPolygons.size(); i++)
+		{
+			for (size_t j = 1; j < (subPolygons[i]).size() - 1; j++)
+			{
+				indices.push_back((subPolygons[i])[0]);
+				indices.push_back((subPolygons[i])[j]);
+				indices.push_back((subPolygons[i])[j+1]);
+			}
+		}
+	}
+
+	void find2DPlaneNormal(double* pxs, double* pys, size_t count, int& normal) {
+
+		double crossProdResult, dotProdResult, angle;
+		size_t prevIndex, nextIndex;
+		Point3D prevVector, nextVector;
+		double lfNormal = 0.0;
+		double tolerance = 1E-7;
+		for (size_t i = 0; i < count; i++)
+		{
+			prevIndex = (i == 0) ? count - 1 : i - 1;
+			nextIndex = (i == count - 1) ? 0 : i + 1;
+
+			prevVector.set(pxs[i] - pxs[prevIndex], pys[i] - pys[prevIndex], 0.0);
+			nextVector.set(pxs[nextIndex] - pxs[i], pys[nextIndex] - pys[i], 0.0);
+
+			if (!prevVector.normalize())
+				continue;
+			if (!nextVector.normalize())
+				continue;
+
+			crossProdResult = prevVector.x * nextVector.y - prevVector.y * nextVector.x;
+			dotProdResult = prevVector.x * nextVector.x + prevVector.y * nextVector.y;
+			if (crossProdResult > tolerance)
+			{
+				crossProdResult = 1.0;
+			}
+			else if (crossProdResult < -tolerance)
+			{
+				crossProdResult = -1.0;
+
+			}
+			else
+				continue;
+
+			if (dotProdResult > 1.0)
+				dotProdResult = 1.0;
+
+			if (dotProdResult < -1.0)
+				dotProdResult = -1.0;
+
+			angle = acos(dotProdResult);
+
+			lfNormal += (crossProdResult * angle);
+		}
+
+		normal = (lfNormal > 0.0) ? 1 : -1;
+	}
+
+	void getSortedRingsByDistFromPointAndMarkedIndices(double** px, double** py,
+												std::vector<size_t>& eachSizeOfRing,
+												double targetx, double targety,
+												std::vector<std::pair<size_t, size_t>>& indices)
+	{
+		//1. sort rings by distance from the reference point to their points
+		// and mark the index of each ring where minimum distance happens 
+		size_t count = eachSizeOfRing.size();
+		std::map<double, std::vector<std::pair<size_t, size_t>> > sortedRingList;
+		for (size_t i = 0; i < count; i++)
+		{
+			std::map<double, std::vector<size_t>> sortedPointListByDistance;
+			double tempx, tempy, squaredDist;
+			for (size_t j = 0; j < eachSizeOfRing[i]; j++)
+			{
+				if (targetx == px[i][j] && targety == py[i][j])
+				{
+					if (sortedPointListByDistance.find(0.0) == sortedPointListByDistance.end())
+						sortedPointListByDistance[0.0] = std::vector<size_t>();
+
+					sortedPointListByDistance[0.0].push_back(j);
+					continue;
+				}
+
+				tempx = px[i][j];
+				tempy = py[i][j];
+				squaredDist = (targetx - tempx) * (targetx - tempx) + (targety - tempy) * (targety - tempy);
+				if (sortedPointListByDistance.find(squaredDist) == sortedPointListByDistance.end())
+					sortedPointListByDistance[squaredDist] = std::vector<size_t>();
+				sortedPointListByDistance[squaredDist].push_back(j);
+			}
+
+			if (sortedRingList.find(sortedPointListByDistance.begin()->first) == sortedRingList.end())
+				sortedRingList[sortedPointListByDistance.begin()->first] = std::vector<std::pair<size_t, size_t>>();
+			sortedRingList[sortedPointListByDistance.begin()->first].push_back(std::pair<size_t, size_t>(i, (sortedPointListByDistance.begin()->second)[0]));
+		}
+
+		//2. push sorted result into the output container
+		std::map<double, std::vector<std::pair<size_t, size_t>>>::iterator it = sortedRingList.begin();
+		for (; it != sortedRingList.end(); it++)
+			indices.push_back((it->second)[0]);
+	}
+
+	bool earCutHoleOfPolygon(double** pxs, double** pys, std::vector<size_t>& eachRingPointCount,
+							size_t indexOfHoleToBeCut, size_t pointIndexOfCut, bool bReverseInnerRing,
+							std::vector<std::pair<size_t, size_t>>& mergedOuterRing)
+	{
+		// pxs, pys : all 2D point coordinates of a outer ring and inner rings
+		// eachRingPointCount : point count of all rings(outer ring index : 0, inner ring(hole) index : 1 ~ n-1)
+		// bReverseInnerRings : whether this inner rings should be reversed or not
+		// indexOfHoleToBeCut : target inner ring to be ear-cut
+		// pointIndexOfCut : ear cut point of the target inner ring
+		// outerRing : container which is initially filled with outer ring points and will be filled with ear-cut result finally
+
+		// 1. sort points of outer ring by distance from the ear-cut point of target inner hole
+		std::map<double, std::pair<size_t, size_t>> sortedOuterRingPoints;
+		std::map<double, size_t> sortedOuterRingPointIndices;
+		double xInnerHoleToBeCut = pxs[indexOfHoleToBeCut][pointIndexOfCut], yInnerHoleToBeCut = pys[indexOfHoleToBeCut][pointIndexOfCut];
+		double xOuterRing, yOuterRing;
+		double squaredDist;
+		for (size_t i = 0; i < mergedOuterRing.size(); i++)
+		{
+			xOuterRing = pxs[mergedOuterRing[i].first][mergedOuterRing[i].second];
+			yOuterRing = pys[mergedOuterRing[i].first][mergedOuterRing[i].second];
+
+			squaredDist = (xOuterRing - xInnerHoleToBeCut)*(xOuterRing - xInnerHoleToBeCut) + (yOuterRing - yInnerHoleToBeCut)*(yOuterRing - yInnerHoleToBeCut);
+
+			sortedOuterRingPoints[squaredDist] = mergedOuterRing[i];
+			sortedOuterRingPointIndices[squaredDist] = i;
+		}
+
+		// 2. find a point on outer ring
+		// where line segment composed of this point and point on the inner hole to be cut NEVER intersects with 
+		// any edges of outer ring and all inner holes.
+		std::map<double, std::pair<size_t, size_t>>::iterator iter1 = sortedOuterRingPoints.begin();
+		std::map<double, size_t>::iterator iter2 = sortedOuterRingPointIndices.begin();
+		bool bIntersected;
+		double xToBeCutStart, yToBeCutStart;
+		size_t pointIndexOfOuterRingToBeCut;
+		bool bThisInnerHoleCanBeEarCut = false;
+		for (; iter1 != sortedOuterRingPoints.end(); iter1++, iter2++)
+		{
+			bIntersected = false;
+			xToBeCutStart = pxs[iter1->second.first][iter1->second.second];
+			yToBeCutStart = pys[iter1->second.first][iter1->second.second];
+			for (size_t i = 0; i < eachRingPointCount.size(); i++)
+			{
+				for (size_t j = 0; j < eachRingPointCount[i]; j++)
+				{
+					if (intersectionTestOnTwoLineSegments(  xToBeCutStart, yToBeCutStart, xInnerHoleToBeCut, yInnerHoleToBeCut,
+															pxs[i][j], pys[i][j], pxs[i][(j+1)%eachRingPointCount[i]], pys[i][(j+1)%eachRingPointCount[i]] ) )
+					{
+						bIntersected = true;
+						break;
+					}
+				}
+			}
+
+			if (!bIntersected)
+			{
+				pointIndexOfOuterRingToBeCut = iter2->second;
+				bThisInnerHoleCanBeEarCut = true;
+				break;
+			}
+		}
+
+		if (!bThisInnerHoleCanBeEarCut)
+			return false;
+
+		// 3. merge outer ring and the target inner hole
+		// At this point, mergedOuterRing[pointIndexOfOuterRingToBeCut] is the point of outer ring to be ear cut
+		
+		if (pointIndexOfOuterRingToBeCut == 0)
+		{
+			mergedOuterRing.push_back(mergedOuterRing[0]);
+
+			if (bReverseInnerRing)
+			{
+				for (size_t i = 0; i < eachRingPointCount[indexOfHoleToBeCut]; i++)
+					mergedOuterRing.push_back(std::pair<size_t, size_t>(indexOfHoleToBeCut, (eachRingPointCount[indexOfHoleToBeCut] + pointIndexOfCut - i) % eachRingPointCount[indexOfHoleToBeCut]));
+			}
+			else
+			{
+				for (size_t i = 0; i < eachRingPointCount[indexOfHoleToBeCut]; i++)
+					mergedOuterRing.push_back(std::pair<size_t, size_t>(indexOfHoleToBeCut, (i + pointIndexOfCut) % eachRingPointCount[indexOfHoleToBeCut]));
+			}
+			mergedOuterRing.push_back(std::pair<size_t, size_t>(indexOfHoleToBeCut, pointIndexOfCut));
+		}
+		else
+		{
+			std::vector<std::pair<size_t, size_t>> mergedResult;
+
+			for (size_t i = 0; i <= pointIndexOfOuterRingToBeCut; i++)
+				mergedResult.push_back(mergedOuterRing[i]);
+
+			if (bReverseInnerRing)
+			{
+				for (size_t i = 0; i < eachRingPointCount[indexOfHoleToBeCut]; i++)
+					mergedResult.push_back(std::pair<size_t, size_t>(indexOfHoleToBeCut, (eachRingPointCount[indexOfHoleToBeCut] + pointIndexOfCut - i) % eachRingPointCount[indexOfHoleToBeCut]));
+			}
+			else
+			{
+				for (size_t i = 0; i < eachRingPointCount[indexOfHoleToBeCut]; i++)
+					mergedResult.push_back(std::pair<size_t, size_t>(indexOfHoleToBeCut, (i+pointIndexOfCut)%eachRingPointCount[indexOfHoleToBeCut]));
+			}
+			mergedResult.push_back(std::pair<size_t, size_t>(indexOfHoleToBeCut, pointIndexOfCut));
+
+			for (size_t i = pointIndexOfOuterRingToBeCut; i < mergedOuterRing.size(); i++)
+				mergedResult.push_back(mergedOuterRing[i]);
+
+			mergedOuterRing.clear();
+			mergedOuterRing.insert(mergedOuterRing.begin(), mergedResult.begin(), mergedResult.end());
+		}
+
+		return true;
+	}
+
+	void GeometryUtility::earCut(double** xs, double** ys, double** zs,
+								std::vector<size_t>& eachRingPointCount,
+								std::vector<std::pair<size_t, size_t>>& result)
+	{
+		// eachRingPointCount[0] : point count of outer ring
+		// eachRingPointCount[1] ~ eachRingPointCount[n] : point counts of inner rings
+		// xs[0][n-1] : x coordinate of n-th point on outer ring
+		// xs[m][n-1] : x coordinate of n-th point on m-th inner ring
+		// ys and zs are same with xs
+
+		// 0. basic validation
+		if (eachRingPointCount.size() == 0)
+			return;
+
+		if (eachRingPointCount.size() == 1)
+		{
+			if (eachRingPointCount[0] < 3)
+				return;
+
+			std::pair<size_t, size_t> polygonPointIndex;
+			polygonPointIndex.first = 0;
+			for (size_t i = 0; i < eachRingPointCount[0]; i++)
+			{
+				polygonPointIndex.second = i;
+				result.push_back(polygonPointIndex);
+			}
+
+			return;
+		}
+
+		bool bAllInnerRingsValid = true;
+		for (size_t i = 1; i < eachRingPointCount.size(); i++)
+		{
+			if (eachRingPointCount[i] < 3)
+			{
+				bAllInnerRingsValid = false;
+				break;
+			}
+		}
+		if (!bAllInnerRingsValid)
+			return;
+		
+		// 1. calculate normal of this polygon
+		gaia3d::Point3D normal, crossProd, prevVector, nextVector;
+		double dotProd, angle;
+		size_t prevIndex, nextIndex;
+		normal.set(0.0, 0.0, 0.0);
+		for (size_t i = 0; i < eachRingPointCount[0]; i++)
+		{
+			prevIndex = (i == 0) ? eachRingPointCount[0] - 1 : i - 1;
+			nextIndex = (i == eachRingPointCount[0] - 1) ? 0 : i + 1;
+
+			prevVector.set(xs[0][i] - xs[0][prevIndex], ys[0][i] - ys[0][prevIndex], zs[0][i] - zs[0][prevIndex]);
+			nextVector.set(xs[0][nextIndex] - xs[0][i], ys[0][nextIndex] - ys[0][i], zs[0][nextIndex] - zs[0][i]);
+
+			if (!prevVector.normalize())
+				continue;
+			if (!nextVector.normalize())
+				continue;
+
+			crossProd = prevVector ^ nextVector;
+			if (!crossProd.normalize())
+				continue;
+
+			dotProd = prevVector.x * nextVector.x + prevVector.y * nextVector.y + prevVector.z * nextVector.z;
+			angle = acos(dotProd);
+
+			normal += (crossProd * angle);
+		}
+
+		if (!normal.normalize())
+			return;
+
+		// 2. make projected polygon using the polygon normal
+		unsigned char projectionType; // 0 : onto x-y plane, 1 : onto y-z plane, 2 : onto z-x plane
+		double nx = abs(normal.x);
+		double ny = abs(normal.y);
+		double nz = abs(normal.z);
+
+		projectionType = (nz > nx) ? ((nz > ny) ? 0 : 2) : ((nx > ny) ? 1 : 2);
+		double** pxs = new double*[eachRingPointCount.size()];
+		memset(pxs, 0x00, sizeof(double*) * eachRingPointCount.size());
+		double** pys = new double*[eachRingPointCount.size()];
+		memset(pys, 0x00, sizeof(double*) * eachRingPointCount.size());
+
+		for (size_t i = 0; i < eachRingPointCount.size(); i++)
+		{
+			pxs[i] = new double[eachRingPointCount[i]];
+			pys[i] = new double[eachRingPointCount[i]];
+			memset(pxs[i], 0x00, sizeof(double) * eachRingPointCount[i]);
+			memset(pxs[i], 0x00, sizeof(double) * eachRingPointCount[i]);
+		}
+
+		switch (projectionType)
+		{
+		case 0:
+		{
+			if (normal.z > 0)
+			{
+				for (size_t i = 0; i < eachRingPointCount.size(); i++)
+				{
+					for (size_t j = 0; j < eachRingPointCount[i]; j++)
+					{
+						pxs[i][j] = xs[i][j];
+						pys[i][j] = ys[i][j];
+					}
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < eachRingPointCount.size(); i++)
+				{
+					for (size_t j = 0; j < eachRingPointCount[i]; j++)
+					{
+						pxs[i][j] = xs[i][j];
+						pys[i][j] = -ys[i][j];
+					}
+				}
+			}
+		}
+		break;
+		case 1:
+		{
+			if (normal.x > 0)
+			{
+				for (size_t i = 0; i < eachRingPointCount.size(); i++)
+				{
+					for (size_t j = 0; j < eachRingPointCount[i]; j++)
+					{
+						pxs[i][j] = ys[i][j];
+						pys[i][j] = zs[i][j];
+					}
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < eachRingPointCount.size(); i++)
+				{
+					for (size_t j = 0; j < eachRingPointCount[i]; j++)
+					{
+						pxs[i][j] = ys[i][j];
+						pys[i][j] = -zs[i][j];
+					}
+				}
+			}
+		}
+		break;
+		case 2:
+		{
+			if (normal.y > 0)
+			{
+				for (size_t i = 0; i < eachRingPointCount.size(); i++)
+				{
+					for (size_t j = 0; j < eachRingPointCount[i]; j++)
+					{
+						pxs[i][j] = zs[i][j];
+						pys[i][j] = xs[i][j];
+					}
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < eachRingPointCount.size(); i++)
+				{
+					for (size_t j = 0; j < eachRingPointCount[i]; j++)
+					{
+						pxs[i][j] = zs[i][j];
+						pys[i][j] = -xs[i][j];
+					}
+				}
+			}
+		}
+		break;
+		}
+
+		// 3. set normal of outter ring
+		int outerRingNormal = 1;
+
+		// 4. find wheter inner rings should be reversed with comparison to the normal of this polygon
+		std::vector<bool> bReverseInnerRings;
+		for (size_t i = 1; i < eachRingPointCount.size(); i++)
+		{
+			int innerRingNormal;
+
+			find2DPlaneNormal(pxs[i], pys[i], eachRingPointCount[i], innerRingNormal);
+
+			if (outerRingNormal == innerRingNormal)
+				bReverseInnerRings.push_back(true);
+			else
+				bReverseInnerRings.push_back(false);
+		}
+
+		// 5. let's ear-cut
+
+		// 5-1. find lower-left point of MBR from all inner rings
+		double minx, miny;
+		minx = pxs[1][0];
+		miny = pys[1][0];
+		for (size_t i = 1; i < eachRingPointCount.size(); i++)
+		{
+			for (size_t j = 0; j < eachRingPointCount[i]; j++)
+			{
+				if(minx > pxs[i][j]) 
+					minx = pxs[i][j];
+				if(miny > pys[i][j])
+					miny = pys[i][j];
+			}
+		}
+		
+		// 5-2. sort inner rings by distance from this minimum bounding point
+		std::vector<std::pair<size_t, size_t>> sortedRingsAndTheirLowerLeftPointList;
+		std::vector<size_t> eachInnerRingPointCount;
+		eachInnerRingPointCount.insert(eachInnerRingPointCount.begin(), eachRingPointCount.begin() + 1, eachRingPointCount.end());
+		getSortedRingsByDistFromPointAndMarkedIndices(pxs + 1, pys + 1, eachInnerRingPointCount, minx, miny, sortedRingsAndTheirLowerLeftPointList);
+
+		// 5-3. initialize result container by filling it with outer ring points
+		result.clear();
+		for (size_t i = 0; i < eachRingPointCount[0]; i++)
+			result.push_back(std::pair<size_t, size_t>(0, i));
+
+		// 5-4. ear cut between outer ring and inner rings by turn on marked indices
+		std::vector<size_t>eliminatedHoleIndices;
+		while (true)
+		{
+			// 1. find the nearest hole not yet eliminated
+			size_t nearestSortedHoleIndexNotEliminated = 0;
+			for (size_t i = 0; i < sortedRingsAndTheirLowerLeftPointList.size(); i++)
+			{
+				bool bEliminated = false;
+				
+				for (size_t j = 0; j < eliminatedHoleIndices.size(); j++)
+				{
+					if (sortedRingsAndTheirLowerLeftPointList[i].first == eliminatedHoleIndices[j])
+					{
+						bEliminated = true;
+						break;
+					}
+				}
+
+				if (!bEliminated)
+				{
+					nearestSortedHoleIndexNotEliminated = i;
+					break;
+				}
+			}
+
+			// 2. eliminated the selected inner hole
+			size_t targetHoleIndex = sortedRingsAndTheirLowerLeftPointList[nearestSortedHoleIndexNotEliminated].first + 1;
+			size_t targetPointIndexOfTargetHole = sortedRingsAndTheirLowerLeftPointList[nearestSortedHoleIndexNotEliminated].second;
+			bool bReverseThisInnerHole = bReverseInnerRings[targetHoleIndex - 1];
+
+			if (earCutHoleOfPolygon(pxs, pys, eachRingPointCount, targetHoleIndex, targetPointIndexOfTargetHole, bReverseThisInnerHole, result))
+				eliminatedHoleIndices.push_back(targetHoleIndex - 1);
+
+			if (eliminatedHoleIndices.size() == eachInnerRingPointCount.size())
+				break;
+		}
+
+		// 6. clear
+		for (size_t i = 0; i < eachRingPointCount.size(); i++)
+		{
+			delete[] pxs[i];
+			delete[] pys[i];
+		}
+		delete[] pxs;
+		delete[] pys;
+	}
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif

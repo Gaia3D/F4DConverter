@@ -106,7 +106,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>AVEVAREVIEWFORMAT;POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-4.1/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -142,7 +142,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>AVEVAREVIEWFORMAT;POINTCLOUDFORMAT;CITYGMLFORMAT;CLASSICFORMAT;IFCFORMAT;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)external/gdal/include/alg;$(SolutionDir)external/gdal/include/gcore;$(SolutionDir)external/gdal/include/port;$(SolutionDir)external/gdal/include/ogr;$(SolutionDir)external/geotiff/include;$(SolutionDir)external/libcitygml/include;$(SolutionDir)external/proj/include;$(SolutionDir)external/assimp-4.1/include;$(SolutionDir)include/IfcLoader;$(SolutionDir)external/glew-2.0.0/include/GL;$(SolutionDir)external/liblas/include;$(SolutionDir)external/boost_1_68_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -181,6 +181,7 @@
     <ClInclude Include="converter\process\ProcessSetting.h" />
     <ClInclude Include="converter\process\SceneControlVariables.h" />
     <ClInclude Include="converter\reader\aReader.h" />
+    <ClInclude Include="converter\reader\AvevaRevReader.h" />
     <ClInclude Include="converter\reader\CitygmlReader.h" />
     <ClInclude Include="converter\reader\ClassicFormatReader.h" />
     <ClInclude Include="converter\reader\IfcReader.h" />
@@ -225,6 +226,7 @@
     <ClCompile Include="converter\process\ProcessSetting.cpp" />
     <ClCompile Include="converter\process\SceneControlVariables.cpp" />
     <ClCompile Include="converter\reader\aReader.cpp" />
+    <ClCompile Include="converter\reader\AvevaRevReader.cpp" />
     <ClCompile Include="converter\reader\CitygmlReader.cpp" />
     <ClCompile Include="converter\reader\ClassicFormatReader.cpp" />
     <ClCompile Include="converter\reader\IfcReader.cpp" />

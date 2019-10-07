@@ -177,6 +177,9 @@
     <ClInclude Include="argumentDefinition.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="converter\reader\AvevaRevReader.h">
+      <Filter>converter\reader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -276,6 +279,9 @@
       <Filter>converter\reader</Filter>
     </ClCompile>
     <ClCompile Include="converter\reader\PointCloudReader.cpp">
+      <Filter>converter\reader</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\reader\AvevaRevReader.cpp">
       <Filter>converter\reader</Filter>
     </ClCompile>
   </ItemGroup>
