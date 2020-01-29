@@ -34,6 +34,8 @@ ConversionProcessor::ConversionProcessor()
 	longitude = latitude = 0.0;
 	altitude = 0.0f;
 
+	bResponsibleDisposingGeometries = true;
+
 	scv = new SceneControlVariables();
 }
 
@@ -285,9 +287,13 @@ void ConversionProcessor::clear()
 
 	attributes.clear();
 
-	size_t meshCount = allMeshes.size();
-	for(size_t i = 0; i < meshCount; i++)
-		delete allMeshes[i];
+	if (bResponsibleDisposingGeometries)
+	{
+		size_t meshCount = allMeshes.size();
+		for (size_t i = 0; i < meshCount; i++)
+			delete allMeshes[i];
+	}
+
 	allMeshes.clear();
 
 	thisSpatialOctree.clear();
@@ -321,6 +327,8 @@ void ConversionProcessor::clear()
 
 	netSurfaceTextureWidth.clear();
 	netSurfaceTextureHeight.clear();
+
+	bResponsibleDisposingGeometries = false;
 }
 
 void ConversionProcessor::changeSceneControlVariables()
@@ -872,59 +880,57 @@ void ConversionProcessor::convertPointCloud(std::vector<gaia3d::TrianglePolyhedr
 void ConversionProcessor::trimVertexNormals(std::vector<gaia3d::TrianglePolyhedron*>& meshes)
 {
 	size_t meshCount = meshes.size();
-	//double anglePNormalAndVNormal0, anglePNormalAndVNormal1, anglePNormalAndVNormal2;
+	double anglePNormalAndVNormal0, anglePNormalAndVNormal1, anglePNormalAndVNormal2;
 	for(size_t i = 0; i < meshCount; i++)
 	{
 		if (meshes[i]->doesThisHaveNormals())
 		{
-			continue;
+			std::vector<gaia3d::Surface*>& surfaces = meshes[i]->getSurfaces();
+			size_t surfaceCount = surfaces.size();
+			for (size_t j = 0; j < surfaceCount; j++)
+			{
+				std::vector<gaia3d::Triangle*>& triangles = surfaces[j]->getTriangles();
+				size_t triangleCount = triangles.size();
+				for (size_t k = 0; k < triangleCount; k++)
+				{
+					gaia3d::Triangle* triangle = triangles[k];
+					gaia3d::Point3D planeNormal;
+					gaia3d::GeometryUtility::calculatePlaneNormal(triangle->getVertices()[0]->position.x, triangle->getVertices()[0]->position.y, triangle->getVertices()[0]->position.z,
+						triangle->getVertices()[1]->position.x, triangle->getVertices()[1]->position.y, triangle->getVertices()[1]->position.z,
+						triangle->getVertices()[2]->position.x, triangle->getVertices()[2]->position.y, triangle->getVertices()[2]->position.z,
+						planeNormal.x, planeNormal.y, planeNormal.z,
+						true);
 
-			//std::vector<gaia3d::Surface*>& surfaces = meshes[i]->getSurfaces();
-			//size_t surfaceCount = surfaces.size();
-			//for (size_t j = 0; j < surfaceCount; j++)
-			//{
-			//	std::vector<gaia3d::Triangle*>& triangles = surfaces[j]->getTriangles();
-			//	size_t triangleCount = triangles.size();
-			//	for (size_t k = 0; k < triangleCount; k++)
-			//	{
-			//		gaia3d::Triangle* triangle = triangles[k];
-			//		gaia3d::Point3D planeNormal;
-			//		gaia3d::GeometryUtility::calculatePlaneNormal(triangle->getVertices()[0]->position.x, triangle->getVertices()[0]->position.y, triangle->getVertices()[0]->position.z,
-			//			triangle->getVertices()[1]->position.x, triangle->getVertices()[1]->position.y, triangle->getVertices()[1]->position.z,
-			//			triangle->getVertices()[2]->position.x, triangle->getVertices()[2]->position.y, triangle->getVertices()[2]->position.z,
-			//			planeNormal.x, planeNormal.y, planeNormal.z,
-			//			true);
-
-			//		anglePNormalAndVNormal0 = 180.0 / M_PI * gaia3d::GeometryUtility::angleBetweenTwoVectors(planeNormal.x, planeNormal.y, planeNormal.z,
-			//			triangle->getVertices()[0]->normal.x,
-			//			triangle->getVertices()[0]->normal.y,
-			//			triangle->getVertices()[0]->normal.z);
-			//		anglePNormalAndVNormal1 = 180.0 / M_PI * gaia3d::GeometryUtility::angleBetweenTwoVectors(planeNormal.x, planeNormal.y, planeNormal.z,
-			//			triangle->getVertices()[1]->normal.x,
-			//			triangle->getVertices()[1]->normal.y,
-			//			triangle->getVertices()[1]->normal.z);
-			//		anglePNormalAndVNormal2 = 180.0 / M_PI * gaia3d::GeometryUtility::angleBetweenTwoVectors(planeNormal.x, planeNormal.y, planeNormal.z,
-			//			triangle->getVertices()[2]->normal.x,
-			//			triangle->getVertices()[2]->normal.y,
-			//			triangle->getVertices()[2]->normal.z);
+					anglePNormalAndVNormal0 = 180.0 / M_PI * gaia3d::GeometryUtility::angleBetweenTwoVectors(planeNormal.x, planeNormal.y, planeNormal.z,
+						triangle->getVertices()[0]->normal.x,
+						triangle->getVertices()[0]->normal.y,
+						triangle->getVertices()[0]->normal.z);
+					anglePNormalAndVNormal1 = 180.0 / M_PI * gaia3d::GeometryUtility::angleBetweenTwoVectors(planeNormal.x, planeNormal.y, planeNormal.z,
+						triangle->getVertices()[1]->normal.x,
+						triangle->getVertices()[1]->normal.y,
+						triangle->getVertices()[1]->normal.z);
+					anglePNormalAndVNormal2 = 180.0 / M_PI * gaia3d::GeometryUtility::angleBetweenTwoVectors(planeNormal.x, planeNormal.y, planeNormal.z,
+						triangle->getVertices()[2]->normal.x,
+						triangle->getVertices()[2]->normal.y,
+						triangle->getVertices()[2]->normal.z);
 
 
-			//		if (anglePNormalAndVNormal0 > 90.0 || anglePNormalAndVNormal0 > 90.0 || anglePNormalAndVNormal0 > 90.0)
-			//		{
-			//			size_t tempIndex = triangle->getVertexIndices()[0];
-			//			triangle->getVertexIndices()[0] = triangle->getVertexIndices()[1];
-			//			triangle->getVertexIndices()[1] = tempIndex;
+					if (anglePNormalAndVNormal0 > 90.0 || anglePNormalAndVNormal0 > 90.0 || anglePNormalAndVNormal0 > 90.0)
+					{
+						size_t tempIndex = triangle->getVertexIndices()[0];
+						triangle->getVertexIndices()[0] = triangle->getVertexIndices()[1];
+						triangle->getVertexIndices()[1] = tempIndex;
 
-			//			gaia3d::Vertex* tempVertex = triangle->getVertices()[0];
-			//			triangle->getVertices()[0] = triangle->getVertices()[1];
-			//			triangle->getVertices()[1] = tempVertex;
+						gaia3d::Vertex* tempVertex = triangle->getVertices()[0];
+						triangle->getVertices()[0] = triangle->getVertices()[1];
+						triangle->getVertices()[1] = tempVertex;
 
-			//			triangle->setNormal(-planeNormal.x, -planeNormal.y, -planeNormal.z);
-			//		}
-			//		else
-			//			*(triangle->getNormal()) = planeNormal;
-			//	}
-			//}
+						triangle->setNormal(-planeNormal.x, -planeNormal.y, -planeNormal.z);
+					}
+					else
+						*(triangle->getNormal()) = planeNormal;
+				}
+			}
 		}
 		else
 		{

@@ -87,7 +87,7 @@ bool proceedMesh(aiMesh* mesh,
 		polyhedron->setHasNormals(true);
 
 	// access to vertices
-	double tmpZ;
+	//double tmpZ;
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
 		gaia3d::Vertex* vertex = new gaia3d::Vertex;
@@ -305,10 +305,31 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 	if (!proceedNode(scene->mRootNode, scene, transformMatrix, container, textureContainer))
 		return false;
 
+	// bounding box limitation checking
+	gaia3d::BoundingBox bbox;
+	size_t meshCount = container.size();
+	for (size_t i = 0; i < meshCount; i++)
+	{
+		std::vector<gaia3d::Vertex*>& vertices = container[i]->getVertices();
+		size_t vertexCount = vertices.size();
+		for (size_t j = 0; j < vertexCount; j++)
+			bbox.addPoint(vertices[j]->position.x, vertices[j]->position.y, vertices[j]->position.z);
+	}
+
+	if (bbox.getMaxLength() > 600.0)
+	{
+		for (size_t i = 0; i < meshCount; i++)
+		{
+			delete container[i];
+		}
+
+		return false;
+	}
+
 	// transform coordinates if information for georeferencing is injected.
 	if (bCoordinateInfoInjected)
 	{
-		gaia3d::BoundingBox bbox;
+		/*gaia3d::BoundingBox bbox;
 		size_t meshCount = container.size();
 		for (size_t i = 0; i < meshCount; i++)
 		{
@@ -316,7 +337,7 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 			size_t vertexCount = vertices.size();
 			for (size_t j = 0; j < vertexCount; j++)
 				bbox.addPoint(vertices[j]->position.x, vertices[j]->position.y, vertices[j]->position.z);
-		}
+		}*/
 
 		double cx, cy, cz;
 		bbox.getCenterPoint(cx, cy, cz);

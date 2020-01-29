@@ -28,14 +28,15 @@ private:
 	double unitScaleFactor;
 	unsigned char skinLevel;
 	bool bYAxisUp;
-	bool bAlignPostionToCenter;
+	int alignType;
 	bool bUseReferenceLonLat;
 	double referenceLon, referenceLat;
 	int meshType;
 	bool bUseEpsg;
 	std::string epsgCode;
 	double offsetX, offsetY, offsetZ;
-	bool bDumpObjectPosition;
+	std::string projectName;
+	std::map<std::string, bool> splitFilter;
 
 	std::string inputFolderPath, outputFolderPath;
 
@@ -65,11 +66,11 @@ private:
 
 	void processDataFiles(std::map<std::string, std::string>& targetFiles);
 
-	bool processDataFile(std::string& filePath, aReader* reader);
-
 	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);
 
-	void processSingleLoop(std::map<std::string, std::string>& targetFiles, std::map<std::string, double>& centerXs, std::map<std::string, double>& centerYs, unsigned char depth);
+	void writeRelativePathOfEachData(std::map<std::string, std::string>& relativePaths);
+
+	void processSingleLoop(std::map<std::string, std::string>& targetFiles, std::map<std::string, double>& centerXs, std::map<std::string, double>& centerYs, std::map<std::string, std::string>& relativePaths, unsigned char depth);
 };
 
 

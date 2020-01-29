@@ -11,9 +11,7 @@
 class aReader abstract
 {
 public:
-	aReader() {}
-
-	virtual ~aReader()
+	aReader()
 	{
 		unitScaleFactor = 1.0;
 
@@ -23,7 +21,13 @@ public:
 
 		bYAxisUp = false;
 
-		offsetX = offsetY = offsetZ = 0.0;
+		bBuildHiararchy = false;
+
+		bAlignToBottomCenter = bAlignToCenter = false;
+	}
+
+	virtual ~aReader()
+	{
 	}
 
 public:
@@ -33,6 +37,8 @@ public:
 
 	virtual std::vector<gaia3d::TrianglePolyhedron*>& getDataContainer() {return container;}
 
+	virtual std::map<std::string, std::vector<gaia3d::TrianglePolyhedron*>>& getMultipleDataContainers() { return containers; }
+
 	virtual std::map<std::string, std::string>& getTextureInfoContainer() { return textureContainer; }
 
 	virtual void setUnitScaleFactor(double factor) { unitScaleFactor = factor; }
@@ -40,6 +46,8 @@ public:
 	virtual void setOffset(double x, double y, double z) { offsetX = x; offsetY = y; offsetZ = z; }
 
 	virtual void setYAxisUp(bool bUp) { bYAxisUp = bUp; }
+
+	virtual void setBuildHiararchy(bool bBuild) { bBuildHiararchy = bBuild; }
 
 	virtual bool doesHasGeoReferencingInfo() { return bHasGeoReferencingInfo; }
 
@@ -49,10 +57,24 @@ public:
 
 	virtual void injectSrsInfo(std::string& epsg) { this->epsg = epsg; bCoordinateInfoInjected = true; }
 
+	virtual void alignToBottomCenter(bool bAlign) { bAlignToBottomCenter = bAlign; }
+
+	virtual void alignToCenter(bool bAlign) { bAlignToCenter = bAlign; }
+
 	virtual std::map<std::string, std::string>& getTemporaryFiles() { return temporaryFiles; }
+
+	virtual bool shouldGeometryBeDesroyedOutside() { return (!container.empty() && !containers.empty()); }
+
+	virtual bool shouldRawDataBeConvertedToMuitiFiles() { return !containers.empty(); }
+
+	virtual std::map<std::string, std::vector<std::string>>& getAncestorsOfEachSubGroup() { return ancestorsOfEachSubGroup; }
+
+	virtual std::map<std::string, bool>& getSplitFilter() { return splitFilter; }
 
 protected:
 	std::vector<gaia3d::TrianglePolyhedron*> container;
+
+	std::map<std::string, std::vector<gaia3d::TrianglePolyhedron*>> containers;
 
 	std::map<std::string, std::string> textureContainer;
 
@@ -71,6 +93,18 @@ protected:
 	double lonOrigin, latOrigin;
 
 	bool bCoordinateInfoInjected;
+
+	bool bAlignToBottomCenter;
+
+	bool bAlignToCenter;
+
+	bool bBuildHiararchy;
+
+	std::map<std::string, std::vector<std::string>> ancestorsOfEachSubGroup;
+
+	std::map<std::string, bool> splitFilter;
+
+protected:
 
 	std::string makeProj4String()
 	{

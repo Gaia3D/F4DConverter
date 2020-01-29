@@ -128,6 +128,48 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 		std::string objectId = gaia3d::StringUtility::convertWideStringToUtf8(wObjectId);
 
 		polyhedron->addStringAttribute(std::string(ObjectGuid), objectId);
+#ifdef ONLYFORHYNIX
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_Chemical")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(255, 0, 211));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_Gas_1")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(255, 0, 0));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_Gas_2")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(255, 0, 0));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_PGS")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(171, 242, 0));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_Water_1")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(0, 216, 255));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_Water_2")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(0, 216, 255));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_WF")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(0, 84, 255));
+		}
+		if (filePath.find(std::string("CJ_M15M01ALL_PP_XX_WW")) != std::string::npos)
+		{
+			polyhedron->setColorMode(gaia3d::ColorMode::SingleColor);
+			polyhedron->setSingleColor(MakeColorU4(140, 140, 140));
+		}
+#endif
 
 		container.push_back(polyhedron);
 	}

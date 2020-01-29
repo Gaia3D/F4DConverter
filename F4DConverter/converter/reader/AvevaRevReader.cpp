@@ -51,7 +51,7 @@ public:
 		surfaces.clear();
 	}
 
-	enum PRIM_TYPE {NONE, UNKNOWN, BROKEN, TYPE1, TYPE2, TYPE4, TYPE7, TYPE8, TYPE10, TYPE11};
+	enum PRIM_TYPE {NONE, UNKNOWN, BROKEN, TYPE1, TYPE2, TYPE3, TYPE4, TYPE5, TYPE6, TYPE7, TYPE8, TYPE9, TYPE10, TYPE11};
 
 public:
 	PRIM_TYPE primType; // one of 1, 2, 4, 7, 8, 10, 11. still can't understand what this means
@@ -133,6 +133,17 @@ void readALine(char buffer[], FILE*&file)
 		}
 	}
 #endif
+	if (readingMode != 0)
+	{
+		if (std::string(buffer).find(std::string("CNTB")) != std::string::npos ||
+			std::string(buffer).find(std::string("CNTE")) != std::string::npos ||
+			std::string(buffer).find(std::string("PRIM")) != std::string::npos ||
+			std::string(buffer).find(std::string("OBST")) != std::string::npos)
+		{
+			printf("[ERROR]Parsing Status Broken. line number : %zd\n", readLineCount);
+			_ASSERT(false);
+		}
+	}
 }
 
 AvevaRevReader::AvevaRevReader()
@@ -322,8 +333,17 @@ void readPrimInfo(FILE* file, RevNode* node)
 	else if (aPrimType.compare(std::string("2")) == 0)
 		primType = RevPrim::PRIM_TYPE::TYPE2;
 
+	else if (aPrimType.compare(std::string("3")) == 0)
+		primType = RevPrim::PRIM_TYPE::TYPE3;
+
 	else if (aPrimType.compare(std::string("4")) == 0)
 		primType = RevPrim::PRIM_TYPE::TYPE4;
+
+	else if (aPrimType.compare(std::string("5")) == 0)
+		primType = RevPrim::PRIM_TYPE::TYPE5;
+
+	else if (aPrimType.compare(std::string("6")) == 0)
+		primType = RevPrim::PRIM_TYPE::TYPE6;
 
 	else if (aPrimType.compare(std::string("7")) == 0)
 		primType = RevPrim::PRIM_TYPE::TYPE7;
@@ -331,11 +351,20 @@ void readPrimInfo(FILE* file, RevNode* node)
 	else if (aPrimType.compare(std::string("8")) == 0)
 		primType = RevPrim::PRIM_TYPE::TYPE8;
 
+	else if (aPrimType.compare(std::string("9")) == 0)
+		primType = RevPrim::PRIM_TYPE::TYPE9;
+
 	else if (aPrimType.compare(std::string("10")) == 0)
 		primType = RevPrim::PRIM_TYPE::TYPE10;
 
 	else if (aPrimType.compare(std::string("11")) == 0)
 		primType = RevPrim::PRIM_TYPE::TYPE11;
+
+	else
+	{
+		printf("[ERROR]Unknown Prim Type : %s, line number : %zd\n", aPrimType.c_str(), readLineCount);
+		system("pause");
+	}
 
 	RevPrim* prim = new RevPrim;
 	prim->primType = primType;
@@ -408,7 +437,22 @@ void readPrimInfo(FILE* file, RevNode* node)
 		readALine(line, file); // read dummy line
 	}
 	break;
+	case RevPrim::PRIM_TYPE::TYPE3:
+	{
+		readALine(line, file); // read dummy line
+	}
+	break;
 	case RevPrim::PRIM_TYPE::TYPE4:
+	{
+		readALine(line, file); // read dummy line
+	}
+	break;
+	case RevPrim::PRIM_TYPE::TYPE5:
+	{
+		readALine(line, file); // read dummy line
+	}
+	break;
+	case RevPrim::PRIM_TYPE::TYPE6:
 	{
 		readALine(line, file); // read dummy line
 	}
@@ -420,6 +464,11 @@ void readPrimInfo(FILE* file, RevNode* node)
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE8:
+	{
+		readALine(line, file); // read dummy line
+	}
+	break;
+	case RevPrim::PRIM_TYPE::TYPE9:
 	{
 		readALine(line, file); // read dummy line
 	}
@@ -520,7 +569,7 @@ void readPrimInfo(FILE* file, RevNode* node)
 
 					if (pointCount < 3)
 					{
-						printf("[WARNING]Surface of point cound less than 3\n");
+						printf("[WARNING]Surface of point count less than 3\n");
 						for (int j = 0; j < pointCount; j++)
 						{
 							readALine(line, file); // abandoned point geometry

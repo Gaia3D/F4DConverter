@@ -100,7 +100,11 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 				// in this case, must change geotiff info into proj4
 				const GTIF* originalGtif = spatialReference.GetGTIF();
 				if (originalGtif == NULL)
+				{
+					printf("[ERROR] No WKT, No GeoTiff\n");
+					system("pause");
 					return false;
+				}
 
 				GTIF* temp = NULL;
 				memcpy(&temp, &originalGtif, sizeof(GTIF*));
@@ -126,6 +130,11 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 					CPLFree(pszWKT);
 					return false;
 				}
+
+				//printf("[INFO] WKT from GeoTiff :\n");
+				//printf("%s\n\n", pszWKT);
+				//printf("[INFO] proj4 string : %s\n", pszProj4);
+				//system("pause");
 
 				originalSrsProjString = std::string(pszProj4);
 
