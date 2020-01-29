@@ -605,6 +605,9 @@ bool CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 		bConversion = true;
 		inputFolderPath = arguments[InputFolder];
 
+		if (inputFolderPath.back() == '\\' || inputFolderPath.back() == '/')
+			inputFolderPath = inputFolderPath.substr(0, inputFolderPath.length() - 1);
+
 		if (arguments.find(MeshType) != arguments.end())
 		{
 			meshType = std::stoi(arguments[MeshType]);
@@ -712,6 +715,9 @@ bool CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 	if (arguments.find(OutputFolder) != arguments.end())
 	{
 		outputFolderPath = arguments[OutputFolder];
+
+		if (outputFolderPath.back() == '\\' || outputFolderPath.back() == '/')
+			outputFolderPath = outputFolderPath.substr(0, outputFolderPath.length() - 1);
 	}
 
 	if (arguments.find(CreateIndex) != arguments.end())
