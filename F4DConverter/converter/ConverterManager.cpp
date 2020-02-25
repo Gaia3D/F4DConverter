@@ -305,6 +305,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 		reader->setUnitScaleFactor(unitScaleFactor);
 		reader->setOffset(offsetX, offsetY, offsetZ);
 		reader->setYAxisUp(bYAxisUp);
+		reader->setOutputFolderPath(outputFolderPath);
 		if (!splitFilter.empty())
 			reader->getSplitFilter().insert(splitFilter.begin(), splitFilter.end());
 

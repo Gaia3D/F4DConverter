@@ -63,6 +63,9 @@ public:
 
 	virtual std::map<std::string, std::string>& getTemporaryFiles() { return temporaryFiles; }
 
+
+	virtual void setOutputFolderPath(std::string opf) { outputFolderPath = opf; }
+
 	virtual bool shouldGeometryBeDesroyedOutside() { return (!container.empty() && !containers.empty()); }
 
 	virtual bool shouldRawDataBeConvertedToMuitiFiles() { return !containers.empty(); }
@@ -70,6 +73,7 @@ public:
 	virtual std::map<std::string, std::vector<std::string>>& getAncestorsOfEachSubGroup() { return ancestorsOfEachSubGroup; }
 
 	virtual std::map<std::string, bool>& getSplitFilter() { return splitFilter; }
+
 
 protected:
 	std::vector<gaia3d::TrianglePolyhedron*> container;
@@ -94,6 +98,9 @@ protected:
 
 	bool bCoordinateInfoInjected;
 
+
+	std::string outputFolderPath;
+
 	bool bAlignToBottomCenter;
 
 	bool bAlignToCenter;
@@ -105,6 +112,7 @@ protected:
 	std::map<std::string, bool> splitFilter;
 
 protected:
+
 
 	std::string makeProj4String()
 	{

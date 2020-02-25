@@ -26,6 +26,9 @@
 #ifdef AVEVAREVIEWFORMAT
 #include "AvevaRevReader.h"
 #endif
+#ifdef INDOORGMLFORMAT
+#include "IndoorGMLReader.h"
+#endif
 
 ReaderFactory::ReaderFactory()
 {
@@ -96,6 +99,13 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 	if (fileExt.compare(std::string("rev")) == 0)
 	{
 		return new AvevaRevReader;
+	}
+#endif
+
+#ifdef INDOORGMLFORMAT
+	if (fileExt.compare(std::string("indoorgml")) == 0)
+	{
+		return new IndoorGMLReader;
 	}
 #endif
 
