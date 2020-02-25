@@ -11,7 +11,7 @@ ProcessSetting::ProcessSetting()
 	bUseNsm = true;
 	bExtractExterior = true; // if extract exteriors or not
 	bOcclusionCulling = false; // if do visibility indexing or not
-	leafSpatialOctreeSize = 40.0f; // deepest spatial octree edge length
+	leafSpatialOctreeSize = 24.0f; // deepest spatial octree edge length
 	bFlipTextureCoordinateV = false; // if flip texture coordinate v or not
 	interiorVisibilityIndexingCameraStep = 1.8f; // camera position step for interior visibility indexing
 	exteriorVisibilityIndexingCameraStep = 20.0f; // camera position step for exterior visibility indexing

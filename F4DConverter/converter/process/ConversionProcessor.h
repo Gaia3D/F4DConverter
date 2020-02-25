@@ -64,6 +64,8 @@ protected:
 	double longitude, latitude;
 	float altitude;
 
+	bool bResponsibleDisposingGeometries;
+
 public:
 	bool initialize();
 
@@ -113,6 +115,8 @@ public:
 	std::map<unsigned char, unsigned char*>&  getNetSurfaceTextures() { return netSurfaceTextures; }
 	std::map<unsigned char, int>& getNetSurfaceTextureWidth() { return netSurfaceTextureWidth; }
 	std::map<unsigned char, int>& getNetSurfaceTextureHeight() { return netSurfaceTextureHeight; }
+
+	void setResponsibilityForDisposing(bool bDispose) { bResponsibleDisposingGeometries = bDispose; }
 
 protected:
 	// main processing steps - start

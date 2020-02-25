@@ -22,6 +22,7 @@
 *debug*.txt
 *_old.*
 *_new.*
+*_temp.*
 
 # Directories
 ipch

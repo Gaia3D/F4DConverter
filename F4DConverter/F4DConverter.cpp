@@ -22,6 +22,12 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 
 int wmain(int argc, wchar_t* argv[])
 {
+	// set CPU priority as 'high' before start
+#ifdef _WIN32
+	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+#elif
+#endif
+
 	// basic argument validation
 	if (argc < 2)
 	{
@@ -36,7 +42,7 @@ int wmain(int argc, wchar_t* argv[])
 	{
 		// TODO(khj 20180424) : NYI must print log messages through logger system
 		printf("[Error]Invalid Arguments.\n");
-		return -1;
+		return -2;
 	}
 
 	// arguments log
@@ -64,17 +70,29 @@ int wmain(int argc, wchar_t* argv[])
 	{
 		CConverterManager::getConverterManager()->process();
 		CConverterManager::getConverterManager()->uninitialize();
-	}
 
-	// TODO(khj 20180424) : NYI must make log file through logger system
-	// finish and save log if log writing started
-	if (LogWriter::getLogWriter()->isStarted())
+		// TODO(khj 20180424) : NYI must make log file through logger system
+		// finish and save log if log writing started
+		if (LogWriter::getLogWriter()->isStarted())
+		{
+			LogWriter::getLogWriter()->finish();
+			LogWriter::getLogWriter()->save();
+		}
+
+		return 0;
+	}
+	else
 	{
-		LogWriter::getLogWriter()->finish();
-		LogWriter::getLogWriter()->save();
-	}
+		// TODO(khj 20180424) : NYI must make log file through logger system
+		// finish and save log if log writing started
+		if (LogWriter::getLogWriter()->isStarted())
+		{
+			LogWriter::getLogWriter()->finish();
+			LogWriter::getLogWriter()->save();
+		}
 
-    return 0;
+		return -3;
+	}
 }
 
 bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::string>& arguments)
@@ -181,9 +199,9 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 				continue;
 			}
 
-			if (tokens[i] == std::wstring(AlignToCenterW))
+			if (tokens[i] == std::wstring(AlignToW))
 			{
-				arguments[AlignToCenter] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				arguments[AlignTo] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
 				i++;
 				continue;
 			}
@@ -216,9 +234,16 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 				continue;
 			}
 
-			if (tokens[i] == std::wstring(DumpObjectPositionW))
+			if (tokens[i] == std::wstring(ProjectNameW))
 			{
-				arguments[DumpObjectPosition] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				arguments[ProjectName] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(SplitFilterW))
+			{
+				arguments[SplitFilter] = gaia3d::StringUtility::convertWideStringToUtf8(tokens[i + 1]);
 				i++;
 				continue;
 			}
@@ -309,9 +334,9 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 			std::string skinLevel = arguments[SkinLevelNsm];
 			int nSkinLevel = std::stoi(skinLevel);
 
-			if (nSkinLevel > 4 || nSkinLevel < 1)
+			if (nSkinLevel > 6 || nSkinLevel < 1)
 			{
-				printf("[ERROR][Invalid Arguments] Value of #skinLevel MUST be one of [1, 2, 3, 4].\n");
+				printf("[ERROR][Invalid Arguments] Value of #skinLevel MUST be one of [1, 2, 3, 4, 5, 6].\n");
 				return false;
 			}
 		}
@@ -355,10 +380,10 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		return false;
 	}
 
-	if (arguments.find(AlignToCenter) != arguments.end() &&
+	if (arguments.find(AlignTo) != arguments.end() &&
 		(arguments.find(Epsg) != arguments.end() || arguments.find(ReferenceLonLat) != arguments.end()))
 	{
-		printf("[ERROR][Invalid Arguments] #alignToCenter CANNOT be used with #epsg or #referenceLonLat.\n");
+		printf("[ERROR][Invalid Arguments] #alignTo CANNOT be used with #epsg or #referenceLonLat.\n");
 		return false;
 	}
 
@@ -435,14 +460,31 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		}
 	}
 	
-	if (arguments.find(AlignToCenter) != arguments.end())
+	if (arguments.find(AlignTo) != arguments.end())
 	{
-		if (arguments[AlignToCenter] != std::string("Y") &&
-			arguments[AlignToCenter] != std::string("y") &&
-			arguments[AlignToCenter] != std::string("N") &&
-			arguments[AlignToCenter] != std::string("n"))
+		try
 		{
-			printf("[ERROR][Invalid Arguments] Value of #alignToCenter MUST be one of [Y, y, N, n].\n");
+			int meshType = std::stoi(arguments[MeshType]);
+
+			//if(meshType != 1 && meshType != 2) // AIT version
+			//if (meshType != 0) // release version
+			//if (meshType != 2 && meshType != 0) // for romania
+			if (meshType > 1 || meshType < 0) // for full type.
+			{
+				printf("[ERROR][Invalid Arguments] Value of #alignTo MUST be one of [0, 1].\n");
+				return false;
+			}
+		}
+		catch (const std::invalid_argument& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #alignTo : %s.\n", errorMessage.c_str());
+			return false;
+		}
+		catch (const std::out_of_range& error)
+		{
+			std::string errorMessage = error.what();
+			printf("[ERROR][Invalid Arguments] Value of #alignTo : %s.\n", errorMessage.c_str());
 			return false;
 		}
 	}
@@ -523,6 +565,25 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 		{
 			std::string errorMessage = error.what();
 			printf("[ERROR][Invalid Arguments] Value of #offsetZ : %s.\n", errorMessage.c_str());
+			return false;
+		}
+	}
+
+	if (arguments.find(ProjectName) != arguments.end())
+	{
+		// , \ / : * ? " < > |  can't be used in the string of project name
+		if (arguments[ProjectName].find(std::string(",")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("\\")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("/")) != std::string::npos || 
+			arguments[ProjectName].find(std::string(":")) != std::string::npos || 
+			arguments[ProjectName].find(std::string("*")) != std::string::npos || 
+			arguments[ProjectName].find(std::string("?")) != std::string::npos || 
+			arguments[ProjectName].find(std::string("\"")) != std::string::npos || 
+			arguments[ProjectName].find(std::string("<")) != std::string::npos || 
+			arguments[ProjectName].find(std::string(">")) != std::string::npos || 
+			arguments[ProjectName].find(std::string("|")) != std::string::npos )
+		{
+			printf("[ERROR][Invalid Arguments] One of characters [ , \\ / : * ? \" < > | ] can't be used in project name : %s.\n", arguments[ProjectName].c_str());
 			return false;
 		}
 	}
@@ -683,9 +744,9 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 				continue;
 			}
 
-			if (tokens[i] == std::string(AlignToCenter))
+			if (tokens[i] == std::string(AlignTo))
 			{
-				arguments[AlignToCenter] = tokens[i + 1];
+				arguments[AlignTo] = tokens[i + 1];
 				i++;
 				continue;
 			}
@@ -714,6 +775,20 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 			if (tokens[i] == std::string(OffsetZ))
 			{
 				arguments[OffsetZ] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::string(ProjectName))
+			{
+				arguments[ProjectName] = tokens[i + 1];
+				i++;
+				continue;
+			}
+
+			if (tokens[i] == std::wstring(SplitFilter))
+			{
+				arguments[SplitFilter] = tokens[i + 1];
 				i++;
 				continue;
 			}
@@ -910,6 +985,25 @@ bool extractArguments(int argc, char* argv[], std::map<std::string, std::string>
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
+			return false;
+		}
+	}
+
+	if (arguments.find(ProjectName) != arguments.end())
+	{
+		// , \ / : * ? " < > |  can't be used in the string of project name
+		if (arguments[ProjectName].find(std::string(",")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("\\")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("/")) != std::string::npos ||
+			arguments[ProjectName].find(std::string(":")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("*")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("?")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("\"")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("<")) != std::string::npos ||
+			arguments[ProjectName].find(std::string(">")) != std::string::npos ||
+			arguments[ProjectName].find(std::string("|")) != std::string::npos)
+		{
+			printf("[ERROR][Invalid Arguments] One of characters [ , \\ / : * ? \" < > | ] can't be used in project name : %s.\n", arguments[ProjectName].c_str());
 			return false;
 		}
 	}
