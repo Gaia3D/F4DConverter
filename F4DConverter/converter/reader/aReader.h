@@ -4,9 +4,14 @@
 #include <vector>
 #include <map>
 
-#include "../geometry/TrianglePolyhedron.h"
+//#include "../geometry/TrianglePolyhedron.h"
 
 #pragma comment(lib, "../external/proj/lib/proj_5_2.lib")
+
+namespace gaia3d
+{
+	class TrianglePolyhedron;
+}
 
 class aReader abstract
 {

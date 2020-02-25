@@ -12,6 +12,7 @@
 
 #include "../geometry/Matrix4.h"
 #include "../util/utility.h"
+#include "../geometry/TrianglePolyhedron.h"
 
 std::string folder;
 bool bMustChangeYZCoordinate = false;

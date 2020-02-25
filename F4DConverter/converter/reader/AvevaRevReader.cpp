@@ -6,6 +6,8 @@
 
 #include "../util/utility.h"
 
+#include "../geometry/TrianglePolyhedron.h"
+
 // surface definition in rev files
 class RevSubSurface
 {

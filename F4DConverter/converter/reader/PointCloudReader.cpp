@@ -18,6 +18,8 @@
 
 #include "../util/utility.h"
 
+#include "../geometry/TrianglePolyhedron.h"
+
 
 PointCloudReader::PointCloudReader()
 {

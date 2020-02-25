@@ -32,6 +32,8 @@ using namespace std;
 IndoorGMLReader::IndoorGMLReader() {}
 IndoorGMLReader::~IndoorGMLReader() {}
 
+gaia3d::BoundingBox bb;
+
 class ParserUtil {
 public:
 	ParserUtil();

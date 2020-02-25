@@ -42,7 +42,7 @@ private:
 	GeometryManager parseIndoorGeometry(DOMDocument* dom);
 	bool readIndoorSpace(DOMDocument* dom, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat);
 
-	gaia3d::BoundingBox bb;
+	
 };
 
 #endif
