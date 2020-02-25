@@ -1,4 +1,4 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include <iostream>
 #include <memory>
 #include <map>
@@ -13,6 +13,15 @@
 #include "../ConverterManager.h"
 #include "../geometry/Matrix4.h"
 #include "../util/json/json.h"
+
+#include "../geometry/Point3D.h"
+
+#include "../geometry/Triangle.h"
+#include "../geometry/BoundingBox.h"
+#include "aReader.h"
+
+#include "../geometry/TrianglePolyhedron.h"
+#include "../util/utility.h"
 
 using namespace std;
 using namespace xercesc;
@@ -976,11 +985,11 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 		map<double, int> floorList;
 
 
-		//ÀüÃ¼ Bounding boxÀÇ lower point, upper point¸¦ ±¸ÇÑ´Ù. 
+		//ì „ì²´ Bounding boxì˜ lower point, upper pointë¥¼ êµ¬í•œë‹¤. 
 		gaia3d::Point3D *lowerBoundingBoxPoint = 0;
 		gaia3d::Point3D *upperBoundingBoxPoint = 0;
 
-		//±âÇÏ¿¡¼­ ÃşÀ» ±¸ÇÏ±â À§ÇØ ÃÖ¼Ò ÃşÀÇ ³ôÀÌ¸¦ ±¸ÇÑ´Ù. 
+		//ê¸°í•˜ì—ì„œ ì¸µì„ êµ¬í•˜ê¸° ìœ„í•´ ìµœì†Œ ì¸µì˜ ë†’ì´ë¥¼ êµ¬í•œë‹¤. 
 		double minimumGapHeight = 0;
 		nextTag = frontTag + "CellSpace";
 
@@ -996,7 +1005,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 						DOMNode* solid = cellSpace->getChildNodes()->item(j)->getChildNodes()->item(1)->getChildNodes()->item(1);
 						std::shared_ptr<IndoorGMLSolid> result = gmp->parseIndoorGMLSolid(solid, b);
 						gaia3d::Point3D centerPoint = result->getCenterPosition();
-						//Ãş ¶§¹®¿¡ z´Â lower bound·Î, ³ª¸ÓÁö´Â ±âÇÏÀÇ Áß½ÉÁ¡À» ¾²±â·Î ÇÏ°í.
+						//ì¸µ ë•Œë¬¸ì— zëŠ” lower boundë¡œ, ë‚˜ë¨¸ì§€ëŠ” ê¸°í•˜ì˜ ì¤‘ì‹¬ì ì„ ì“°ê¸°ë¡œ í•˜ê³ .
 						centerPoint.z = result->getLowerBoundPosition().z;
 
 						//get the lowerBoundingBoxPoint and upperBoundingBoxPoint for calculating height of the building
@@ -1004,7 +1013,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 						gaia3d::Point3D upperBoundPoint = result->getUpperBoundPosition();
 
 						//need to multiple unitscalefactor...? nope. It is needed to be applied at the end of the reading process
-						//lowerBoundingBoxPoint ÃÊ±âÈ­
+						//lowerBoundingBoxPoint ì´ˆê¸°í™”
 						if (lowerBoundingBoxPoint == 0) {
 							lowerBoundingBoxPoint = new gaia3d::Point3D();
 							lowerBoundingBoxPoint->set(lowerBoundPoint.x, lowerBoundPoint.y, lowerBoundPoint.z);
@@ -1018,7 +1027,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 								lowerBoundingBoxPoint->z = lowerBoundPoint.z;
 						}
 
-						//upperBoundingBoxPoint ÃÊ±âÈ­
+						//upperBoundingBoxPoint ì´ˆê¸°í™”
 						if (upperBoundingBoxPoint == 0) {
 							upperBoundingBoxPoint = new gaia3d::Point3D();
 							upperBoundingBoxPoint->set(lowerBoundPoint.x, lowerBoundPoint.y, lowerBoundPoint.z);
@@ -1040,7 +1049,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 								minimumGapHeight = upperBoundPoint.z - lowerBoundPoint.z;
 						}
 
-						//¸ø Ã£¾ÒÀ» °æ¿ì¿¡
+						//ëª» ì°¾ì•˜ì„ ê²½ìš°ì—
 						if (floorList.find(lowerBoundPoint.z) == floorList.end()) {
 							floorList.insert(pair<double, int>(lowerBoundPoint.z, floorList.size()));
 						}
@@ -1066,7 +1075,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 		map<double, int>::iterator floorListIter = floorList.begin();
 		map<double, int>::iterator floorListIter2 = floorList.begin();
 
-		//Ãş °£ÀÇ ³ôÀÌ Â÷ÀÌ°¡ Çã¿ë¹üÀ§ ³»¿¡ ÀÖ´Ù¸é °°Àº ÃşÀ¸·Î Ãë±ŞÇÏ´Â ¾Ë°í¸®Áò
+		//ì¸µ ê°„ì˜ ë†’ì´ ì°¨ì´ê°€ í—ˆìš©ë²”ìœ„ ë‚´ì— ìˆë‹¤ë©´ ê°™ì€ ì¸µìœ¼ë¡œ ì·¨ê¸‰í•˜ëŠ” ì•Œê³ ë¦¬ì¦˜
 		floorListIter2++;
 		for (; floorListIter2 != floorList.end(); floorListIter2++, floorListIter++) {
 			if (floorListIter2->first - floorListIter->first < minimumGapHeight) {
@@ -1088,11 +1097,11 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 
 		for (; floorListIter2 != floorList.end(); floorListIter++, floorListIter2++) {
 			if (floorListIter2->second == floorListIter->second) {
-				//ÇÏ³ªÀÇ ÃşÀÌ Çã¿ë ¹üÀ§¸¦ °¡Áö¸é¼­ ¿©·¯ ³ôÀÌ¸¦ °¡Áú ¼ö ÀÖ´Ù.
+				//í•˜ë‚˜ì˜ ì¸µì´ í—ˆìš© ë²”ìœ„ë¥¼ ê°€ì§€ë©´ì„œ ì—¬ëŸ¬ ë†’ì´ë¥¼ ê°€ì§ˆ ìˆ˜ ìˆë‹¤.
 				tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
 			}
 			else {
-				//´Ù¸¥ ÃşÀ¸·Î Ãë±Ş
+				//ë‹¤ë¥¸ ì¸µìœ¼ë¡œ ì·¨ê¸‰
 				index++;
 				tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
 			}
@@ -1101,14 +1110,14 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 
 		floorList = tempFloorList;
 
-		//floor class °¡Áö°í ÁøÂ¥ floor list¸¦ »ı¼ºÇÒ °Í
+		//floor class ê°€ì§€ê³  ì§„ì§œ floor listë¥¼ ìƒì„±í•  ê²ƒ
 
 		map<int, IndoorFloor>floorListInfoMap;
 
 		floorListIter = floorList.begin();
 		for (; floorListIter != floorList.end(); floorListIter++) {
 			IndoorFloor newFloor;
-			//floorÀÇ id´Â Ãş¹øÈ£. ÁöÇÏ½ÇÀ» ³ÖÀ» ¼öµµ ÀÖ´Ù. 
+			//floorì˜ idëŠ” ì¸µë²ˆí˜¸. ì§€í•˜ì‹¤ì„ ë„£ì„ ìˆ˜ë„ ìˆë‹¤. 
 			newFloor.setId(floorListIter->second);
 			newFloor.setHeight(floorListIter->first);
 			floorListInfoMap.insert(pair<int,IndoorFloor>(floorListIter->second,newFloor));
@@ -1317,7 +1326,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 			Json::Value cellspace(Json::objectValue);
 			Json::Value point(Json::objectValue);
 
-			//usf, bbc Àû¿ëÇØ¾ß ÇÔ
+			//usf, bbc ì ìš©í•´ì•¼ í•¨
 			point["x"] = dataValue.x * unitScaleFactor - boundingBoxCenter.x;
 			point["y"] = dataValue.y * unitScaleFactor - boundingBoxCenter.y;
 			point["z"] = dataValue.z * unitScaleFactor - boundingBoxCenter.z;
@@ -1355,7 +1364,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 				state["connects"] = connects;
 			}
 
-			//usf, bbc Àû¿ëÇØ¾ß ÇÔ
+			//usf, bbc ì ìš©í•´ì•¼ í•¨
 			Point3D scaledPoint;
 			scaledPoint.set(
 			stateList.at(i).getGeometry().x * unitScaleFactor - boundingBoxCenter.x,

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #if defined(INDOORGMLFORMAT)
 
@@ -14,29 +14,35 @@
 #include "xercesc/sax/HandlerBase.hpp"
 #include "xercesc/util/XMLString.hpp"
 #include "xercesc/util/PlatformUtils.hpp"
-#include "../geometry/Point3D.h"
 
-#include "../geometry/Triangle.h"
-#include "../geometry/BoundingBox.h"
 #include "aReader.h"
 
-#include "../geometry/TrianglePolyhedron.h"
-#include "../util/utility.h"
 
 using namespace xercesc;
 class GeometryManager;
+
+namespace gaia3d
+{
+	class TrianglePolyhedron;
+}
+
 class IndoorGMLReader : public aReader
 {
 public:
 	IndoorGMLReader();
 	virtual ~IndoorGMLReader();
-	gaia3d::BoundingBox bb;
+	
 
 public:
 	virtual bool readRawDataFile(std::string& filePath);
+	
+	virtual void clear();
+
+private:
 	GeometryManager parseIndoorGeometry(DOMDocument* dom);
 	bool readIndoorSpace(DOMDocument* dom, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat);
-	virtual void clear();
+
+	gaia3d::BoundingBox bb;
 };
 
 #endif

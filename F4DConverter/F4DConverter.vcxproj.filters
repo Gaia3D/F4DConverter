@@ -180,6 +180,9 @@
     <ClInclude Include="converter\reader\AvevaRevReader.h">
       <Filter>converter\reader</Filter>
     </ClInclude>
+    <ClInclude Include="converter\reader\IndoorGMLReader.h">
+      <Filter>converter\reader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -282,6 +285,9 @@
       <Filter>converter\reader</Filter>
     </ClCompile>
     <ClCompile Include="converter\reader\AvevaRevReader.cpp">
+      <Filter>converter\reader</Filter>
+    </ClCompile>
+    <ClCompile Include="converter\reader\IndoorGMLReader.cpp">
       <Filter>converter\reader</Filter>
     </ClCompile>
   </ItemGroup>

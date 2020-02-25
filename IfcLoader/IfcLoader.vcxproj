@@ -106,6 +106,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;IFCLOADER_DLL_EXPORTS;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)include/IfcLoader;$(SolutionDir)external/boost_1_62_0;$(SolutionDir)external/ifcplusplus/include/Carve;$(SolutionDir)external/ifcplusplus/include/OpenSceneGraph;$(SolutionDir)external/ifcplusplus/include/IfcPlusPlus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
