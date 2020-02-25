@@ -336,7 +336,7 @@ class IndoorGMLLinearRing {
 public:
 	IndoorGMLLinearRing(const std::string& _id) { id = _id; }
 
-	unsigned int size() const;
+	size_t getSize();
 
 	const std::vector<Point3D>& getVertices() const;
 	std::vector<Point3D>& getVertices();
@@ -398,7 +398,7 @@ protected:
 
 };
 
-unsigned int IndoorGMLLinearRing::size() const
+size_t IndoorGMLLinearRing::getSize()
 {
 	return m_vertices.size();
 }
@@ -1054,7 +1054,8 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 
 						//못 찾았을 경우에
 						if (floorList.find(lowerBoundPoint.z) == floorList.end()) {
-							floorList.insert(pair<double, int>(lowerBoundPoint.z, floorList.size()));
+							int tempSize = (int)floorList.size();
+							floorList.insert(pair<double, int>(lowerBoundPoint.z, tempSize));
 						}
 
 						string cellId = parseHelper->getNamedAttribute(cellSpace->getAttributes(), "gml:id");
