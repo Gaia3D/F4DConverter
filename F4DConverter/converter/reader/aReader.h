@@ -51,6 +51,8 @@ public:
 
 	virtual std::map<std::string, std::string>& getTemporaryFiles() { return temporaryFiles; }
 
+	virtual void setOutputFolderPath(std::string opf) { outputFolderPath = opf; }
+
 protected:
 	std::vector<gaia3d::TrianglePolyhedron*> container;
 
@@ -71,6 +73,8 @@ protected:
 	double lonOrigin, latOrigin;
 
 	bool bCoordinateInfoInjected;
+
+	std::string outputFolderPath;
 
 	std::string makeProj4String()
 	{
