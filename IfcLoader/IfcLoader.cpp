@@ -8,6 +8,16 @@
 #include "ifcpp/reader/IfcPPReaderSTEP.h"
 #include "ifcpp/IFC4/include/IfcSite.h"
 #include "ifcpp/IFC4/include/IfcSpace.h"
+// for spatial structure
+#include "ifcpp/IFC4/include/IfcBuilding.h"
+#include "ifcpp/IFC4/include/IfcBuildingStorey.h"
+#include "ifcpp/IFC4/include/IfcFooting.h"
+#include "ifcpp/IFC4/include/IfcColumn.h"
+#include "ifcpp/IFC4/include/IfcSlab.h"
+#include "ifcpp/IFC4/include/IfcBeam.h"
+#include "ifcpp/IFC4/include/IfcWall.h"
+#include "ifcpp/IFC4/include/IfcWallStandardCase.h"
+//
 
 // for property value
 #include "ifcpp/IFC4/include/IfcAreaMeasure.h"
@@ -67,6 +77,17 @@ public:
 	virtual size_t getTrialgleCount(size_t polyhedronIndex, size_t surfaceIndex);
 	virtual size_t* getTriangleIndices(size_t polyhedronIndex, size_t surfaceIndex);
 
+	virtual size_t getStoryCount();
+	virtual size_t getStoryDivisionCount(size_t storyIndex);
+	virtual size_t getPolyhedronCount(size_t storyIndex, size_t divisionIndex);
+	virtual float* getRepresentativeColor(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex);
+	virtual void getGuid(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, wchar_t buffer[]);
+	virtual size_t getVertexCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex);
+	virtual double* getVertexPositions(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex);
+	virtual size_t getSurfaceCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex);
+	virtual size_t getTrialgleCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, size_t surfaceIndex);
+	virtual size_t* getTriangleIndices(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, size_t surfaceIndex);
+
 	virtual bool loadOnlyPropertiesFromIfc(std::wstring& filePath);
 	virtual void setAttributesExtraction(bool bOn);
 	virtual std::string getObjectAttributes();
@@ -107,6 +128,10 @@ private:
 	};
 
 	std::vector<Polyhedron*> polyhedrons;
+
+	std::vector<std::vector<std::vector<Polyhedron*>>> stories;
+	
+	std::vector<Polyhedron*> objectsOutsideStory;
 
 	Json::Value objectPropertyRoot;
 	Json::Value projectPropertyRoot;
@@ -159,6 +184,169 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 
 	// loading
 	reader->loadModelFromFile(filePath, ifc_model);
+
+	// relationship information
+	// 0. basic preparation
+	std::map<double, std::map<unsigned int, std::vector<std::wstring>>> guidToStoryMapper;
+	// 1. project
+	shared_ptr<IfcProject> ifc_project =  ifc_model->getIfcProject();
+	// 2. project's children
+	std::vector<weak_ptr<IfcRelAggregates> > projectChildren =   ifc_project->m_IsDecomposedBy_inverse;
+	for (size_t i = 0; i < projectChildren.size(); i++)
+	{
+		// 2-1. project's child
+		shared_ptr<IfcRelAggregates> projectChild = projectChildren[i].lock();
+		// 3. project's grandchildren
+		std::vector<shared_ptr<IfcObjectDefinition>> projectChildObjectDefinitions = projectChild->m_RelatedObjects;
+		for (size_t j = 0; j < projectChildObjectDefinitions.size(); j++)
+		{
+			// 3-1. project's grandchild
+			shared_ptr<IfcObjectDefinition> projectChilidObjectDefinition = projectChildObjectDefinitions[j];
+
+			// 3-2. site as project's grandchild type
+			shared_ptr<IfcSite> ifc_site = dynamic_pointer_cast<IfcSite>(projectChilidObjectDefinition);
+			if (ifc_site != NULL)
+			{
+				// 4. site's children
+				std::vector<weak_ptr<IfcRelAggregates>> siteChildren =  ifc_site->m_IsDecomposedBy_inverse;
+				for (size_t k = 0; k < siteChildren.size(); k++)
+				{
+					// 4-1. site's child
+					shared_ptr<IfcRelAggregates> siteChild = siteChildren[k].lock();
+					// 5. site's grandchildren
+					std::vector<shared_ptr<IfcObjectDefinition>> siteChildObjectDefinitions = siteChild->m_RelatedObjects;
+					for (size_t ii = 0; ii < siteChildObjectDefinitions.size(); ii++)
+					{
+						// 5-1. site's grandchild
+						shared_ptr<IfcObjectDefinition> siteChilidObjectDefinition = siteChildObjectDefinitions[ii];
+						
+						// 5-2. building as site's grandchild type
+						shared_ptr<IfcBuilding> ifc_building = dynamic_pointer_cast<IfcBuilding>(siteChilidObjectDefinition);
+						if (ifc_building != NULL)
+						{
+							for (size_t jj = 0; jj < ifc_building->m_ContainsElements_inverse.size(); jj++)
+							{
+								shared_ptr<IfcRelContainedInSpatialStructure> buildingElements = ifc_building->m_ContainsElements_inverse[jj].lock();
+							}
+
+							// 6. building's children
+							for (size_t jj = 0; jj < ifc_building->m_IsDecomposedBy_inverse.size(); jj++)
+							{
+								// 6-1. building's child
+								shared_ptr<IfcRelAggregates> buildingChild = ifc_building->m_IsDecomposedBy_inverse[jj].lock();
+								// 7. building's grandchildren
+								std::vector<shared_ptr<IfcObjectDefinition>> buildingChildObjectDefinitions = buildingChild->m_RelatedObjects;
+								for (size_t kk = 0; kk < buildingChildObjectDefinitions.size(); kk++)
+								{
+									// 7-1. building's grandchild
+									shared_ptr<IfcObjectDefinition> buildingChildObjectDefinition = buildingChildObjectDefinitions[kk];
+									
+									// 7-2. building storey as building's grandchild type
+									shared_ptr<IfcBuildingStorey> buildingStorey = dynamic_pointer_cast<IfcBuildingStorey>(buildingChildObjectDefinition);
+									if (buildingStorey != NULL)
+									{
+										// initialize guidToStoryMapper
+										guidToStoryMapper[buildingStorey->m_Elevation->m_value] = std::map<unsigned int, std::vector<std::wstring>>();
+
+										// 8-1. elements in building storey
+										for (size_t iii = 0; iii < buildingStorey->m_ContainsElements_inverse.size(); iii++)
+										{
+											shared_ptr<IfcRelContainedInSpatialStructure> element = buildingStorey->m_ContainsElements_inverse[iii].lock();
+											
+											// 8-1-1. products(element's children)
+											for (size_t jjj = 0; jjj < element->m_RelatedElements.size(); jjj++)
+											{
+												// 9. product(finally, an single object)
+												shared_ptr<IfcProduct> product = element->m_RelatedElements[jjj];
+
+												if (dynamic_pointer_cast<IfcFooting>(product) != NULL || dynamic_pointer_cast<IfcColumn>(product) != NULL)
+												{
+													if (guidToStoryMapper[buildingStorey->m_Elevation->m_value].find(0) == guidToStoryMapper[buildingStorey->m_Elevation->m_value].end())
+														guidToStoryMapper[buildingStorey->m_Elevation->m_value][0] = std::vector<std::wstring>();
+
+													guidToStoryMapper[buildingStorey->m_Elevation->m_value][0].push_back( dynamic_pointer_cast<IfcElement>(product)->m_Tag->m_value);
+													continue;
+												}
+
+												if (dynamic_pointer_cast<IfcSlab>(product) != NULL || dynamic_pointer_cast<IfcBeam>(product) != NULL)
+												{
+													if (guidToStoryMapper[buildingStorey->m_Elevation->m_value].find(1) == guidToStoryMapper[buildingStorey->m_Elevation->m_value].end())
+														guidToStoryMapper[buildingStorey->m_Elevation->m_value][1] = std::vector<std::wstring>();
+
+													guidToStoryMapper[buildingStorey->m_Elevation->m_value][1].push_back(dynamic_pointer_cast<IfcElement>(product)->m_Tag->m_value);
+													continue;
+												}
+
+												if (dynamic_pointer_cast<IfcWall>(product) != NULL || dynamic_pointer_cast<IfcWallStandardCase>(product) != NULL)
+												{
+													if (guidToStoryMapper[buildingStorey->m_Elevation->m_value].find(2) == guidToStoryMapper[buildingStorey->m_Elevation->m_value].end())
+														guidToStoryMapper[buildingStorey->m_Elevation->m_value][2] = std::vector<std::wstring>();
+
+													guidToStoryMapper[buildingStorey->m_Elevation->m_value][2].push_back(dynamic_pointer_cast<IfcElement>(product)->m_Tag->m_value);
+													continue;
+												}
+
+												if (std::string(product->className()) == std::string("IfcAnnotation"))
+													continue;
+
+												if (guidToStoryMapper[buildingStorey->m_Elevation->m_value].find(3) == guidToStoryMapper[buildingStorey->m_Elevation->m_value].end())
+													guidToStoryMapper[buildingStorey->m_Elevation->m_value][3] = std::vector<std::wstring>();
+
+												guidToStoryMapper[buildingStorey->m_Elevation->m_value][3].push_back(dynamic_pointer_cast<IfcElement>(product)->m_Tag->m_value);
+											}
+										}
+
+										// 8-2. building storey's children;
+										for (size_t iii = 0; iii < buildingStorey->m_IsDecomposedBy_inverse.size(); iii++)
+										{
+											// 8-2-1. building storey's child
+											shared_ptr<IfcRelAggregates> storeyChild = buildingStorey->m_IsDecomposedBy_inverse[iii].lock();
+											// 9. building storey's grandchildren
+											std::vector<shared_ptr<IfcObjectDefinition>> storeyChildObjectDefinitions = storeyChild->m_RelatedObjects;
+											for (size_t jjj = 0; jjj < storeyChildObjectDefinitions.size(); jjj++)
+											{
+												// 9-1. building storey's grandchild
+												shared_ptr<IfcObjectDefinition> storeyChildObjectDefinition = storeyChildObjectDefinitions[jjj];
+
+												// 9-2. space as building storey's grandchild type
+												shared_ptr<IfcSpace> space = dynamic_pointer_cast<IfcSpace>(storeyChildObjectDefinition);
+												if (space != NULL)
+												{
+													// 10. elements as space's childtren
+													for (size_t kkk = 0; kkk < space->m_ContainsElements_inverse.size(); kkk++)
+													{
+														// 10-1. element(space's child)
+														shared_ptr<IfcRelContainedInSpatialStructure> element =  space->m_ContainsElements_inverse[kkk].lock();
+
+														// 11. products(element's children)
+														for (size_t iiii = 0; iiii < element->m_RelatedElements.size(); iiii++)
+														{
+															// 12. product(finally, an single object)
+															shared_ptr<IfcProduct> product = element->m_RelatedElements[iiii];
+
+															if (std::string(product->className()) == std::string("IfcAnnotation"))
+																continue;
+
+															if (guidToStoryMapper[buildingStorey->m_Elevation->m_value].find(4) == guidToStoryMapper[buildingStorey->m_Elevation->m_value].end())
+																guidToStoryMapper[buildingStorey->m_Elevation->m_value][4] = std::vector<std::wstring>();
+
+															guidToStoryMapper[buildingStorey->m_Elevation->m_value][4].push_back(dynamic_pointer_cast<IfcElement>(product)->m_Tag->m_value);
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	std::map<std::wstring, std::vector<Polyhedron*>> polyhedronToGuidMapper;
 
 	// conversion raw data into geometries of OSG type
 	osg::ref_ptr<osg::Switch> model_switch = new osg::Switch();
@@ -419,6 +607,11 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 
 					// add this polyhedron
 					polyhedrons.push_back(polyhedron);
+
+					if (polyhedronToGuidMapper.find(productIdentifier) == polyhedronToGuidMapper.end())
+						polyhedronToGuidMapper[productIdentifier] = std::vector<Polyhedron*>();
+
+					polyhedronToGuidMapper[productIdentifier].push_back(polyhedron);
 				}
 			}
 		}
@@ -426,6 +619,47 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 		if (this->bAttributesExtraction && checkIfPropertiesCanBeExtracted(ifc_product->m_entity_enum))
 			loadObjectAttributes(ifc_product, objectPropertyRoot);
 	}
+
+	std::map<double, std::map<unsigned int, std::vector<Polyhedron*>>> tmpStories;
+	std::map<double, std::map<unsigned int, std::vector<std::wstring>>>::iterator itrStory =  guidToStoryMapper.begin();
+	for (; itrStory != guidToStoryMapper.end(); itrStory++)
+	{
+		tmpStories[itrStory->first] = std::map<unsigned int, std::vector<Polyhedron*>>();
+		std::map<unsigned int, std::vector<std::wstring>>::iterator itrStoryDivision = itrStory->second.begin();
+		for (; itrStoryDivision != itrStory->second.end(); itrStoryDivision++)
+		{
+			tmpStories[itrStory->first][itrStoryDivision->first] = std::vector<Polyhedron*>();
+			for (size_t i = 0; i < itrStoryDivision->second.size(); i++)
+			{
+				for (size_t j = 0; j < polyhedronToGuidMapper[itrStoryDivision->second[i]].size(); j++)
+				{
+					tmpStories[itrStory->first][itrStoryDivision->first].push_back(polyhedronToGuidMapper[itrStoryDivision->second[i]][j]);
+				}
+			}
+		}
+	}
+
+	std::map<double, std::map<unsigned int, std::vector<Polyhedron*>>>::iterator iterSortedStory = tmpStories.begin();
+	for (; iterSortedStory != tmpStories.end(); iterSortedStory++)
+	{
+		stories.push_back(std::vector<std::vector<Polyhedron*>>());
+		std::map<unsigned int, std::vector<Polyhedron*>>::iterator iterStoryDivision = iterSortedStory->second.begin();
+		for (; iterStoryDivision != iterSortedStory->second.end(); iterStoryDivision++)
+		{
+			stories[stories.size() - 1].push_back(std::vector<Polyhedron*>());
+			stories[stories.size() - 1][stories[stories.size() - 1].size() - 1].assign(iterStoryDivision->second.begin(), iterStoryDivision->second.end());
+		}
+	}
+
+	/*printf("[TEMP]story count : %zd\n", stories.size());
+	for (size_t i = 0; i < stories.size(); i++)
+	{
+		printf("-[TEMP]division count : %zd\n", stories[i].size());
+		for (size_t j = 0; j < stories[i].size(); j++)
+		{
+			printf("--[TEMP]polyhedron count : %zd\n", stories[i][j].size());
+		}
+	}*/
 
 	return true;
 }
@@ -539,6 +773,57 @@ size_t IfcLoader::getTrialgleCount(size_t polyhedronIndex, size_t surfaceIndex)
 size_t* IfcLoader::getTriangleIndices(size_t polyhedronIndex, size_t surfaceIndex)
 {
 	return polyhedrons[polyhedronIndex]->surfaces[surfaceIndex]->triangleIndices;
+}
+
+size_t IfcLoader::getStoryCount()
+{
+	return stories.size();
+}
+
+size_t IfcLoader::getStoryDivisionCount(size_t storyIndex)
+{
+	return stories[storyIndex].size();
+}
+
+size_t IfcLoader::getPolyhedronCount(size_t storyIndex, size_t divisionIndex)
+{
+	return stories[storyIndex][divisionIndex].size();
+}
+
+float* IfcLoader::getRepresentativeColor(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex)
+{
+	return stories[storyIndex][divisionIndex][polyhedronIndex]->color;
+}
+
+void IfcLoader::getGuid(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, wchar_t buffer[])
+{
+	size_t length = stories[storyIndex][divisionIndex][polyhedronIndex]->guid.size();
+	memcpy(buffer, stories[storyIndex][divisionIndex][polyhedronIndex]->guid.c_str(), sizeof(wchar_t)*length);
+}
+
+size_t IfcLoader::getVertexCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex)
+{
+	return stories[storyIndex][divisionIndex][polyhedronIndex]->vertexCount;
+}
+
+double* IfcLoader::getVertexPositions(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex)
+{
+	return stories[storyIndex][divisionIndex][polyhedronIndex]->vertices;
+}
+
+size_t IfcLoader::getSurfaceCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex)
+{
+	return stories[storyIndex][divisionIndex][polyhedronIndex]->surfaces.size();
+}
+
+size_t IfcLoader::getTrialgleCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, size_t surfaceIndex)
+{
+	return stories[storyIndex][divisionIndex][polyhedronIndex]->surfaces[surfaceIndex]->triangleCount;
+}
+
+size_t* IfcLoader::getTriangleIndices(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, size_t surfaceIndex)
+{
+	return stories[storyIndex][divisionIndex][polyhedronIndex]->surfaces[surfaceIndex]->triangleIndices;
 }
 
 std::string IfcLoader::getObjectAttributes()

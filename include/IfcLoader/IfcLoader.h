@@ -25,6 +25,17 @@ public:
 	virtual size_t getTrialgleCount(size_t polyhedronIndex, size_t surfaceIndex) = 0;
 	virtual size_t* getTriangleIndices(size_t polyhedronIndex, size_t surfaceIndex) = 0;
 
+	virtual size_t getStoryCount() = 0;
+	virtual size_t getStoryDivisionCount(size_t storyIndex) = 0;
+	virtual size_t getPolyhedronCount(size_t storyIndex, size_t divisionIndex) = 0;
+	virtual float* getRepresentativeColor(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex) = 0;
+	virtual void getGuid(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, wchar_t buffer[]) = 0;
+	virtual size_t getVertexCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex) = 0;
+	virtual double* getVertexPositions(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex) = 0;
+	virtual size_t getSurfaceCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex) = 0;
+	virtual size_t getTrialgleCount(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, size_t surfaceIndex) = 0;
+	virtual size_t* getTriangleIndices(size_t storyIndex, size_t divisionIndex, size_t polyhedronIndex, size_t surfaceIndex) = 0;
+
 	virtual bool loadOnlyPropertiesFromIfc(std::wstring& filePath) = 0;
 	virtual void setAttributesExtraction(bool bOn) = 0;
 	virtual std::string getObjectAttributes() = 0;
