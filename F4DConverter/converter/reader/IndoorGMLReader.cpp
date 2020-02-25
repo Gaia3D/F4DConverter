@@ -903,19 +903,20 @@ vector<int> searchFloors(map<double, int>& floorList, double minimumGapHeight, g
 
 	if (abs(it->first - upperBound.z) < minimumGapHeight) {
 		result.push_back(it->second);
-		return result;
+
 	}
 	else{
 		for (; it != floorList.end(); it++) {
 			if (abs(it->first - upperBound.z) < minimumGapHeight) {
 				result.push_back(it->second);
-				return result;
+				break;
 			}
 			else {
 				result.push_back(it->second);
 			}
 		}
 	}
+	return result;
 }
 
 GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
