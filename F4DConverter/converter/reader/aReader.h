@@ -58,7 +58,7 @@ public:
 
 	virtual bool doesHasAdditionalInfo() { return bHasAdditionalInfo; }
 
-	virtual std::map<std::string, std::string> getAdditionalInfo() { return additionalInfo; }
+	virtual std::map<std::string, std::string>& getAdditionalInfo() { return additionalInfo; }
 
 	virtual void getGeoReferencingInfo(double& lon, double& lat) { lon = refLon; lat = refLat; }
 

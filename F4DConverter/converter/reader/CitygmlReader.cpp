@@ -18,12 +18,14 @@
 
 #include "../geometry/TrianglePolyhedron.h"
 #include "../util/utility.h"
+#include "../util/json/json.h"
 
 bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 			std::string& folderPath,
 			double& lon, double& lat,
 			std::vector<gaia3d::TrianglePolyhedron*>& container,
-			std::map<std::string, std::string>& textureContainer);
+			std::map<std::string, std::string>& textureContainer,
+			std::string& attributesInfo);
 void createCityObject(const citygml::CityObject& object,
 					std::string& folderPath,
 					std::vector<gaia3d::TrianglePolyhedron*>& container,
@@ -63,13 +65,18 @@ bool CitygmlReader::readRawDataFile(std::string& filePath)
 	if (city == NULL)
 		return false;
 
+
 	std::string folderPath;
 	size_t lastSlashIndex = filePath.find_last_of("\\/");
 	if (lastSlashIndex != std::string::npos)
 		folderPath = filePath.substr(0, lastSlashIndex + 1);
 
-	if (!readCity(city, folderPath, refLon, refLat, container, textureContainer))
+	std::string attributesInfo;
+	if (!readCity(city, folderPath, refLon, refLat, container, textureContainer, attributesInfo))
 		return false;
+
+	additionalInfo[std::string("attributes")] = attributesInfo;
+	bHasAdditionalInfo = true;
 
 	bHasGeoReferencingInfo = true;
 
@@ -87,7 +94,8 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 			std::string& folderPath,
 			double& lon, double& lat,
 			std::vector<gaia3d::TrianglePolyhedron*>& container,
-			std::map<std::string, std::string>& textureContainer)
+			std::map<std::string, std::string>& textureContainer,
+			std::string& attributesInfo)
 {
 	const citygml::ConstCityObjects& roots = city->getRootCityObjects();
 	if (roots.size() == 0)
@@ -182,13 +190,32 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 		m[3], m[7], m[11], m[15]);
 	gaia3d::Matrix4 inverseGlobalTransMatrix = globalTransformMatrix.inverse();
 
-	// transform objects in citygml into triangle polyhedrons
+
+	// transform objects in citygml into triangle polyhedrons and extract basic attributes
+	Json::Value attributes(Json::arrayValue);
 	for (size_t i = 0; i < roots.size(); i++)
 	{
 		const citygml::CityObject &cityObject = *roots[i];
 
+		Json::Value attribute(Json::objectValue);
+
+		const citygml::AttributesMap& attributeMap = cityObject.getAttributes();
+		citygml::AttributesMap::const_iterator attriIter = attributeMap.begin();
+		for (; attriIter != attributeMap.end(); attriIter++)
+		{
+			std::string key = attriIter->first;
+			std::string value = attriIter->second.asString();
+
+			attribute[key] = value;
+		}
+
+		attributes.append(attribute);
+
 		createCityObject(cityObject, folderPath, container, textureContainer, pjSrc, pjDst, inverseGlobalTransMatrix);
 	}
+
+	Json::StyledWriter writer;
+	attributesInfo = writer.write(attributes);
 
 	return true;
 }

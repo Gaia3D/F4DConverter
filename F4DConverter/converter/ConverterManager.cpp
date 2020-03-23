@@ -562,7 +562,20 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 				// 2.3.1 if is there any additional infomations, check that and take it.
 
 				if (reader->doesHasAdditionalInfo()) {
-					additionalInfos = reader->getAdditionalInfo();
+					std::map<std::string, std::string>::iterator infoIter = reader->getAdditionalInfo().begin();
+					for (; infoIter != reader->getAdditionalInfo().end(); infoIter++)
+					{
+						if (infoIter->first != std::string("attributes"))
+						{
+							additionalInfos[infoIter->first] = infoIter->second;
+							continue;
+						}
+						else
+						{
+							additionalInfos[fullId + std::string("_") + infoIter->first] = infoIter->second;
+							continue;
+						}
+					}
 				}
 
 			}
@@ -821,21 +834,56 @@ void CConverterManager::writeAdditionalInfosOfEachData(std::map<std::string, std
 
 	for (; iter != additionalInfos.end(); iter++) {
 		std::string dataKey = iter->first;
-		std::string documentContent = iter->second;
-		std::string relativePathName = "/" + dataKey + ".json";
-		std::string networkInfoFileFullPath = outputFolderPath + std::string(relativePathName);
-		
-		file = fopen(networkInfoFileFullPath.c_str(), "wt");
-		fprintf(file, "%s", documentContent.c_str());
-		fclose(file);
 
+		if (dataKey.find(std::string("attributes")) != std::string::npos)
+		{
+			std::string realDataKey = iter->first.substr(0, iter->first.rfind(std::string("_")));
+			std::string attributesFileFullPath = outputFolderPath + std::string("/F4D_") + realDataKey + std::string("/attributes.json");
+
+			file = fopen(attributesFileFullPath.c_str(), "wt");
+			fprintf(file, "%s", iter->second.c_str());
+			fclose(file);
+		}
+		else
+		{
+			std::string documentContent = iter->second;
+			std::string relativePathName = "/" + dataKey + ".json";
+			std::string networkInfoFileFullPath = outputFolderPath + std::string(relativePathName);
+
+			file = fopen(networkInfoFileFullPath.c_str(), "wt");
+			fprintf(file, "%s", documentContent.c_str());
+			fclose(file);
+		}
 	}
-
 }
 
 void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs)
 {
-	Json::Value arrayNode(Json::arrayValue);
+	//Json::Value arrayNode(Json::arrayValue);
+
+	//std::map<std::string, double>::iterator iter = posXs.begin();
+	//for (; iter != posXs.end(); iter++)
+	//{
+	//	Json::Value f4d(Json::objectValue);
+
+	//	// data_key
+	//	std::string dataKey = iter->first;
+	//	f4d["data_key"] = dataKey;
+
+	//	// longitude and latitude
+	//	f4d["longitude"] = iter->second;
+	//	f4d["latitude"] = posYs[iter->first];
+
+	//	arrayNode.append(f4d);
+	//}
+
+	//Json::StyledWriter writer;
+	//std::string documentContent = writer.write(arrayNode);
+	//std::string lonLatFileFullPath = outputFolderPath + std::string("/lonsLats.json");
+	//FILE* file = NULL;
+	//file = fopen(lonLatFileFullPath.c_str(), "wt");
+	//fprintf(file, "%s", documentContent.c_str());
+	//fclose(file);
 
 	std::map<std::string, double>::iterator iter = posXs.begin();
 	for (; iter != posXs.end(); iter++)
@@ -850,16 +898,14 @@ void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string
 		f4d["longitude"] = iter->second;
 		f4d["latitude"] = posYs[iter->first];
 
-		arrayNode.append(f4d);
+		Json::StyledWriter writer;
+		std::string documentContent = writer.write(f4d);
+		std::string lonLatFileFullPath = outputFolderPath + std::string("/F4D_") + dataKey + std::string("/lonsLats.json");
+		FILE* file = NULL;
+		file = fopen(lonLatFileFullPath.c_str(), "wt");
+		fprintf(file, "%s", documentContent.c_str());
+		fclose(file);
 	}
-
-	Json::StyledWriter writer;
-	std::string documentContent = writer.write(arrayNode);
-	std::string lonLatFileFullPath = outputFolderPath + std::string("/lonsLats.json");
-	FILE* file = NULL;
-	file = fopen(lonLatFileFullPath.c_str(), "wt");
-	fprintf(file, "%s", documentContent.c_str());
-	fclose(file);
 }
 
 void CConverterManager::writeRelativePathOfEachData(std::map<std::string, std::string>& relativePaths)
