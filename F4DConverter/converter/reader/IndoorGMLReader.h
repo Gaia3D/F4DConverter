@@ -39,8 +39,8 @@ public:
 	virtual void clear();
 
 private:
-	GeometryManager parseIndoorGeometry(DOMDocument* dom);
-	bool readIndoorSpace(DOMDocument* dom, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat);
+	GeometryManager parseIndoorGeometry(DOMDocument* dom, std::string filePath);
+	bool readIndoorGML(DOMDocument* dom, std::string filePath, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat);
 
 	
 };

@@ -56,6 +56,10 @@ public:
 
 	virtual bool doesHasGeoReferencingInfo() { return bHasGeoReferencingInfo; }
 
+	virtual bool doesHasAdditionalInfo() { return bHasAdditionalInfo; }
+
+	virtual std::map<std::string, std::string> getAdditionalInfo() { return additionalInfo; }
+
 	virtual void getGeoReferencingInfo(double& lon, double& lat) { lon = refLon; lat = refLat; }
 
 	virtual void injectOringinInfo(double& lon, double& lat) { lonOrigin = lon; latOrigin = lat; bCoordinateInfoInjected = true; }
@@ -67,9 +71,6 @@ public:
 	virtual void alignToCenter(bool bAlign) { bAlignToCenter = bAlign; }
 
 	virtual std::map<std::string, std::string>& getTemporaryFiles() { return temporaryFiles; }
-
-
-	virtual void setOutputFolderPath(std::string opf) { outputFolderPath = opf; }
 
 	virtual bool shouldGeometryBeDesroyedOutside() { return (!container.empty() && !containers.empty()); }
 
@@ -95,16 +96,17 @@ protected:
 
 	bool bHasGeoReferencingInfo;
 
+	bool bHasAdditionalInfo;
+
 	double refLon, refLat;
 
 	std::string epsg;
 
+	std::map<std::string, std::string> additionalInfo;
+
 	double lonOrigin, latOrigin;
 
 	bool bCoordinateInfoInjected;
-
-
-	std::string outputFolderPath;
 
 	bool bAlignToBottomCenter;
 

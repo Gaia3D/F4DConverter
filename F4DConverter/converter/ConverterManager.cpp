@@ -247,12 +247,18 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 
 	std::map<std::string, double> centerXs, centerYs;
 	std::map<std::string, std::string> relativePaths;
-	processSingleLoop(targetFiles, centerXs, centerYs, relativePaths, 0);
+	std::map<std::string, std::string> additionalInfos;
+
+	processSingleLoop(targetFiles, centerXs, centerYs, additionalInfos, relativePaths, 0);
 
 	// save representative lon / lat of F4D if a reference file exists
 	if (!centerXs.empty() && !centerYs.empty())
 	{
 		writeRepresentativeLonLatOfEachData(centerXs, centerYs);
+	}
+
+	if (!additionalInfos.empty()) {
+		
 	}
 
 	// save relative path of each F4D
@@ -275,6 +281,7 @@ void writeCheckResult(std::string fileFullPath);
 void CConverterManager::processSingleLoop(std::map<std::string, std::string>& targetFiles,
 										std::map<std::string, double>& centerXs,
 										std::map<std::string, double>& centerYs,
+										std::map<std::string, std::string>& additionalInfos,
 										std::map<std::string, std::string>& relativePaths,
 										unsigned char depth)
 {
@@ -305,7 +312,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 		reader->setUnitScaleFactor(unitScaleFactor);
 		reader->setOffset(offsetX, offsetY, offsetZ);
 		reader->setYAxisUp(bYAxisUp);
-		reader->setOutputFolderPath(outputFolderPath);
+
 		if (!splitFilter.empty())
 			reader->getSplitFilter().insert(splitFilter.begin(), splitFilter.end());
 
@@ -350,7 +357,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			printf("===== %zd temporary files are made. Proceeding conversion of temporary files\n", reader->getTemporaryFiles().size());
 
 			// run recursively
-			processSingleLoop(reader->getTemporaryFiles(), centerXs, centerYs, relativePaths, depth + 1);
+			processSingleLoop(reader->getTemporaryFiles(), centerXs, centerYs, additionalInfos, relativePaths, depth + 1);
 
 			// delete temporary files
 			std::map<std::string, std::string>::iterator tmpFileIter = reader->getTemporaryFiles().begin();
@@ -551,14 +558,22 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 				}
 
 				relativePaths[fullId] = relativeOutputFolder;
+
+				// 2.3.1 if is there any additional infomations, check that and take it.
+
+				if (reader->doesHasAdditionalInfo()) {
+					additionalInfos = reader->getAdditionalInfo();
+				}
+
 			}
 
 			processor->clear();
 
 			if (reader->shouldRawDataBeConvertedToMuitiFiles())
 				printf("===== End processing sub-group : %s\n", fullId.c_str());
-		}
 
+		}
+		
 		delete reader;
 
 		if (depth == 0)
@@ -797,6 +812,25 @@ void CConverterManager::collectTargetFiles(std::string& inputFolder, std::map<st
 	{
 		collectTargetFiles(subFolders[i], targetFiles);
 	}
+}
+
+void CConverterManager::writeAdditionalInfosOfEachData(std::map<std::string, std::string>& additionalInfos) {
+	
+	std::map<std::string, std::string>::iterator iter = additionalInfos.begin();
+	FILE* file = NULL;
+
+	for (; iter != additionalInfos.end(); iter++) {
+		std::string dataKey = iter->first;
+		std::string documentContent = iter->second;
+		std::string relativePathName = "/" + dataKey + ".json";
+		std::string networkInfoFileFullPath = outputFolderPath + std::string(relativePathName);
+		
+		file = fopen(networkInfoFileFullPath.c_str(), "wt");
+		fprintf(file, "%s", documentContent.c_str());
+		fclose(file);
+
+	}
+
 }
 
 void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs)

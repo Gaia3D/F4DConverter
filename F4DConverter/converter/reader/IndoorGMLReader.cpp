@@ -176,6 +176,8 @@ protected:
 	double id;
 	vector<string>nodes;
 	vector<string>edges;
+	vector<string>cellspace;
+	vector<string>cellspaceboundary;
 	Point3D representativePoint;
 	double height;
 
@@ -186,6 +188,10 @@ public:
 
 	void setId(double f) { id = f; }
 	double getId() { return id; };
+	void addCellSpace(string i) { cellspace.push_back(i); }
+	vector<string>getCellSpaces() { return cellspace; }
+	void addCellSpaceBoundary(string i) { cellspaceboundary.push_back(i); }
+	vector<string>getCellSpaceBoundarys() { return cellspaceboundary; }
 	void addNode(string nodeId) { nodes.push_back(nodeId); }
 	void setNodes(vector<string>nodeIds) { nodes = nodeIds; }
 	vector<string> getNodes() { return nodes; }
@@ -620,6 +626,8 @@ class GeometryManager
 {
 public:
 	gaia3d::BoundingBox bb;
+	std::map <int, vector<std::shared_ptr<IndoorGMLSolid>>> floorSolids;
+	std::map<int, vector<std::shared_ptr<IndoorGMLPolygon>>> floorPolygon;
 
 	size_t getIndoorGMLSolidsCount() const;
 	std::shared_ptr<IndoorGMLSolid> getIndoorGMLSolid(size_t i);
@@ -641,6 +649,7 @@ protected:
 	bool m_finished;
 	std::vector<std::shared_ptr<IndoorGMLSolid> > m_IndoorGMLSolids;
 	std::vector<std::shared_ptr<IndoorGMLPolygon> > m_IndoorGMLPolygons;
+
 };
 
 GeometryManager::GeometryManager()
@@ -918,12 +927,272 @@ vector<int> searchFloors(map<double, int>& floorList, double minimumGapHeight, g
 	}
 	return result;
 }
+bool parseCellSpaceBoundary
+(
+	DOMNode* parentNode, ParserUtil* parseHelper, GeometryParser* gmp, GeometryManager &geomManager, std::string frontTag,gaia3d::BoundingBox *b
+) 
+{
+	vector<DOMNode*> cellSpaceBoundaryMember;
+	cellSpaceBoundaryMember = parseHelper->getNamedNodes(parentNode->getChildNodes(), frontTag + "cellSpaceBoundaryMember");
+	
+	for (int i = 0; i < cellSpaceBoundaryMember.size(); i++) {
+		DOMNode* cellSpaceboundary = parseHelper->getNamedNode(cellSpaceBoundaryMember.at(i)->getChildNodes(), frontTag + "CellSpaceBoundary");
+		if (cellSpaceboundary != 0) {
+			for (int j = 0; j < cellSpaceboundary->getChildNodes()->getLength(); j++) {
+				string nextGeometryTag = frontTag + "cellSpaceBoundaryGeometry";
 
-GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
+				if (parseHelper->isMatchedNodeName(cellSpaceboundary->getChildNodes()->item(j), nextGeometryTag)) {
+					DOMNode* surface = cellSpaceboundary->getChildNodes()->item(j)->getChildNodes()->item(1)->getChildNodes()->item(1);
+					if (parseHelper->changeXMLCh2str(surface->getNodeName()) == "gml:Polygon") {
+
+						shared_ptr<IndoorGMLPolygon> result = gmp->parseIndoorGMLPolygon(surface, b);
+						//string cellId = parseHelper->getNamedAttribute(cellSpace->getAttributes(), "gml:id");
+						//centerPoint.set(centerPoint.x * unitScaleFactor , centerPoint.y * unitScaleFactor, centerPoint.z * unitScaleFactor);
+						//result->setId(cellId);
+						geomManager.addIndoorGMLPolygon(result);
+					}
+				}
+
+			}
+		}
+	}
+	return true;
+}
+bool parseCellSpace
+(DOMNode* parentNode, ParserUtil* parseHelper, GeometryParser* gmp, GeometryManager &geomManager, std::string frontTag,
+	double &minimumGapHeight, BoundingBox *b, 
+	gaia3d::Point3D *lowerBoundingBoxPoint, gaia3d::Point3D *upperBoundingBoxPoint,
+	map<double, int> &floorList,
+	map<string, gaia3d::Point3D> &cellSpaceCenterLowerPointList, map<string, shared_ptr<IndoorGMLSolid>> &cellSpaceSolidList)
+{
+
+	vector<DOMNode*> cellSpaceMember;
+	string nextTag = frontTag + "cellSpaceMember";
+	cellSpaceMember = parseHelper->getNamedNodes(parentNode->getChildNodes(), nextTag);
+	for (int i = 0; i < cellSpaceMember.size(); i++) {
+		//cellspacelist.push_back();
+		DOMNode* cellSpace = parseHelper->getNamedNode(cellSpaceMember.at(i)->getChildNodes(), frontTag + "CellSpace");
+		if (cellSpace != 0) {
+			for (int j = 0; j < cellSpace->getChildNodes()->getLength(); j++) {
+				string nextGeometryTag = frontTag + "cellSpaceGeometry";
+				if (parseHelper->isMatchedNodeName(cellSpace->getChildNodes()->item(j), nextGeometryTag)) {
+					DOMNode* solid = cellSpace->getChildNodes()->item(j)->getChildNodes()->item(1)->getChildNodes()->item(1);
+					std::shared_ptr<IndoorGMLSolid> result = gmp->parseIndoorGMLSolid(solid, b);	
+					gaia3d::Point3D centerPoint = result->getCenterPosition();
+
+					//get the lowerBoundingBoxPoint and upperBoundingBoxPoint for calculating height of the building
+					gaia3d::Point3D lowerBoundPoint = result->getLowerBoundPosition();
+					gaia3d::Point3D upperBoundPoint = result->getUpperBoundPosition();
+
+					//층 때문에 z는 lower bound로, 나머지는 기하의 중심점을 쓰기로 하고.
+					centerPoint.z = lowerBoundPoint.z;
+
+					//need to multiple unitscalefactor...? nope. It is needed to be applied at the end of the reading process
+					//lowerBoundingBoxPoint 초기화
+					//lowerBoundingBoxPoint = new gaia3d::Point3D();
+					//lowerBoundingBoxPoint->set(lowerBoundPoint.x, lowerBoundPoint.y, lowerBoundPoint.z);
+					
+					if (lowerBoundingBoxPoint->x > lowerBoundPoint.x)
+							lowerBoundingBoxPoint->x = lowerBoundPoint.x;
+						if (lowerBoundingBoxPoint->y > lowerBoundPoint.y)
+							lowerBoundingBoxPoint->y = lowerBoundPoint.y;
+						if (lowerBoundingBoxPoint->z > lowerBoundPoint.z)
+							lowerBoundingBoxPoint->z = lowerBoundPoint.z;
+					
+
+					//upperBoundingBoxPoint 초기화
+					//if (upperBoundingBoxPoint == 0) {
+					//	upperBoundingBoxPoint = new gaia3d::Point3D();
+					//	upperBoundingBoxPoint->set(lowerBoundPoint.x, lowerBoundPoint.y, lowerBoundPoint.z);
+					//}
+
+					else {
+						if (upperBoundingBoxPoint->x < upperBoundPoint.x)
+							upperBoundingBoxPoint->x = upperBoundPoint.x;
+						if (upperBoundingBoxPoint->y < upperBoundPoint.y)
+							upperBoundingBoxPoint->y = upperBoundPoint.y;
+						if (upperBoundingBoxPoint->z < upperBoundPoint.z)
+							upperBoundingBoxPoint->z = upperBoundPoint.z;
+					}
+					
+					if (minimumGapHeight > upperBoundPoint.z - lowerBoundPoint.z) {
+						minimumGapHeight = upperBoundPoint.z - lowerBoundPoint.z;
+					}
+				
+					//못 찾았을 경우에
+					if (floorList.find(lowerBoundPoint.z) == floorList.end()) {
+						int tempSize = (int)floorList.size();
+						floorList.insert(pair<double, int>(lowerBoundPoint.z, tempSize));
+					}
+
+					string cellId = parseHelper->getNamedAttribute(cellSpace->getAttributes(), "gml:id");
+					//centerPoint.set(centerPoint.x * unitScaleFactor , centerPoint.y * unitScaleFactor, centerPoint.z * unitScaleFactor);
+					result->setId(cellId);
+					cellSpaceSolidList.insert(pair<string, shared_ptr<IndoorGMLSolid>>(cellId, result));
+					cellSpaceCenterLowerPointList.insert(pair<string, gaia3d::Point3D>(cellId, centerPoint));
+					geomManager.addIndoorGMLSolid(result);
+				}
+			}
+		}
+
+	}
+	//cellSpaceMember.clear();
+	return true;
+}
+void getFloorList
+(
+	gaia3d::Point3D *lowerBoundingBoxPoint, gaia3d::Point3D *upperBoundingBoxPoint, double &minimumGapHeight, map<double, int> &floorList, map<int, IndoorFloor>& floorListMap
+)
+{
+	//calculate the height of the building
+	double buildingHeight = upperBoundingBoxPoint->z - lowerBoundingBoxPoint->z;
+
+	if (floorList.size() == 1) {
+		map<int, IndoorFloor>floorListInfoMap;
+		IndoorFloor singleFloor;
+		singleFloor.setId(floorList.begin()->second);
+		singleFloor.setHeight(floorList.begin()->first);
+		floorListInfoMap.insert(pair<int,IndoorFloor>(1, singleFloor));
+	}
+
+	//calculate average minimum gap among floors
+	if (minimumGapHeight > buildingHeight / floorList.size())
+		minimumGapHeight = buildingHeight / floorList.size();
+
+	map<double, int>::iterator floorListIter = floorList.begin();
+	map<double, int>::iterator floorListIter2 = floorList.begin();
+
+	//층 간의 높이 차이가 허용범위 내에 있다면 같은 층으로 취급하는 알고리즘
+	floorListIter2++;
+	for (; floorListIter2 != floorList.end(); floorListIter2++, floorListIter++) {
+		if (floorListIter2->first - floorListIter->first < minimumGapHeight) {
+			floorListIter2->second = floorListIter->second;
+		}
+	}
+
+	floorListIter = floorList.begin();
+	floorListIter2 = floorList.begin();
+	floorListIter2++;
+
+	int index = 0;
+	floorListIter->second = index;
+	map<double, int>tempFloorList;
+	tempFloorList.insert(pair<double, int>(floorListIter->first, index));
+
+	minimumGapHeight = floorListIter2->first - floorListIter->first;
+
+
+	for (; floorListIter2 != floorList.end(); floorListIter++, floorListIter2++) {
+		if (floorListIter2->second == floorListIter->second) {
+			//하나의 층이 허용 범위를 가지면서 여러 높이를 가질 수 있다.
+			tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
+		}
+		else {
+			//다른 층으로 취급
+			index++;
+			tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
+		}
+
+	}
+
+	floorList = tempFloorList;
+
+	//floor class 가지고 진짜 floor list를 생성할 것
+
+	map<int, IndoorFloor>floorListInfoMap;
+
+	floorListIter = floorList.begin();
+	for (; floorListIter != floorList.end(); floorListIter++) {
+		IndoorFloor newFloor;
+		//floor의 id는 층번호. 지하실을 넣을 수도 있다. 
+		newFloor.setId(floorListIter->second);
+		newFloor.setHeight(floorListIter->first);
+		floorListInfoMap.insert(pair<int, IndoorFloor>(floorListIter->second, newFloor));
+	}
+
+}
+
+void putGeometryIntoFloorList
+(
+	GeometryManager &geomManager, double &minimumGapHeight,  map<double, int> &floorList ,map<int, IndoorFloor> &floorListInfoMap,
+	vector<IndoorGMLState> &stateList, vector<IndoorGMLTransition> &transitionList
+)
+{
+
+	//층대로 solid 나누기
+	for (int i = 0; i < geomManager.getIndoorGMLSolidsCount(); i++) {
+		//새 solid 가져오기
+		shared_ptr<IndoorGMLSolid> tempIndoorSolid(geomManager.getIndoorGMLSolid(i));
+		double height = tempIndoorSolid->getLowerBoundPosition().z;
+		//층 찾기
+		map<double, int>::iterator tempIt = floorList.find(height);
+
+		//에러 방지를 위한 코드
+		if (tempIt != floorList.end()) {
+			//층번호 알아내기
+			int tempFloor = tempIt->second;
+			//floorSolids에서 해당 층 vector 생성되어 있는지 확인
+			if (geomManager.floorSolids.find(tempFloor) == geomManager.floorSolids.end()) {
+				vector<shared_ptr<IndoorGMLSolid>>newTempFloor;
+				newTempFloor.push_back(tempIndoorSolid);
+				geomManager.floorSolids.insert(pair<int, vector<shared_ptr<IndoorGMLSolid>>>(tempFloor, newTempFloor));
+				floorListInfoMap.find(tempFloor)->second.addCellSpace(tempIndoorSolid->getId());
+
+			}
+			//해당 층 vector 생성되어있다면 그냥 찾아서 넣기
+			else {
+				geomManager.floorSolids.find(tempFloor)->second.push_back(tempIndoorSolid);
+				floorListInfoMap.find(tempFloor)->second.addCellSpace(tempIndoorSolid->getId());
+			}
+		}
+
+	}
+
+	//state
+	for (int i = 0; i < stateList.size(); i++) {
+		double stateHeight = stateList.at(i).getGeometry().z;
+
+		map<double, int>::iterator floorIt;
+		floorIt = floorList.find(stateHeight);
+		if (floorIt != floorList.end()) {
+			stateList.at(i).setFloor(floorIt->second);
+			floorListInfoMap[floorIt->second].addNode(stateList.at(i).getId());
+		}
+		else {
+			floorIt = floorList.begin();
+			for (; floorIt != floorList.end(); floorIt++) {
+				if (abs(floorIt->first - stateHeight) < minimumGapHeight) {
+					stateList.at(i).setFloor(floorIt->second);
+					floorListInfoMap[floorIt->second].addNode(stateList.at(i).getId());
+					break;
+				}
+			}
+		}
+	}
+
+	//transition
+
+	for (int i = 0; i < transitionList.size(); i++) {
+		Point3D transitionLowerBoundPosition = transitionList.at(i).getLowerBoundPosition();
+		Point3D transitionUpperBoundPosition = transitionList.at(i).getUpperBoundPosition();
+
+		vector<int>result = searchFloors(floorList, minimumGapHeight, transitionLowerBoundPosition, transitionUpperBoundPosition);
+		transitionList.at(i).setFloors(result);
+		for (int j = 0; j < result.size(); j++) {
+			floorListInfoMap[result.at(j)].addEdge(transitionList.at(i).getId());
+		}
+	}
+}
+GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom, string filePath) {
 	
 	ParserUtil* parseHelper = new ParserUtil();
 	GeometryParser* gmp = new GeometryParser();
 	GeometryManager geomManager;
+
+	size_t dotPosition = filePath.rfind(".");
+	size_t slashPosition = filePath.find_last_of("\\/");
+	std::string subFileNamePrefix = filePath.substr(slashPosition + 1, dotPosition - slashPosition - 1);
+
 	try {
 		DOMElement* rootNode = dom->getDocumentElement();
 		//cout << XMLString::transcode(rootNode->getTagName()) << endl;
@@ -940,8 +1209,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 
 		vector<DOMNode*> states;
 
-		vector<DOMNode*> cellSpaceMember;
-		vector<DOMNode*> cellSpaceBoundaryMember;
+	
 		BoundingBox* b = new BoundingBox();
 
 		//primalSpaceFeatures -> PrimalSpaceFeatures
@@ -972,183 +1240,31 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 		multiLayeredGraph = parseHelper->getNamedNode(multiLayeredGraph->getChildNodes(), nextTag);
 
 
-		nextTag = frontTag + "cellSpaceMember";
-
-		cellSpaceMember = parseHelper->getNamedNodes(primalSpaceFeatures->getChildNodes(), nextTag);
-		nextTag = frontTag + "cellSpaceBoundaryMember";
-
-		cellSpaceBoundaryMember = parseHelper->getNamedNodes(primalSpaceFeatures->getChildNodes(), nextTag);
-
 		vector<DOMNode*>cellspacelist;
 		vector<DOMNode*>cellspaceboundarylist;
+		vector<IndoorGMLState>stateList;
+		vector<IndoorGMLTransition>transitionList;
 		vector<DOMNode*>IndoorGMLSolidList;
-		vector<DOMNode*>surfaceList;
+		vector<DOMNode*>IndoorGMLSurfaceList;
 		map<string, gaia3d::Point3D> cellSpaceCenterLowerPointList;
 		map<string, shared_ptr<IndoorGMLSolid>> cellSpaceSolidList;
-		map<double, int> floorList;
-
-
+		
 		//전체 Bounding box의 lower point, upper point를 구한다. 
-		gaia3d::Point3D *lowerBoundingBoxPoint = 0;
-		gaia3d::Point3D *upperBoundingBoxPoint = 0;
+		gaia3d::Point3D *lowerBoundingBoxPoint = new Point3D;
+		lowerBoundingBoxPoint->set(0, 0, 0);
+		gaia3d::Point3D *upperBoundingBoxPoint = new Point3D;
+		upperBoundingBoxPoint->set(0, 0, 0);
 
 		//기하에서 층을 구하기 위해 최소 층의 높이를 구한다. 
-		double minimumGapHeight = 0;
-		nextTag = frontTag + "CellSpace";
+		double minimumGapHeight = 10000000000000;
+		map<double, int> floorList;
+		map<int, IndoorFloor> floorListInfoMap;
 
-		for (int i = 0; i < cellSpaceMember.size(); i++) {
-			//cellspacelist.push_back();
-
-			DOMNode* cellSpace = parseHelper->getNamedNode(cellSpaceMember.at(i)->getChildNodes(), nextTag);
-			if (cellSpace != 0) {
-				for (int j = 0; j < cellSpace->getChildNodes()->getLength(); j++) {
-					string nextGeometryTag = frontTag + "cellSpaceGeometry";
-
-					if (parseHelper->isMatchedNodeName(cellSpace->getChildNodes()->item(j), nextGeometryTag)) {
-						DOMNode* solid = cellSpace->getChildNodes()->item(j)->getChildNodes()->item(1)->getChildNodes()->item(1);
-						std::shared_ptr<IndoorGMLSolid> result = gmp->parseIndoorGMLSolid(solid, b);
-						gaia3d::Point3D centerPoint = result->getCenterPosition();
-						//층 때문에 z는 lower bound로, 나머지는 기하의 중심점을 쓰기로 하고.
-						centerPoint.z = result->getLowerBoundPosition().z;
-
-						//get the lowerBoundingBoxPoint and upperBoundingBoxPoint for calculating height of the building
-						gaia3d::Point3D lowerBoundPoint = result->getLowerBoundPosition();
-						gaia3d::Point3D upperBoundPoint = result->getUpperBoundPosition();
-
-						//need to multiple unitscalefactor...? nope. It is needed to be applied at the end of the reading process
-						//lowerBoundingBoxPoint 초기화
-						if (lowerBoundingBoxPoint == 0) {
-							lowerBoundingBoxPoint = new gaia3d::Point3D();
-							lowerBoundingBoxPoint->set(lowerBoundPoint.x, lowerBoundPoint.y, lowerBoundPoint.z);
-						}
-						else {
-							if (lowerBoundingBoxPoint->x > lowerBoundPoint.x)
-								lowerBoundingBoxPoint->x = lowerBoundPoint.x;
-							if (lowerBoundingBoxPoint->y > lowerBoundPoint.y)
-								lowerBoundingBoxPoint->y = lowerBoundPoint.y;
-							if (lowerBoundingBoxPoint->z > lowerBoundPoint.z)
-								lowerBoundingBoxPoint->z = lowerBoundPoint.z;
-						}
-
-						//upperBoundingBoxPoint 초기화
-						if (upperBoundingBoxPoint == 0) {
-							upperBoundingBoxPoint = new gaia3d::Point3D();
-							upperBoundingBoxPoint->set(lowerBoundPoint.x, lowerBoundPoint.y, lowerBoundPoint.z);
-						}
-						else {
-							if (upperBoundingBoxPoint->x < upperBoundPoint.x)
-								upperBoundingBoxPoint->x = upperBoundPoint.x;
-							if (upperBoundingBoxPoint->y < upperBoundPoint.y)
-								upperBoundingBoxPoint->y = upperBoundPoint.y;
-							if (upperBoundingBoxPoint->z < upperBoundPoint.z)
-								upperBoundingBoxPoint->z = upperBoundPoint.z;
-						}
-
-						if (minimumGapHeight == 0) { 
-							minimumGapHeight = upperBoundPoint.z - lowerBoundPoint.z;
-						}
-						else {
-							if (minimumGapHeight > upperBoundPoint.z - lowerBoundPoint.z)
-								minimumGapHeight = upperBoundPoint.z - lowerBoundPoint.z;
-						}
-
-						//못 찾았을 경우에
-						if (floorList.find(lowerBoundPoint.z) == floorList.end()) {
-							int tempSize = (int)floorList.size();
-							floorList.insert(pair<double, int>(lowerBoundPoint.z, tempSize));
-						}
-
-						string cellId = parseHelper->getNamedAttribute(cellSpace->getAttributes(), "gml:id");
-						//centerPoint.set(centerPoint.x * unitScaleFactor , centerPoint.y * unitScaleFactor, centerPoint.z * unitScaleFactor);
-						cellSpaceSolidList.insert(pair<string, shared_ptr<IndoorGMLSolid>>(cellId, result));
-						cellSpaceCenterLowerPointList.insert(pair<string, gaia3d::Point3D>(cellId, centerPoint));
-						geomManager.addIndoorGMLSolid(result);
-					}
-				}
-			}
-
-		}
-
-		//calculate the height of the building
-		double buildingHeight = upperBoundingBoxPoint->z - lowerBoundingBoxPoint->z;
-
-		//calculate average minimum gap among floors
-		if(minimumGapHeight > buildingHeight / floorList.size())
-			minimumGapHeight = buildingHeight / floorList.size();
-
-		map<double, int>::iterator floorListIter = floorList.begin();
-		map<double, int>::iterator floorListIter2 = floorList.begin();
-
-		//층 간의 높이 차이가 허용범위 내에 있다면 같은 층으로 취급하는 알고리즘
-		floorListIter2++;
-		for (; floorListIter2 != floorList.end(); floorListIter2++, floorListIter++) {
-			if (floorListIter2->first - floorListIter->first < minimumGapHeight) {
-				floorListIter2->second = floorListIter->second;
-			}
-		}
-
-		floorListIter = floorList.begin();
-		floorListIter2 = floorList.begin();
-		floorListIter2++;
-
-		int index = 0;
-		floorListIter->second = index;
-		map<double, int>tempFloorList;
-		tempFloorList.insert(pair<double, int>(floorListIter->first, index));
-
-		minimumGapHeight = floorListIter2->first - floorListIter->first;
-
-
-		for (; floorListIter2 != floorList.end(); floorListIter++, floorListIter2++) {
-			if (floorListIter2->second == floorListIter->second) {
-				//하나의 층이 허용 범위를 가지면서 여러 높이를 가질 수 있다.
-				tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
-			}
-			else {
-				//다른 층으로 취급
-				index++;
-				tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
-			}
-
-		}
-
-		floorList = tempFloorList;
-
-		//floor class 가지고 진짜 floor list를 생성할 것
-
-		map<int, IndoorFloor>floorListInfoMap;
-
-		floorListIter = floorList.begin();
-		for (; floorListIter != floorList.end(); floorListIter++) {
-			IndoorFloor newFloor;
-			//floor의 id는 층번호. 지하실을 넣을 수도 있다. 
-			newFloor.setId(floorListIter->second);
-			newFloor.setHeight(floorListIter->first);
-			floorListInfoMap.insert(pair<int,IndoorFloor>(floorListIter->second,newFloor));
-		}
-
-		nextTag = frontTag + "CellSpaceBoundary";
-
-		for (int i = 0; i < cellSpaceBoundaryMember.size(); i++) {
-			DOMNode* cellSpaceboundary = parseHelper->getNamedNode(cellSpaceBoundaryMember.at(i)->getChildNodes(), nextTag);
-			if (cellSpaceboundary != 0) {
-				for (int j = 0; j < cellSpaceboundary->getChildNodes()->getLength(); j++) {
-					string nextGeometryTag = frontTag + "cellSpaceBoundaryGeometry";
-
-					if (parseHelper->isMatchedNodeName(cellSpaceboundary->getChildNodes()->item(j), nextGeometryTag)) {
-						DOMNode* surface = cellSpaceboundary->getChildNodes()->item(j)->getChildNodes()->item(1)->getChildNodes()->item(1);
-						if (parseHelper->changeXMLCh2str(surface->getNodeName()) == "gml:Polygon") {
-
-							shared_ptr<IndoorGMLPolygon> result = gmp->parseIndoorGMLPolygon(surface, b);
-							geomManager.addIndoorGMLPolygon(result);
-						}
-					}
-
-				}
-			}
-		}
-
-
+		parseCellSpace(primalSpaceFeatures, parseHelper, gmp, geomManager, frontTag, minimumGapHeight, b, lowerBoundingBoxPoint, upperBoundingBoxPoint, floorList, cellSpaceCenterLowerPointList, cellSpaceSolidList);
+		parseCellSpaceBoundary(primalSpaceFeatures, parseHelper, gmp, geomManager, frontTag, b);
+	
+		getFloorList(lowerBoundingBoxPoint, upperBoundingBoxPoint, minimumGapHeight, floorList, floorListInfoMap);
+		
 		nextTag = frontTag + "spaceLayers";
 
 		spaceLayers = parseHelper->getNamedNode(multiLayeredGraph -> getChildNodes(), nextTag);
@@ -1156,9 +1272,6 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 		nextTag = frontTag + "spaceLayerMember";
 
 		spaceLayerMember = parseHelper->getNamedNodes(spaceLayers->getChildNodes(), nextTag);
-
-		vector<IndoorGMLState>stateList;
-		vector<IndoorGMLTransition>transitionList;
 
 
 		for (int i = 0; i < spaceLayerMember.size(); i++) {
@@ -1271,48 +1384,21 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 						stateList.push_back(stateInstance);
 					
 					}
-					//states.insert(states.end(), tempStates.begin(), tempStates.end());
+
 				}
 			}
 		}
 
+		putGeometryIntoFloorList(geomManager, minimumGapHeight, floorList, floorListInfoMap, stateList, transitionList);
 
-
-		//cellSpaceMember -> cellSpace & cellSpaceBoundaryMember -> cellSpaceBoundary
-
-		//state
-		for (int i = 0; i < stateList.size(); i++) {
-			double stateHeight = stateList.at(i).getGeometry().z;
-			
-			map<double, int>::iterator floorIt;
-			floorIt = floorList.find(stateHeight);
-			if (floorIt != floorList.end()) {
-				stateList.at(i).setFloor(floorIt->second);
-				floorListInfoMap[floorIt->second].addNode(stateList.at(i).getId());
+		map<int, IndoorFloor>::iterator fmi = floorListInfoMap.begin();
+		map<string, int> matchFloor2CellSpaceList;
+		for (; fmi != floorListInfoMap.end(); fmi++) {
+			int tempFloor = fmi->first;
+			vector<string>tempCellSpaces = fmi->second.getCellSpaces();
+			for (int k = 0; k < tempCellSpaces.size(); k++) {
+				matchFloor2CellSpaceList.insert(pair<string, int>(tempCellSpaces.at(k), tempFloor));
 			}
-			else {
-				floorIt = floorList.begin();
-				for (; floorIt != floorList.end(); floorIt++) {
-					if (abs(floorIt->first - stateHeight) < minimumGapHeight) {
-						stateList.at(i).setFloor(floorIt->second);
-						floorListInfoMap[floorIt->second].addNode(stateList.at(i).getId());
-						break;
-					}
-				}
-			}
-		}
-
-		//transition
-		
-		for (int i = 0; i < transitionList.size(); i++) {
-			Point3D transitionLowerBoundPosition = transitionList.at(i).getLowerBoundPosition();
-			Point3D transitionUpperBoundPosition = transitionList.at(i).getUpperBoundPosition();
-
-			vector<int>result = searchFloors(floorList, minimumGapHeight, transitionLowerBoundPosition, transitionUpperBoundPosition);
-			transitionList.at(i).setFloors(result);
-			for (int j = 0; j < result.size(); j++) {
-				floorListInfoMap[result.at(j)].addEdge(transitionList.at(i).getId());
-			}	
 		}
 
 
@@ -1329,23 +1415,25 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 
 			Json::Value cellspace(Json::objectValue);
 			Json::Value point(Json::objectValue);
-
+			
 			//usf, bbc 적용해야 함
 			point["x"] = dataValue.x * unitScaleFactor - boundingBoxCenter.x;
 			point["y"] = dataValue.y * unitScaleFactor - boundingBoxCenter.y;
 			point["z"] = dataValue.z * unitScaleFactor - boundingBoxCenter.z;
+			point["floor"] = matchFloor2CellSpaceList.find(dataKey)->second;
 			objectNode[dataKey] = point;
 
 			//objectNode.append(cellspace);
 		}
 
+		map<string, string>metafiles;
 		Json::StyledWriter writer;
 		std::string documentContent = writer.write(objectNode);
-		std::string lonLatFileFullPath = outputFolderPath + std::string("/cellspacelist.json");
-		FILE* file = NULL;
-		file = fopen(lonLatFileFullPath.c_str(), "wt");
-		std::fprintf(file, "%s", documentContent.c_str());
-		std::fclose(file);
+		//metafiles.insert(pair<string, string>("cellspacelist",documentContent));
+		//IndoorGMLGeometryInfo = documentContent;
+		//bHasIndoorGMLGeometryInfo = true;
+		additionalInfo.insert(pair<string, string>(subFileNamePrefix + "_cellspacelist",documentContent));
+		bHasAdditionalInfo = true;
 
 		Json::Value networkRootObjectNode(Json::objectValue);
 		Json::Value nodesObjectNode(Json::objectValue);
@@ -1375,6 +1463,15 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 			stateList.at(i).getGeometry().y * unitScaleFactor - boundingBoxCenter.y,
 			stateList.at(i).getGeometry().z * unitScaleFactor - boundingBoxCenter.z
 			);
+			
+
+			/*
+			scaledPoint.set(
+				stateList.at(i).getGeometry().x,
+				stateList.at(i).getGeometry().y,
+				stateList.at(i).getGeometry().z
+			);
+			*/
 			
 			state["geometry"] = changePoint2GeoJSONPoint(scaledPoint);
 			nodesObjectNode[dataKey] = state;
@@ -1416,6 +1513,13 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 						tempVerticesList.at(j).y * unitScaleFactor - boundingBoxCenter.y,
 						tempVerticesList.at(j).z * unitScaleFactor - boundingBoxCenter.z
 					);
+					/*
+					tempVerticesList.at(j).set(
+						tempVerticesList.at(j).x,
+						tempVerticesList.at(j).y,
+						tempVerticesList.at(j).z
+					);
+					*/
 				}
 				IndoorGMLLineString tempLineStringInstance;
 				tempLineStringInstance.setVertices(tempVerticesList);
@@ -1465,14 +1569,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 		networkRootObjectNode["properties"] = propertiesObjectNode;
 
 		documentContent = writer.write(networkRootObjectNode);
-		lonLatFileFullPath = outputFolderPath + std::string("/statelist.json");
-		file = NULL;
-		file = fopen(lonLatFileFullPath.c_str(), "wt");
-		std::fprintf(file, "%s", documentContent.c_str());
-		std::fclose(file);
-
-
-		//std::cout << "IndoorGML Parser : The Document is parsed" << endl;
+		additionalInfo.insert(pair<string, string>(subFileNamePrefix + "_networklist", documentContent));
 	}
 	catch (const XMLException& toCatch) {
 		char* message = XMLString::transcode(toCatch.getMessage());
@@ -1496,11 +1593,10 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom) {
 	
 	return geomManager;
 }
-bool IndoorGMLReader::readIndoorSpace(DOMDocument* dom, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat) {
-	
 
+bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat) {
 
-	GeometryManager geomManager = parseIndoorGeometry(dom);
+	GeometryManager geomManager = parseIndoorGeometry(dom , filePath);
 	//cout << "start read IndoorGML data" << endl;
 
 	//gaia3d::Matrix4* mat;
@@ -1543,105 +1639,126 @@ bool IndoorGMLReader::readIndoorSpace(DOMDocument* dom, std::vector<gaia3d::Tria
 
 	vector<gaia3d::Triangle>tessellatedResult;
 	
-	for (size_t i = 0; i < geomManager.getIndoorGMLSolidsCount(); i++) {
-
-		gaia3d::TrianglePolyhedron* newMesh = new gaia3d::TrianglePolyhedron();
-
-		shared_ptr<IndoorGMLSolid> tempIndoorGMLSolid = geomManager.getIndoorGMLSolid(i);
-		for (size_t j = 0; j < tempIndoorGMLSolid->getExterior().size(); j++) {
-			size_t offset = newMesh->getVertices().size();
-			
-			Surface* tempSurface = new Surface();
-			shared_ptr<IndoorGMLPolygon>tempIndoorGMLPolygon = tempIndoorGMLSolid->getExterior().at(j);
-			size_t verticesCount = tempIndoorGMLPolygon->getExterior()->getVertices().size();
-			vector<Point3D>tempPointList = tempIndoorGMLPolygon->getExterior()->getVertices();
-
-			double* nx = new double[verticesCount];
-			double* ny = new double[verticesCount];
-			double* nz = new double[verticesCount];
-			
-			vector<size_t>verticesIndices;
-			vector<size_t>polygonIndices;
-
-			if (tempIndoorGMLSolid->getExterior().at(j)->getInterior().size() != 0) {}
-			else {
-				for (size_t z = 0; z < verticesCount; z++) {
-					polygonIndices.push_back(z);
-				}
-			}
-
-			// push new vertex at the vertex list of the surface
-			for (size_t z = 0; z < verticesCount; z++) {
-
-				nx[z] = tempPointList.at(z).x * unitScaleFactor - BBcenterPoint.x;
-				ny[z] = tempPointList.at(z).y * unitScaleFactor - BBcenterPoint.y;
-				nz[z] = tempPointList.at(z).z * unitScaleFactor - BBcenterPoint.z;
-				Vertex* tempVertex = new Vertex();
-				tempVertex->position.set(nx[z], ny[z], nz[z]);
-				newMesh->getVertices().push_back(tempVertex);
-			}
-
-			//GeometryUtility::tessellate(nx, ny, nz, verticesCount, verticesIndices);
-			GeometryUtility::tessellate(nx, ny, nz, verticesCount, polygonIndices, verticesIndices);
-
-			// Cause of dealing single IndoorGMLSolid as one single model. add offset and set the vertices indices of the new vertices
-			for (size_t z = 0; z < verticesIndices.size(); z++) {
-				size_t tempIndex = verticesIndices.at(z);
-				tempIndex += offset;
-				verticesIndices.at(z) = tempIndex;
-			}
-
-			//Create triangle 
-			for (size_t z = 0; z < verticesIndices.size(); z += 3) {
-				Vertex* v1 = newMesh->getVertices().at(verticesIndices.at(z));
-				Vertex* v2 = newMesh->getVertices().at(verticesIndices.at(z + 1));
-				Vertex* v3 = newMesh->getVertices().at(verticesIndices.at(z + 2));
-
-				Point3D vec1 = v1->position - v2->position;
-				Point3D vec2 = v1->position - v3->position;
-
-				//if the sum of the each element of the cross product vector between 2 edges of the triangle, then those of the edges are parrallel
-				Point3D crossProductOfTriangle = vec1 ^ vec2;
-				double tolerance = 1E-6;
-				double checkParallelValue = crossProductOfTriangle.x + crossProductOfTriangle.y + crossProductOfTriangle.z;
-				if (abs(checkParallelValue) < tolerance)
-					continue;
-
-				double r1 = 0, r2 = 0, r3 = 0;
-				GeometryUtility::calculatePlaneNormal(
-					v1->position.x, v1->position.y, v1->position.z,
-					v2->position.x, v2->position.y, v2->position.z,
-					v3->position.x, v3->position.y, v3->position.z,
-					r1, r2, r3, true
-				);
-				v1->normal.set(r1,r2,r3);
-				v2->normal.set(r1,r2,r3);
-				v3->normal.set(r1, r2, r3);
-
-				Triangle* resultTriangle = new Triangle();
-				resultTriangle->setNormal(r1, r2, r3);
-				resultTriangle->setVertexIndices(verticesIndices.at(z), verticesIndices.at(z + 1), verticesIndices.at(z + 2));
-				resultTriangle->setVertices(v1,v2,v3);
-				tempSurface->getTriangles().push_back(resultTriangle);
-	
-			}
-
-			newMesh->getSurfaces().push_back(tempSurface);
-			newMesh->addStringAttribute(std::string(ObjectGuid), tempIndoorGMLSolid->getId());
-			delete[] nx;
-			delete[] ny;
-			delete[] nz;
-		}
-
-		newMesh->setHasNormals(true);
-		newMesh->setId(container.size());
-		newMesh->setColorMode(SingleColor);
-		newMesh->setSingleColor(MakeColorU4(250, 250, 250));
-	
-		
-		container.push_back(newMesh);
-
+	std::string fileName;
+	size_t finalSlashIndex;
+	if (filePath.rfind('\\') != std::string::npos)
+	{
+		finalSlashIndex = filePath.rfind('\\');
+		if (filePath.rfind('/') != std::string::npos && filePath.rfind('/') > finalSlashIndex)
+			finalSlashIndex = filePath.rfind('/');
 	}
+	else
+		finalSlashIndex = filePath.rfind('/');
+
+	fileName = filePath.substr(finalSlashIndex + 1, filePath.rfind('.') - finalSlashIndex - 1);
+	printf("[INFO]total story count : %zd\n", geomManager.floorSolids.size());
+	for (int fileIndex = 0; fileIndex < geomManager.floorSolids.size(); fileIndex++) {
+		
+		
+		std::string dataKey;
+
+		dataKey = fileName + std::string("_") + std::to_string(fileIndex);
+		containers[dataKey] = std::vector<gaia3d::TrianglePolyhedron*>();
+
+		//지금부터는 한 층의 Solid를 차례대로 다룸
+		for (int i = 0; i < geomManager.floorSolids.at(fileIndex).size(); i++) {
+				
+			gaia3d::TrianglePolyhedron* newMesh = new gaia3d::TrianglePolyhedron();
+
+			shared_ptr<IndoorGMLSolid> tempIndoorGMLSolid = geomManager.floorSolids.at(fileIndex).at(i);
+			for (int j = 0; j < tempIndoorGMLSolid->getExterior().size(); j++) {
+				size_t offset = newMesh->getVertices().size();
+
+				Surface* tempSurface = new Surface();
+				shared_ptr<IndoorGMLPolygon>tempIndoorGMLPolygon = tempIndoorGMLSolid->getExterior().at(j);
+				size_t verticesCount = tempIndoorGMLPolygon->getExterior()->getVertices().size();
+				vector<Point3D>tempPointList = tempIndoorGMLPolygon->getExterior()->getVertices();
+
+				double* nx = new double[verticesCount];
+				double* ny = new double[verticesCount];
+				double* nz = new double[verticesCount];
+
+				vector<size_t>verticesIndices;
+				vector<size_t>polygonIndices;
+
+				if (tempIndoorGMLSolid->getExterior().at(j)->getInterior().size() != 0) {}
+				else {
+					for (size_t z = 0; z < verticesCount; z++) {
+						polygonIndices.push_back(z);
+					}
+				}
+
+				// push new vertex at the vertex list of the surface
+				for (size_t z = 0; z < verticesCount; z++) {
+
+					nx[z] = tempPointList.at(z).x * unitScaleFactor - BBcenterPoint.x;
+					ny[z] = tempPointList.at(z).y * unitScaleFactor - BBcenterPoint.y;
+					nz[z] = tempPointList.at(z).z * unitScaleFactor - BBcenterPoint.z;
+					Vertex* tempVertex = new Vertex();
+					tempVertex->position.set(nx[z], ny[z], nz[z]);
+					newMesh->getVertices().push_back(tempVertex);
+				}
+
+				GeometryUtility::tessellate(nx, ny, nz, verticesCount, polygonIndices, verticesIndices);
+
+				// Cause of dealing single IndoorGMLSolid as one single model. add offset and set the vertices indices of the new vertices
+				for (size_t z = 0; z < verticesIndices.size(); z++) {
+					size_t tempIndex = verticesIndices.at(z);
+					tempIndex += offset;
+					verticesIndices.at(z) = tempIndex;
+				}
+
+				//Create triangle 
+				for (size_t z = 0; z < verticesIndices.size(); z += 3) {
+					Vertex* v1 = newMesh->getVertices().at(verticesIndices.at(z));
+					Vertex* v2 = newMesh->getVertices().at(verticesIndices.at(z + 1));
+					Vertex* v3 = newMesh->getVertices().at(verticesIndices.at(z + 2));
+
+					Point3D vec1 = v1->position - v2->position;
+					Point3D vec2 = v1->position - v3->position;
+
+					//if the sum of the each element of the cross product vector between 2 edges of the triangle, then those of the edges are parrallel
+					Point3D crossProductOfTriangle = vec1 ^ vec2;
+					double tolerance = 1E-6;
+					double checkParallelValue = crossProductOfTriangle.x + crossProductOfTriangle.y + crossProductOfTriangle.z;
+					if (abs(checkParallelValue) < tolerance)
+						continue;
+
+					double r1 = 0, r2 = 0, r3 = 0;
+					GeometryUtility::calculatePlaneNormal(
+						v1->position.x, v1->position.y, v1->position.z,
+						v2->position.x, v2->position.y, v2->position.z,
+						v3->position.x, v3->position.y, v3->position.z,
+						r1, r2, r3, true
+					);
+					v1->normal.set(r1, r2, r3);
+					v2->normal.set(r1, r2, r3);
+					v3->normal.set(r1, r2, r3);
+
+					Triangle* resultTriangle = new Triangle();
+					resultTriangle->setNormal(r1, r2, r3);
+					resultTriangle->setVertexIndices(verticesIndices.at(z), verticesIndices.at(z + 1), verticesIndices.at(z + 2));
+					resultTriangle->setVertices(v1, v2, v3);
+					tempSurface->getTriangles().push_back(resultTriangle);
+
+				}
+
+				newMesh->getSurfaces().push_back(tempSurface);
+				newMesh->addStringAttribute(std::string(ObjectGuid), tempIndoorGMLSolid->getId());
+				delete[] nx;
+				delete[] ny;
+				delete[] nz;
+			}
+
+			newMesh->setHasNormals(true);
+			newMesh->setId(containers[dataKey].size());
+			newMesh->setColorMode(SingleColor);
+			newMesh->setSingleColor(MakeColorU4(250, 250, 250));
+			containers[dataKey].push_back(newMesh);
+		}
+	
+	}
+
 
 	return true;
 
@@ -1652,54 +1769,70 @@ void IndoorGMLReader::clear()
 
 	//textureContainer.clear();
 }
-bool IndoorGMLReader::readRawDataFile(std::string& filePath) {
-	try {
-		const char * xmlFile = filePath.c_str();
-		XMLPlatformUtils::Initialize();
-		XercesDOMParser* parser = new XercesDOMParser();
-		ParserUtil* parseHelper = new ParserUtil();
-		GeometryParser* gmp = new GeometryParser();
-		
-		ErrorHandler* errHandler = (ErrorHandler*) new HandlerBase();
-		parser->setErrorHandler(errHandler);
-		parser->setIncludeIgnorableWhitespace(false);
-		parser->setDoSchema(true);
-		//const char * xmlFile = "../samples/seouluniv21centry.gml";
-		parser->parse(xmlFile);
-
-		//cout << xmlFile << ": parse OK" << endl;
-		DOMDocument* dom = parser->getDocument();	
-		//cout << "Now processing start" << endl;
-		readIndoorSpace(dom, container, refLon, refLat);
-
-		delete parser;
-		delete errHandler;
-		delete parseHelper;
-		XMLPlatformUtils::Terminate();
-	
-
-	}
-	catch (const XMLException& toCatch) {
-		char* message = XMLString::transcode(toCatch.getMessage());
-		std::cout << "Exception message is: \n" << message << "\n";
-		XMLString::release(&message);
-		return false;
-	}
-	catch (const DOMException& toCatch) {
-		char* message = XMLString::transcode(toCatch.msg);
-		std::cout << "Exception message is: \n" << message << "\n";
-		XMLString::release(&message);
-		return false;
-	}
-	catch (const SAXParseException& ex) {
-		std::cout << XMLString::transcode(ex.getMessage()) << endl;
-
-	}
-	catch (...) {
-		std::cout << "Unexpected Exception \n";
-		return false;
-	}
-
+bool readTemporaryMetaDataFile(std::string& filePath) {
 	return true;
+}
+
+bool IndoorGMLReader::readRawDataFile(std::string& filePath) {
+	
+	std::string::size_type dotPosition = filePath.rfind(".");
+	std::string::size_type fileExtLength = filePath.length() - dotPosition - 1;
+	std::string fileExt = filePath.substr(dotPosition + 1, fileExtLength);
+	std::transform(fileExt.begin(), fileExt.end(), fileExt.begin(), towlower);
+	bool readFlag = true;
+
+	if (fileExt.compare(std::string("indoorgml")) == 0) {
+		try {
+			const char * xmlFile = filePath.c_str();
+			XMLPlatformUtils::Initialize();
+			XercesDOMParser* parser = new XercesDOMParser();
+			ParserUtil* parseHelper = new ParserUtil();
+			GeometryParser* gmp = new GeometryParser();
+
+			ErrorHandler* errHandler = (ErrorHandler*) new HandlerBase();
+			parser->setErrorHandler(errHandler);
+			parser->setIncludeIgnorableWhitespace(false);
+			parser->setDoSchema(true);
+			//const char * xmlFile = "../samples/seouluniv21centry.gml";
+			parser->parse(xmlFile);
+
+			//cout << xmlFile << ": parse OK" << endl;
+			DOMDocument* dom = parser->getDocument();
+			//cout << "Now processing start" << endl;
+			readFlag = readIndoorGML(dom, filePath, container, refLon, refLat);
+
+			delete parser;
+			delete errHandler;
+			delete parseHelper;
+			XMLPlatformUtils::Terminate();
+		}
+		catch (const XMLException& toCatch) {
+			char* message = XMLString::transcode(toCatch.getMessage());
+			std::cout << "Exception message is: \n" << message << "\n";
+			XMLString::release(&message);
+			return false;
+		}
+		catch (const DOMException& toCatch) {
+			char* message = XMLString::transcode(toCatch.msg);
+			std::cout << "Exception message is: \n" << message << "\n";
+			XMLString::release(&message);
+			return false;
+		}
+		catch (const SAXParseException& ex) {
+			std::cout << XMLString::transcode(ex.getMessage()) << endl;
+
+		}
+		catch (...) {
+			std::cout << "Unexpected Exception \n";
+			return false;
+		}
+	}
+	else if (fileExt.compare(std::string("mdjson")) == 0) {
+		//return readTemporaryMetaDataFile(filePath);
+	}	
+	else
+		return false;
+
+	return readFlag;
 
 }
