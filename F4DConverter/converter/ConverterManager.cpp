@@ -258,7 +258,7 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	}
 
 	if (!additionalInfos.empty()) {
-		
+		writeAdditionalInfosOfEachData(additionalInfos);
 	}
 
 	// save relative path of each F4D
@@ -835,31 +835,7 @@ void CConverterManager::writeAdditionalInfosOfEachData(std::map<std::string, std
 
 void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs)
 {
-	//Json::Value arrayNode(Json::arrayValue);
-
-	//std::map<std::string, double>::iterator iter = posXs.begin();
-	//for (; iter != posXs.end(); iter++)
-	//{
-	//	Json::Value f4d(Json::objectValue);
-
-	//	// data_key
-	//	std::string dataKey = iter->first;
-	//	f4d["data_key"] = dataKey;
-
-	//	// longitude and latitude
-	//	f4d["longitude"] = iter->second;
-	//	f4d["latitude"] = posYs[iter->first];
-
-	//	arrayNode.append(f4d);
-	//}
-
-	//Json::StyledWriter writer;
-	//std::string documentContent = writer.write(arrayNode);
-	//std::string lonLatFileFullPath = outputFolderPath + std::string("/lonsLats.json");
-	//FILE* file = NULL;
-	//file = fopen(lonLatFileFullPath.c_str(), "wt");
-	//fprintf(file, "%s", documentContent.c_str());
-	//fclose(file);
+	Json::Value arrayNode(Json::arrayValue);
 
 	std::map<std::string, double>::iterator iter = posXs.begin();
 	for (; iter != posXs.end(); iter++)
@@ -874,15 +850,16 @@ void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string
 		f4d["longitude"] = iter->second;
 		f4d["latitude"] = posYs[iter->first];
 
-		Json::StyledWriter writer;
-		std::string documentContent = writer.write(f4d);
-		std::string lonLatFileFullPath = outputFolderPath + std::string("/F4D_") + dataKey + std::string("/lonsLats.json");
-
-		FILE* file = NULL;
-		file = fopen(lonLatFileFullPath.c_str(), "wt");
-		fprintf(file, "%s", documentContent.c_str());
-		fclose(file);
+		arrayNode.append(f4d);
 	}
+
+	Json::StyledWriter writer;
+	std::string documentContent = writer.write(arrayNode);
+	std::string lonLatFileFullPath = outputFolderPath + std::string("/lonsLats.json");
+	FILE* file = NULL;
+	file = fopen(lonLatFileFullPath.c_str(), "wt");
+	fprintf(file, "%s", documentContent.c_str());
+	fclose(file);
 }
 
 void CConverterManager::writeRelativePathOfEachData(std::map<std::string, std::string>& relativePaths)

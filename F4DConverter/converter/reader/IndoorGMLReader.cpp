@@ -1658,7 +1658,7 @@ bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vect
 		std::string dataKey;
 
 		dataKey = fileName + std::string("_") + std::to_string(fileIndex);
-		containers[dataKey] = std::vector<gaia3d::TrianglePolyhedron*>();
+		//containers[dataKey] = std::vector<gaia3d::TrianglePolyhedron*>();
 
 		//지금부터는 한 층의 Solid를 차례대로 다룸
 		for (int i = 0; i < geomManager.floorSolids.at(fileIndex).size(); i++) {
@@ -1751,10 +1751,12 @@ bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vect
 			}
 
 			newMesh->setHasNormals(true);
-			newMesh->setId(containers[dataKey].size());
+			//newMesh->setId(containers[dataKey].size());
+			newMesh->setId(container.size());
 			newMesh->setColorMode(SingleColor);
 			newMesh->setSingleColor(MakeColorU4(250, 250, 250));
-			containers[dataKey].push_back(newMesh);
+			//containers[dataKey].push_back(newMesh);
+			container.push_back(newMesh);
 		}
 	
 	}
