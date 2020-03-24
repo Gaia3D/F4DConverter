@@ -840,8 +840,10 @@ void CConverterManager::writeAdditionalInfosOfEachData(std::map<std::string, std
 			std::string realDataKey = iter->first.substr(0, iter->first.rfind(std::string("_")));
 			std::string attributesFileFullPath = outputFolderPath + std::string("/F4D_") + realDataKey + std::string("/attributes.json");
 
+			std::string documentContent = gaia3d::StringUtility::convertMultibyteToUtf8(iter->second);
+
 			file = fopen(attributesFileFullPath.c_str(), "wt");
-			fprintf(file, "%s", iter->second.c_str());
+			fprintf(file, "%s", documentContent.c_str());
 			fclose(file);
 		}
 		else
