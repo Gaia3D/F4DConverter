@@ -1039,20 +1039,20 @@ bool parseCellSpace
 	//cellSpaceMember.clear();
 	return true;
 }
+
 void getFloorList
 (
-	gaia3d::Point3D *lowerBoundingBoxPoint, gaia3d::Point3D *upperBoundingBoxPoint, double &minimumGapHeight, map<double, int> &floorList, map<int, IndoorFloor>& floorListMap
+	gaia3d::Point3D *lowerBoundingBoxPoint, gaia3d::Point3D *upperBoundingBoxPoint, double &minimumGapHeight, map<double, int> &floorList, map<int, IndoorFloor>& floorListInfoMap
 )
 {
 	//calculate the height of the building
 	double buildingHeight = upperBoundingBoxPoint->z - lowerBoundingBoxPoint->z;
 
 	if (floorList.size() == 1) {
-		map<int, IndoorFloor>floorListInfoMap;
 		IndoorFloor singleFloor;
 		singleFloor.setId(floorList.begin()->second);
 		singleFloor.setHeight(floorList.begin()->first);
-		floorListInfoMap.insert(pair<int,IndoorFloor>(1, singleFloor));
+		floorListInfoMap.insert(pair<int, IndoorFloor>(1, singleFloor));
 	}
 
 	//calculate average minimum gap among floors
@@ -1061,6 +1061,7 @@ void getFloorList
 
 	map<double, int>::iterator floorListIter = floorList.begin();
 	map<double, int>::iterator floorListIter2 = floorList.begin();
+
 
 	//층 간의 높이 차이가 허용범위 내에 있다면 같은 층으로 취급하는 알고리즘
 	floorListIter2++;
@@ -1092,15 +1093,11 @@ void getFloorList
 			index++;
 			tempFloorList.insert(pair<double, int>(floorListIter2->first, index));
 		}
-
 	}
 
 	floorList = tempFloorList;
 
 	//floor class 가지고 진짜 floor list를 생성할 것
-
-	map<int, IndoorFloor>floorListInfoMap;
-
 	floorListIter = floorList.begin();
 	for (; floorListIter != floorList.end(); floorListIter++) {
 		IndoorFloor newFloor;
@@ -1109,7 +1106,6 @@ void getFloorList
 		newFloor.setHeight(floorListIter->first);
 		floorListInfoMap.insert(pair<int, IndoorFloor>(floorListIter->second, newFloor));
 	}
-
 }
 
 void putGeometryIntoFloorList
@@ -1118,7 +1114,6 @@ void putGeometryIntoFloorList
 	vector<IndoorGMLState> &stateList, vector<IndoorGMLTransition> &transitionList
 )
 {
-
 	//층대로 solid 나누기
 	for (int i = 0; i < geomManager.getIndoorGMLSolidsCount(); i++) {
 		//새 solid 가져오기
@@ -1588,9 +1583,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom, string fi
 	catch (...) {
 		std::cout << "Unexpected Exception \n";
 	}
-	
 
-	
 	return geomManager;
 }
 
@@ -1776,7 +1769,7 @@ bool readTemporaryMetaDataFile(std::string& filePath) {
 }
 
 bool IndoorGMLReader::readRawDataFile(std::string& filePath) {
-	
+
 	std::string::size_type dotPosition = filePath.rfind(".");
 	std::string::size_type fileExtLength = filePath.length() - dotPosition - 1;
 	std::string fileExt = filePath.substr(dotPosition + 1, fileExtLength);
@@ -1796,6 +1789,7 @@ bool IndoorGMLReader::readRawDataFile(std::string& filePath) {
 			parser->setIncludeIgnorableWhitespace(false);
 			parser->setDoSchema(true);
 			//const char * xmlFile = "../samples/seouluniv21centry.gml";
+
 			parser->parse(xmlFile);
 
 			//cout << xmlFile << ": parse OK" << endl;

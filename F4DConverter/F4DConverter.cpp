@@ -22,6 +22,7 @@ bool extractArguments(int argc, wchar_t* argv[], std::map<std::string, std::stri
 
 int wmain(int argc, wchar_t* argv[])
 {
+
 	// set CPU priority as 'high' before start
 #ifdef _WIN32
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
