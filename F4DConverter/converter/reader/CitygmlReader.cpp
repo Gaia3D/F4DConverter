@@ -75,8 +75,11 @@ bool CitygmlReader::readRawDataFile(std::string& filePath)
 	if (!readCity(city, folderPath, refLon, refLat, container, textureContainer, attributesInfo))
 		return false;
 
-	additionalInfo[std::string("attributes")] = attributesInfo;
-	bHasAdditionalInfo = true;
+	if (!attributesInfo.empty())
+	{
+		additionalInfo[std::string("attributes")] = attributesInfo;
+		bHasAdditionalInfo = true;
+	}
 
 	bHasGeoReferencingInfo = true;
 
@@ -197,25 +200,31 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 	{
 		const citygml::CityObject &cityObject = *roots[i];
 
-		Json::Value attribute(Json::objectValue);
-
 		const citygml::AttributesMap& attributeMap = cityObject.getAttributes();
-		citygml::AttributesMap::const_iterator attriIter = attributeMap.begin();
-		for (; attriIter != attributeMap.end(); attriIter++)
+
+		if (!attributeMap.empty())
 		{
-			std::string key = attriIter->first;
-			std::string value = attriIter->second.asString();
+			Json::Value attribute(Json::objectValue);
+			citygml::AttributesMap::const_iterator attriIter = attributeMap.begin();
+			for (; attriIter != attributeMap.end(); attriIter++)
+			{
+				std::string key = attriIter->first;
+				std::string value = attriIter->second.asString();
 
-			attribute[key] = value;
+				attribute[key] = value;
+			}
+
+			attributes.append(attribute);
 		}
-
-		attributes.append(attribute);
 
 		createCityObject(cityObject, folderPath, container, textureContainer, pjSrc, pjDst, inverseGlobalTransMatrix);
 	}
 
-	Json::StyledWriter writer;
-	attributesInfo = writer.write(attributes);
+	if (!attributes.empty())
+	{
+		Json::StyledWriter writer;
+		attributesInfo = writer.write(attributes);
+	}
 
 	return true;
 }
