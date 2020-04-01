@@ -1041,14 +1041,13 @@ bool parseCellSpace
 }
 void getFloorList
 (
-	gaia3d::Point3D *lowerBoundingBoxPoint, gaia3d::Point3D *upperBoundingBoxPoint, double &minimumGapHeight, map<double, int> &floorList, map<int, IndoorFloor>& floorListMap
+	gaia3d::Point3D *lowerBoundingBoxPoint, gaia3d::Point3D *upperBoundingBoxPoint, double &minimumGapHeight, map<double, int> &floorList, map<int, IndoorFloor>& floorListInfoMap
 )
 {
 	//calculate the height of the building
 	double buildingHeight = upperBoundingBoxPoint->z - lowerBoundingBoxPoint->z;
 
 	if (floorList.size() == 1) {
-		map<int, IndoorFloor>floorListInfoMap;
 		IndoorFloor singleFloor;
 		singleFloor.setId(floorList.begin()->second);
 		singleFloor.setHeight(floorList.begin()->first);
@@ -1098,8 +1097,6 @@ void getFloorList
 	floorList = tempFloorList;
 
 	//floor class 가지고 진짜 floor list를 생성할 것
-
-	map<int, IndoorFloor>floorListInfoMap;
 
 	floorListIter = floorList.begin();
 	for (; floorListIter != floorList.end(); floorListIter++) {
