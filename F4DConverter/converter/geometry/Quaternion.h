@@ -66,7 +66,7 @@ namespace gaia3d
 		double module(); // module.***
 		void unitary(); // unitary.***
 		void rotation(double ang_radians);
-		Quaternion conjugate();
+		Quaternion conjugate(); ///< 허수부의 부호 바꾸기
 		double angleFrom(Quaternion v); // angle_respectVector.***
 		bool isParallelTo(Quaternion v); // isParalelTo
 		bool signsAreOppositeToEachOther(double a, double b);// areThereOppositeSign?

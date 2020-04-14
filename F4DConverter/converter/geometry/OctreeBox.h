@@ -77,9 +77,9 @@ namespace gaia3d
 		void makeFullCubePyramid(double minCubeSize, bool bObjectInOnlyOneCube, bool bBasedOnMesh);
 
 		void setOctreeId(size_t parentId = 0, size_t orderOfChild = 0);
-
+		///< 이미 나눠진 메쉬를 children에게 배분한다. 
 		void distributeMeshesIntoEachChildren(bool isObjectInOnlyOneLeaf, bool propagateToDescendents = true);
-
+		///< 강제로 메쉬를 쪼개서 각 children에게 넣어준다.
 		void splitMeshIntoEachChildren();
 
 		void clipIntersectedPartWithBox(gaia3d::TrianglePolyhedron* mesh,
@@ -120,6 +120,7 @@ namespace gaia3d
 
 		void getAllLeafBoxes(std::vector<PointDistributionOctree*>& container);
 
+		///< 어느 leaf octree box와 겹치는가
 		PointDistributionOctree* getIntersectedLeafOctree(Vertex* vertex);
 
 		void clear();

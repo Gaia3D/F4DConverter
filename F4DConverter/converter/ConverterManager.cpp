@@ -28,6 +28,7 @@
 
 // CConverterManager
 
+///< This class is singleton
 CConverterManager CConverterManager::m_ConverterManager;
 
 CConverterManager::CConverterManager()
@@ -70,7 +71,9 @@ CConverterManager::~CConverterManager()
 #pragma comment(lib, "../external/geotiff/lib/geotiff.lib")
 #endif
 std::string csvFullPath;
-static const char* CSVFileFullPathOverride(const char* baseFile)
+
+///< Set the resource file named 'csv' for GDAL library.
+static const char* CSVFileFullPathOverride(const char* baseFile)	
 {
 	static char szPath[1024];
 
@@ -100,7 +103,8 @@ bool CConverterManager::initialize(std::map<std::string, std::string>& arguments
 #ifdef POINTCLOUDFORMAT
 	csvFullPath = programFolder + std::string("csv");
 
-	SetCSVFilenameHook(CSVFileFullPathOverride);
+	///< For setting csv folder path, put function pointer as argument.
+	SetCSVFilenameHook(CSVFileFullPathOverride);	
 #endif
 
 	if(processor == NULL)
@@ -111,9 +115,10 @@ bool CConverterManager::initialize(std::map<std::string, std::string>& arguments
 
 void CConverterManager::uninitialize()
 {
-	pj_set_searchpath(0, NULL);
+	///< Set proj folder path as default value. 
+	pj_set_searchpath(0, NULL);		
 
-	if (processor != NULL)
+	if (processor != NULL)		
 		processor->uninitialize();
 }
 
@@ -121,7 +126,8 @@ bool CConverterManager::processDataFolder()
 {
 	std::string inputFolder = inputFolderPath;
 	std::string outputFolder = outputFolderPath;
-	// test if output folder exist
+	
+	///< test if output folder exist
 	bool outputFolderExist = false;
 	if (_access(outputFolder.c_str(), 0) == 0)
 	{
@@ -139,6 +145,7 @@ bool CConverterManager::processDataFolder()
 		return false;
 	}
 
+	///< test if input folder exist
 	bool inputFolderExist = false;
 	if (_access(inputFolder.c_str(), 0) == 0)
 	{
@@ -169,6 +176,8 @@ bool CConverterManager::processDataFolder()
 	if (!projectName.empty())
 	{
 		outputFolder = outputFolder + std::string("/") + projectName;
+
+		///< test whether the folder which name is the value of projectName exists under output folder path.
 		bool bProjectFolderExist = false;
 		if (_access(outputFolder.c_str(), 0) == 0)
 		{
@@ -192,6 +201,7 @@ bool CConverterManager::processDataFolder()
 		outputFolderPath = outputFolder;
 	}
 
+	///< Convert target files at this funtion
 	processDataFiles(targetFiles);
 
 	return true;
@@ -200,8 +210,6 @@ bool CConverterManager::processDataFolder()
 void CConverterManager::processDataFiles(std::map<std::string, std::string>& targetFiles)
 {
 
-	// TODO(khj 20180417) : NYI setup conversion configuration here
-	// now, only set wheter do occlusion culling or not
 	processor->setVisibilityIndexing(bOcclusionCulling);
 	processor->setSkinLevel(skinLevel);
 	//processor->setAlignPostionToCenter(bAlignPostionToCenter);
@@ -220,34 +228,11 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 		processor->setLeafSpatialOctreeSize(40.0f);
 		break;
 	}
-	// TODO(khj 20180417) end
 
-	//// hard-cord for japan(AIST) realistic mesh and romania data
-	//processor->setVisibilityIndexing(false);
-	/*processor->setYAxisUp(false);
-	processor->setAlignPostionToCenter(bAlignPostionToCenter);
-	processor->setMeshType(meshType);
-	switch(meshType)
-	{
-	case 1:
-		processor->setSkinLevel(50);
-		break;
-	case 2:
-		processor->setSkinLevel(51);
-		break;
-	}
-	processor->setLeafSpatialOctreeSize(40.0f);*/
-
-	//// hard-cord for new york citygml
-	//processor->setVisibilityIndexing(false);
-	//processor->setUseNsm(false);
-	//processor->setYAxisUp(true);
-	//processor->setAlignPostionToCenter(true);
-	//processor->setLeafSpatialOctreeSize(422.0f);
-
-	std::map<std::string, double> centerXs, centerYs;
-	std::map<std::string, std::string> relativePaths;
-	std::map<std::string, std::string> additionalInfos;
+	///< The variables needed during converting process.
+	std::map<std::string, double> centerXs, centerYs;	//< Get each center positions of each files.
+	std::map<std::string, std::string> relativePaths;	//< Get each relative F4D folder paths from root folder.
+	std::map<std::string, std::string> additionalInfos;	//< Get the additional information of each files which doesn't have to go through converting process.
 
 	processSingleLoop(targetFiles, centerXs, centerYs, additionalInfos, relativePaths, 0);
 
@@ -256,7 +241,8 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	{
 		writeRepresentativeLonLatOfEachData(centerXs, centerYs);
 	}
-
+	
+	///< save the additional information of each files if it is exists.
 	if (!additionalInfos.empty()) {
 		writeAdditionalInfosOfEachData(additionalInfos);
 	}
@@ -278,6 +264,7 @@ bool CConverterManager::writeIndexFile()
 void writeCheckResult(std::string fileFullPath);
 #endif
 
+///< the argument named 'depth' is used for checking the depth of recursive function calling while processing.
 void CConverterManager::processSingleLoop(std::map<std::string, std::string>& targetFiles,
 										std::map<std::string, double>& centerXs,
 										std::map<std::string, double>& centerYs,
@@ -288,9 +275,9 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 	std::string outputFolder = outputFolderPath;
 
 	enum ResultType { Success = 0, PartiallySuccess = 1, Failure = 2 };
-	std::map<std::string, char> conversionResult;
-	std::map<std::string, std::string> conversionDescription;
-	std::map<std::string, std::string> failedSubGroupList;
+	std::map<std::string, char> conversionResult;	///< Save conversion result of each file with file name.
+	std::map<std::string, std::string> conversionDescription;	///< Save the description on conversion result with file name.
+	std::map<std::string, std::string> failedSubGroupList;	///< Save the sub group list and the failure log during conversion.
 
 	std::string fullId;
 	std::map<std::string, std::string>::iterator iter = targetFiles.begin();
@@ -300,6 +287,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 		std::string dataFile = iter->first;
 		std::string dataFileFullPath = iter->second;
 
+		///< check the format of the target file at here.
 		aReader* reader = ReaderFactory::makeReader(dataFileFullPath);
 		if (reader == NULL)
 			continue;
@@ -317,6 +305,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			reader->getSplitFilter().insert(splitFilter.begin(), splitFilter.end());
 
 		// 0. inject coordinate information into reader before reading
+		///< 0. inject coordinate information into reader before reading
 		if (bUseEpsg)
 			reader->injectSrsInfo(epsgCode);
 
@@ -377,10 +366,13 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 		// 1-2. basic data reading validation
 		bool bGeometryExists = true;
+		///< Check whether 'container' is empty or not
 		if (reader->getDataContainer().empty())
 		{
+			///< Check whether 'containers' is empty or not
 			if (reader->getMultipleDataContainers().empty())
 				bGeometryExists = false;
+			///< 'containers' is not empty.
 			else
 			{
 				std::map<std::string, std::vector<gaia3d::TrianglePolyhedron*>>::iterator subItemIter = reader->getMultipleDataContainers().begin();
@@ -410,8 +402,10 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 		// 2. convert to F4D
 		std::map<std::string, std::vector<gaia3d::TrianglePolyhedron*>> targetOriginalGeometries;
+		///< Check whether single raw file is needed to be converted into multiple files.
 		if (reader->shouldRawDataBeConvertedToMuitiFiles())
 			targetOriginalGeometries = reader->getMultipleDataContainers();
+		///< 1 F4D file from 1 raw file.
 		else
 		{
 			std::string::size_type dotPosition = dataFile.rfind(".");
@@ -420,6 +414,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			targetOriginalGeometries[id] = reader->getDataContainer();
 		}
 
+		///< Get the ancestor of each sub group folder
 		std::map<std::string, std::vector<std::string>>& ancestorsOfEachItem = reader->getAncestorsOfEachSubGroup();
 
 		std::map<std::string, std::vector<gaia3d::TrianglePolyhedron*>>::iterator subItemIter = targetOriginalGeometries.begin();
@@ -428,6 +423,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			if (subItemIter->second.empty())
 				continue;
 
+			///< If the geometry data is needed to be used several times(Duplicated using) then the geometry shouldn't be destroyed at the reader. 
 			if (reader->shouldGeometryBeDesroyedOutside())
 				processor->setResponsibilityForDisposing(false);
 
@@ -446,6 +442,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			if (ancestorsOfEachItem.find(subItemIter->first) != ancestorsOfEachItem.end())
 			{
 				bool bCanMakeSubDirectory = true;
+				///< The most fartest ancestor is the oldest ancestor of that file. 
 				for (size_t i = ancestorsOfEachItem[subItemIter->first].size(); i > 0; i--)
 				{
 					relativeOutputFolder = relativeOutputFolder + std::string("/F4D_") + idPrefix + ancestorsOfEachItem[subItemIter->first][i - 1] + idSuffix;
@@ -503,7 +500,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 					if (failedSubGroupList.find(dataFile) != failedSubGroupList.end())
 						failedSubGroupList[dataFile] = failedSubGroupList[dataFile] + std::string("|");
-
+					///< Write the file name and the log of the failure
 					failedSubGroupList[dataFile] = failedSubGroupList[dataFile] + subItemIter->first + std::string("(conversion failure)");
 				}
 				else
@@ -591,7 +588,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 		if (depth == 0)
 			LogWriter::getLogWriter()->numberOfFilesConverted += 1;
-
+		///< Check whether conversion is fully successed or partially successed.
 		if (conversionResult.find(dataFile) == conversionResult.end())
 		{
 			if (failedSubGroupList.find(dataFile) == failedSubGroupList.end())
@@ -821,7 +818,7 @@ void CConverterManager::collectTargetFiles(std::string& inputFolder, std::map<st
 	_findclose(handle);
 
 	size_t subFolderCount = subFolders.size();
-	for (size_t i = 0; i < subFolderCount; i++)
+	for (size_t i = 0; i < subFolderCount; i++)	//< Recursively traverse sub folders for searching target files.
 	{
 		collectTargetFiles(subFolders[i], targetFiles);
 	}
@@ -861,32 +858,6 @@ void CConverterManager::writeAdditionalInfosOfEachData(std::map<std::string, std
 
 void CConverterManager::writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs)
 {
-	//Json::Value arrayNode(Json::arrayValue);
-
-	//std::map<std::string, double>::iterator iter = posXs.begin();
-	//for (; iter != posXs.end(); iter++)
-	//{
-	//	Json::Value f4d(Json::objectValue);
-
-	//	// data_key
-	//	std::string dataKey = iter->first;
-	//	f4d["data_key"] = dataKey;
-
-	//	// longitude and latitude
-	//	f4d["longitude"] = iter->second;
-	//	f4d["latitude"] = posYs[iter->first];
-
-	//	arrayNode.append(f4d);
-	//}
-
-	//Json::StyledWriter writer;
-	//std::string documentContent = writer.write(arrayNode);
-	//std::string lonLatFileFullPath = outputFolderPath + std::string("/lonsLats.json");
-	//FILE* file = NULL;
-	//file = fopen(lonLatFileFullPath.c_str(), "wt");
-	//fprintf(file, "%s", documentContent.c_str());
-	//fclose(file);
-
 	std::map<std::string, double>::iterator iter = posXs.begin();
 	for (; iter != posXs.end(); iter++)
 	{

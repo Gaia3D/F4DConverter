@@ -20,11 +20,13 @@ LogWriter::~LogWriter()
 {
 }
 
+///< Set full path of the program
 void LogWriter::setFullPath(std::string& path)
 {
 	fullPath = path;
 }
 
+///< Add log contents
 void LogWriter::addContents(std::string& contents, bool newLine)
 {
 	logContents += contents;
@@ -32,6 +34,7 @@ void LogWriter::addContents(std::string& contents, bool newLine)
 		logContents += std::string("\n");
 }
 
+///< Clear log contents
 void LogWriter::clearContents()
 {
 	logContents.clear();
@@ -69,21 +72,25 @@ void LogWriter::setStatus(bool bSuccess)
 	isSuccess = bSuccess;
 }
 
+///< Record the start time of conversion
 void LogWriter::start()
 {
 	startTime = getCurrentTimeString();
 }
 
+///< Record the finishing time of conversion
 void LogWriter::finish()
 {
 	endTime = getCurrentTimeString();
 }
 
+///< Check conversion is started or not
 bool LogWriter::isStarted()
 {
 	return !(startTime.empty());
 }
 
+///< Get current system time
 std::string LogWriter::getCurrentTimeString()
 {
 	auto nowTime = std::chrono::system_clock::now();

@@ -12,6 +12,7 @@ namespace gaia3d
 		~Triangle();
 
 	protected:
+		///< 그래픽 카드의 element 모드를 위한 변수들
 		size_t vertexIndex[3];
 
 		Vertex* vertex[3];
@@ -31,6 +32,7 @@ namespace gaia3d
 
 		void setNormal(double x, double y, double z) {this->normal.set(x, y, z);}
 
+		///< plane normal을 vertex normal에 뒤집어씌운다
 		void alignVertexNormalsToPlaneNormal();
 
 	};
