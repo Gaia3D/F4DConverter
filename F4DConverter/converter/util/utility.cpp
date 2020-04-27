@@ -6,8 +6,11 @@
 
 #include "../geometry/TrianglePolyhedron.h"
 
+///< micrometer까지 지원하기 때문에
 #define EdgeLengthComparisonTolerance 10E-5
+///< magnitude가 작은 벡터를 구분할 때 쓴다. 
 #define RotationAxisVectorMagnitudeTolerance 10E-7
+///< 두 점이 같은가?
 #define PointCoincidenceTolerance 10E-4
 #define AngleComparisonTolerance 10E-9
 
@@ -1512,7 +1515,7 @@ namespace gaia3d
 		return newString;
 #endif
 	}
-
+	///< 각 나라 언어에 맞는 wide string을 utf8로 변환
 	std::wstring StringUtility::convertUtf8ToWideString(std::string& sourceString)
 	{
 #ifdef _WIN32
@@ -1543,8 +1546,10 @@ namespace gaia3d
 	}
 #endif
 
+///< 해당 라이브러리(STB) 사용을 위해서 define과 include
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../util/stb_image_write.h"
+	///< memory의 image를 파일로 저장
 	void ImageUtility::writeMemoryImageToFile(unsigned char* buffer, int width, int height, const char* fullPath)
 	{
 		stbi_write_jpg(fullPath, width, height, 4, buffer, 0);

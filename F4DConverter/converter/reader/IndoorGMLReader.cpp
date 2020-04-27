@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <sstream>
 #include <proj_api.h>
+#include <set>
 
 #include "IndoorGMLReader.h"
 #include "../geometry/ColorU4.h"
@@ -935,8 +936,27 @@ bool parseCellSpaceBoundary
 	vector<DOMNode*> cellSpaceBoundaryMember;
 	cellSpaceBoundaryMember = parseHelper->getNamedNodes(parentNode->getChildNodes(), frontTag + "cellSpaceBoundaryMember");
 	
+	set<string>naviTagList;
+	naviTagList.insert("navi:NavigableBoundary");
+	naviTagList.insert("navi:TransferBoundary");
+	naviTagList.insert("navi:ConnectionBoundary");
+	naviTagList.insert("navi:AnchorBoundary");
+
 	for (int i = 0; i < cellSpaceBoundaryMember.size(); i++) {
 		DOMNode* cellSpaceboundary = parseHelper->getNamedNode(cellSpaceBoundaryMember.at(i)->getChildNodes(), frontTag + "CellSpaceBoundary");
+		
+		if (cellSpaceboundary == 0) {
+			string naviTag = "";
+			
+			if (naviTagList.find(XMLString::transcode(cellSpaceBoundaryMember.at(i)->getChildNodes()->item(1)->getNodeName())) != naviTagList.end()) {
+				naviTag = XMLString::transcode(cellSpaceBoundaryMember.at(i)->getChildNodes()->item(1)->getNodeName());
+			}
+
+			if (naviTag != "") {
+				cellSpaceboundary = parseHelper->getNamedNode(cellSpaceBoundaryMember.at(i)->getChildNodes(), naviTag);
+			}
+		}
+		
 		if (cellSpaceboundary != 0) {
 			for (int j = 0; j < cellSpaceboundary->getChildNodes()->getLength(); j++) {
 				string nextGeometryTag = frontTag + "cellSpaceBoundaryGeometry";
@@ -968,10 +988,34 @@ bool parseCellSpace
 
 	vector<DOMNode*> cellSpaceMember;
 	string nextTag = frontTag + "cellSpaceMember";
+
+	set<string>naviTagList;
+	naviTagList.insert("navi:TransitionSpace");
+	naviTagList.insert("navi:GeneralSpace");
+	naviTagList.insert("navi:NavigableSpace");
+	naviTagList.insert("navi:TransferSpace");
+	naviTagList.insert("navi:ConnectionSpace");
+	naviTagList.insert("navi:AnchorSpace");
+
+
 	cellSpaceMember = parseHelper->getNamedNodes(parentNode->getChildNodes(), nextTag);
 	for (int i = 0; i < cellSpaceMember.size(); i++) {
 		//cellspacelist.push_back();
 		DOMNode* cellSpace = parseHelper->getNamedNode(cellSpaceMember.at(i)->getChildNodes(), frontTag + "CellSpace");
+		//check whether this feature is navigation feature or not
+		std::string naviTag = "";
+		if (cellSpace == 0) {
+
+			if (naviTagList.find(XMLString::transcode(cellSpaceMember.at(i)->getChildNodes()->item(1)->getNodeName())) != naviTagList.end()) {
+				naviTag = XMLString::transcode(cellSpaceMember.at(i)->getChildNodes()->item(1)->getNodeName());
+			}
+
+			if (naviTag != "") {
+				cellSpace = parseHelper->getNamedNode(cellSpaceMember.at(i)->getChildNodes(),naviTag);
+			}
+			
+		}
+
 		if (cellSpace != 0) {
 			for (int j = 0; j < cellSpace->getChildNodes()->getLength(); j++) {
 				string nextGeometryTag = frontTag + "cellSpaceGeometry";
@@ -1046,7 +1090,7 @@ void getFloorList
 )
 {
 	//calculate the height of the building
-	double buildingHeight = upperBoundingBoxPoint->z - lowerBoundingBoxPoint->z;
+	//double buildingHeight = upperBoundingBoxPoint->z - lowerBoundingBoxPoint->z;
 
 	if (floorList.size() == 1) {
 		IndoorFloor singleFloor;
@@ -1056,20 +1100,22 @@ void getFloorList
 	}
 
 	//calculate average minimum gap among floors
-	if (minimumGapHeight > buildingHeight / floorList.size())
-		minimumGapHeight = buildingHeight / floorList.size();
+	//if (minimumGapHeight > buildingHeight / (floorList.size()-1))
+	//	minimumGapHeight = buildingHeight / (floorList.size() - 1);
 
 	map<double, int>::iterator floorListIter = floorList.begin();
 	map<double, int>::iterator floorListIter2 = floorList.begin();
 
 
 	//층 간의 높이 차이가 허용범위 내에 있다면 같은 층으로 취급하는 알고리즘
+	/*
 	floorListIter2++;
 	for (; floorListIter2 != floorList.end(); floorListIter2++, floorListIter++) {
 		if (floorListIter2->first - floorListIter->first < minimumGapHeight) {
 			floorListIter2->second = floorListIter->second;
 		}
 	}
+	*/
 
 	floorListIter = floorList.begin();
 	floorListIter2 = floorList.begin();
@@ -1080,7 +1126,7 @@ void getFloorList
 	map<double, int>tempFloorList;
 	tempFloorList.insert(pair<double, int>(floorListIter->first, index));
 
-	minimumGapHeight = floorListIter2->first - floorListIter->first;
+	//minimumGapHeight = floorListIter2->first - floorListIter->first;
 
 
 	for (; floorListIter2 != floorList.end(); floorListIter++, floorListIter2++) {
@@ -1287,6 +1333,8 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom, string fi
 						IndoorGMLTransition transitionInstance;
 						DOMNode* transition = parseHelper->getNamedNode(tempTransitions.at(j)->getChildNodes(), nextTag);
 						DOMNode* transitionGeometry = 0;
+						if (transition == NULL)
+							continue;
 						transitionGeometry = parseHelper->getNamedNode(transition->getChildNodes(), frontTag + "geometry");
 						if (transitionGeometry != 0) {
 							DOMNode* linestring = transitionGeometry->getChildNodes()->item(1);

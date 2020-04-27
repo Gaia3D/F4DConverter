@@ -9,7 +9,7 @@ namespace gaia3d
 	class GeometryUtility
 	{
 	public:
-
+		///< 점 3개로 이루어진 평면의 normal vector를 계산
 		static void calculatePlaneNormal(double& x0, double& y0, double& z0,
 										double& x1, double& y1, double& z1,
 										double& x2, double& y2, double& z2,
