@@ -29,10 +29,12 @@ private:
 	unsigned char skinLevel;
 	bool bYAxisUp;
 	int alignType;
-	bool bUseReferenceLonLat;
+	///< ReferenceLonLat is used or not? Default value is false.
+	bool bUseReferenceLonLat;			
 	double referenceLon, referenceLat;
 	int meshType;
-	bool bUseEpsg;
+	///< EPSG Code is used or not? 
+	bool bUseEpsg;						
 	std::string epsgCode;
 	double offsetX, offsetY, offsetZ;
 	std::string projectName;
@@ -56,23 +58,34 @@ public:
 	void uninitialize();
 
 private:
-	bool setProcessConfiguration(std::map<std::string, std::string>& arguments);
+	//Set the passed arguments at here for the program configuration
+	///< Set the passed arguments at here for the program configuration
+	bool setProcessConfiguration(std::map<std::string, std::string>& arguments);	
 
-	bool processDataFolder();
+	///< Traverse data folders to find target data.
+	bool processDataFolder();														
 
-	void collectTargetFiles(std::string& inputFolder, std::map<std::string, std::string>& targetFiles);
+	///< Collect target files which will be converted..
+	void collectTargetFiles(std::string& inputFolder, std::map<std::string, std::string>& targetFiles);	
 
-	bool writeIndexFile();
+	///< It writes the index file.
+	bool writeIndexFile();															
 
-	void processDataFiles(std::map<std::string, std::string>& targetFiles);
+	///< Convert and create F4D files at this function.
+	void processDataFiles(std::map<std::string, std::string>& targetFiles);			
 
-	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);
+	///< Write each reference lat and lon at here.
+	void writeRepresentativeLonLatOfEachData(std::map<std::string, double>& posXs, std::map<std::string, double>& posYs);	
 
-	void writeAdditionalInfosOfEachData(std::map<std::string, std::string>& additionalInfos);
+	///< Write additional information which doesn't go through converting process.
+	void writeAdditionalInfosOfEachData(std::map<std::string, std::string>& additionalInfos);	
 
-	void writeRelativePathOfEachData(std::map<std::string, std::string>& relativePaths);
+	///< Write relative path of each data for hierarchy structure of F4D files.
+	void writeRelativePathOfEachData(std::map<std::string, std::string>& relativePaths);	
 
+	///< This function treats the single process of the converting
 	void processSingleLoop(std::map<std::string, std::string>& targetFiles, std::map<std::string, double>& centerXs, std::map<std::string, double>& centerYs, std::map<std::string, std::string>& additionalInfos, std::map<std::string, std::string>& relativePaths, unsigned char depth);
+	
 };
 
 

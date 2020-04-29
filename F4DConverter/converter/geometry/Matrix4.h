@@ -48,15 +48,15 @@ namespace gaia3d
 			m[0][2]=value_13; m[1][2]=value_23; m[2][2]=value_33; m[3][2]=value_43;
 			m[0][3]=value_14; m[1][3]=value_24; m[2][3]=value_34; m[3][3]=value_44;
 		}
-
+		///< Quaternion으로 회전 계산을 한다
 		void rotation(Quaternion *q);
-
+		///< 회전시킬 축과 radian를 통해 회전 계산을 한다
 		void rotation(double ang_rad, Point3D *axis);
-
+		
 		void rotation(double ang_rad, double axis_x, double axis_y, double axis_z);
-
+		///< 회전시킬 축과 degree를 통해 회전 계산을 한다
 		void rotationInDegree(double ang_degree, double axis_x, double axis_y, double axis_z);
-
+		///< 주어진 점을 기준으로 변환만 하는 함수
 		void translation(Point3D *pos)
 		{
 			translation(pos->x, pos->y, pos->z);
@@ -70,12 +70,14 @@ namespace gaia3d
 			m[0][3]=0.0; m[1][3]=0.0; m[2][3]=0.0; m[3][3]=1.0;
 		}
 
+		///< 절대 좌표계에서 frustum 좌표계로 변환
 		void perspective(double fov, double n, double f);
 
 		void perspective(double fov, double aspect, double n, double f);
 
 		void perspectiveInverse(double fov, double aspect, double n, double f);
 
+		///< frustum 좌표계로 변환
 		void frustum(double l, double r, double t, double b, double n, double f)
 		{
 			m[0][0]=2.0*n/(r-l); m[1][0]=0.0;         m[2][0]=(t+l)/(r-l);   m[3][0]=0.0;
@@ -86,7 +88,7 @@ namespace gaia3d
 		}
 
 		Point3D operator * (const Point3D &q) const;
-
+		///< Rotation만 적용
 		void applyOnlyRotationOnPoint(Point3D& q);
 
 		Matrix4 operator * (const Matrix4 &A);
@@ -123,11 +125,11 @@ namespace gaia3d
 		Matrix4 inverse();
 
 		Matrix4 transpose();
-
+		///< Rotation만 적용. 점 정보를 Array로 넣는다.
 		void getOnlyRotationFloatArray(float* rotation);
-
+		///< Rotation만 적용. 점 정보를 double로 넣는다.
 		void getOnlyRotationDoubleArray(double* rotation);
-
+		///< Identity matrix를 바인딩을 하지 않기 위해 매트릭스의 타입을 구한다
 		unsigned char getMatrixType(double error);
 	};
 }

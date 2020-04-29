@@ -14,10 +14,13 @@ namespace gaia3d
 
 		void set(double x, double y, double z);
 
+		///< 해당 점까지의 거리를 계산
 		double squaredDistanceTo(Point3D& target);
 
+		///< 백터의 크기
 		double magnitude();
 
+		///< 백터를 정규화
 		bool normalize(double tolerance = 1E-7);
 
 		// operator overriding

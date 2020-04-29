@@ -389,13 +389,6 @@ void ConversionProcessor::convertSplittedRealisticMesh(std::vector<gaia3d::Trian
 	// calculate original bounding box
 	calculateBoundingBox(allMeshes, fullBbox);
 
-	// change x and y value of all vertex positions such that their origin coincides with the center of bounding box footprint 
-	if (settings.bAlignPositionToCenter)
-	{
-		changeXYPlaneCoordinateToRelativeCoordinateToBoundingBoxFootprintCenter(allMeshes, fullBbox);
-		printf("[Info]Original coordinate is changed to a coordinate relative to the center of XY-plane projection of bounding box.\n");
-	}
-
 	// calculate plane normals and align them to their vertex normals
 	trimVertexNormals(allMeshes);
 	printf("[Info]Vertex trimming done.\n");
