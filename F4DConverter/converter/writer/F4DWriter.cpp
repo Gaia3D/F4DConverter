@@ -9,6 +9,7 @@
 #include "../process/ConversionProcessor.h"
 #include "../LogWriter.h"
 #include "../geometry/ColorU4.h"
+#include "../util/utility.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../util/stb_image_write.h"
@@ -809,44 +810,69 @@ void F4DWriter::writeColor(unsigned long color, unsigned short type, bool bAlpha
 	}
 }
 
-bool F4DWriter::writeIndexFile()
+void collectF4DFolderInfo(std::string targetFolder, std::map<std::string, std::string>& info)
 {
 	_finddata_t fd;
 	long long handle;
-    int result = 1;
-	std::string structureJtFilter = folder + std::string("/*.*");
-	handle = _findfirst(structureJtFilter.c_str(), &fd);
+	int result = 1;
+	std::string filter = targetFolder + std::string("/*.*");
+	handle = _findfirst(filter.c_str(), &fd);
 
-	if(handle == -1)
-	{
-		return false;
-	}
+	if (handle == -1)
+		return;
 
-	std::vector<std::string> convertedDataFolders;
-	while(result != -1)
+	std::vector<std::string> subFolders;
+	while (result != -1)
 	{
-		if((fd.attrib & _A_SUBDIR) == _A_SUBDIR)
+		if (std::string(fd.name) == "." || std::string(fd.name) == "..")
 		{
-			if(std::string(fd.name) != "." && std::string(fd.name) != "..")
-				convertedDataFolders.push_back(std::string(fd.name));
+			result = _findnext(handle, &fd);
+			continue;
 		}
+
+		if ((fd.attrib & _A_SUBDIR) == _A_SUBDIR)
+		{
+			std::string subFolder = std::string(fd.name);
+#ifdef _WIN32
+			subFolder = gaia3d::StringUtility::convertMultibyteToUtf8(subFolder);
+#endif
+			if (subFolder.find(std::string("F4D_")) != 0)
+			{
+				result = _findnext(handle, &fd);
+				continue;
+			}
+
+			std::string subFolderFullPath = targetFolder + "/" + subFolder;
+			info[subFolder] = subFolderFullPath;
+			subFolders.push_back(subFolderFullPath);
+		}
+
 		result = _findnext(handle, &fd);
 	}
 
 	_findclose(handle);
 
-	if(convertedDataFolders.size() == 0)
+	for (size_t i = 0; i < subFolders.size(); i++)
+		collectF4DFolderInfo(subFolders[i], info);
+}
+
+bool F4DWriter::writeIndexFile()
+{
+	std::map<std::string, std::string> convertedDataFolders;
+	collectF4DFolderInfo(folder, convertedDataFolders);
+
+	if (convertedDataFolders.empty())
 		return false;
 
 	std::string targetFilePath = folder + "/objectIndexFile.ihe";
 	FILE* f;
 	f = fopen(targetFilePath.c_str(), "wb");
-	
+
 	unsigned int dataFolderCount = (unsigned int)convertedDataFolders.size();
 	fwrite(&dataFolderCount, sizeof(unsigned int), 1, f);
 
 	std::string eachDataHeader;
-	char version[6];	
+	char version[6];
 	int guidLength;
 	char guid[256];
 	memset(guid, 0x00, 256);
@@ -854,9 +880,10 @@ bool F4DWriter::writeIndexFile()
 	float altitude;
 	float minX, minY, minZ, maxX, maxY, maxZ;
 	unsigned int dataFolderNameLength;
-	for(size_t i = 0; i < dataFolderCount; i++)
+	std::map<std::string, std::string>::iterator iter = convertedDataFolders.begin();
+	for (; iter != convertedDataFolders.end(); iter++)
 	{
-		eachDataHeader = folder + "/" + convertedDataFolders[i] + "/HeaderAsimetric.hed";
+		eachDataHeader = iter->second + "/HeaderAsimetric.hed";
 		FILE* header = NULL;
 		header = fopen(eachDataHeader.c_str(), "rb");
 
@@ -881,9 +908,9 @@ bool F4DWriter::writeIndexFile()
 
 		fclose(header);
 
-		dataFolderNameLength = (unsigned int)convertedDataFolders[i].length();
+		dataFolderNameLength = (unsigned int)iter->first.length();
 		fwrite(&dataFolderNameLength, sizeof(unsigned int), 1, f);
-		fwrite(convertedDataFolders[i].c_str(), sizeof(char), dataFolderNameLength, f);
+		fwrite(iter->first.c_str(), sizeof(char), dataFolderNameLength, f);
 
 		fwrite(&longitude, sizeof(double), 1, f);
 		fwrite(&latitude, sizeof(double), 1, f);
