@@ -425,7 +425,18 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 			///< If the geometry data is needed to be used several times(Duplicated using) then the geometry shouldn't be destroyed at the reader. 
 			if (reader->shouldGeometryBeDesroyedOutside())
+			{
 				processor->setResponsibilityForDisposing(false);
+
+				// in this case, marked model/reference info in polyhedron should be cleared before proceeding
+				gaia3d::Matrix4 identityMat;
+				for (size_t i = 0; i < subItemIter->second.size(); i++)
+				{
+					(subItemIter->second)[i]->setReferenceMatrix(identityMat);
+					(subItemIter->second)[i]->setReferenceModel(NULL);
+					(subItemIter->second)[i]->setReferenceModelIndex(MaxUnsignedLong);
+				}
+			}
 
 			fullId = subItemIter->first;
 			if (!idPrefix.empty())
