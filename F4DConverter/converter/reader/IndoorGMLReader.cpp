@@ -1694,6 +1694,9 @@ bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vect
 
 	fileName = filePath.substr(finalSlashIndex + 1, filePath.rfind('.') - finalSlashIndex - 1);
 	printf("[INFO]total story count : %zd\n", geomManager.floorSolids.size());
+	vector<TrianglePolyhedron*>fullMesh;
+	size_t countFullMesh = 0;
+
 	for (int fileIndex = 0; fileIndex < geomManager.floorSolids.size(); fileIndex++) {
 		
 		
@@ -1793,16 +1796,20 @@ bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vect
 			}
 
 			newMesh->setHasNormals(true);
+			newMesh->setId(countFullMesh);
+			countFullMesh++;
 			//newMesh->setId(containers[dataKey].size());
-			newMesh->setId(container.size());
+			//newMesh->setId(container.size());
 			newMesh->setColorMode(SingleColor);
 			newMesh->setSingleColor(MakeColorU4(250, 250, 250));
-			//containers[dataKey].push_back(newMesh);
+			containers[dataKey].push_back(newMesh);
+			
+			containers[fileName].push_back(newMesh);
+			//fullMesh.push_back(newMesh);
 			container.push_back(newMesh);
 		}
 	
 	}
-
 
 	return true;
 
