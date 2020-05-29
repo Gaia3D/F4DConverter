@@ -1636,7 +1636,7 @@ GeometryManager IndoorGMLReader::parseIndoorGeometry(DOMDocument* dom, string fi
 	return geomManager;
 }
 
-bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat) {
+bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::map<std::string, bool> splitFilter, std::vector<gaia3d::TrianglePolyhedron*>& container, double& lon, double& lat) {
 
 	GeometryManager geomManager = parseIndoorGeometry(dom , filePath);
 	//cout << "start read IndoorGML data" << endl;
@@ -1802,9 +1802,12 @@ bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::vect
 			//newMesh->setId(container.size());
 			newMesh->setColorMode(SingleColor);
 			newMesh->setSingleColor(MakeColorU4(250, 250, 250));
-			containers[dataKey].push_back(newMesh);
+			///< split mode를 선택한다.
+			if (splitFilter.find("Y") != splitFilter.end() || splitFilter.find("y") != splitFilter.end()) {
+				containers[dataKey].push_back(newMesh);
+				containers[fileName].push_back(newMesh);
+			}
 			
-			containers[fileName].push_back(newMesh);
 			//fullMesh.push_back(newMesh);
 			container.push_back(newMesh);
 		}
@@ -1851,7 +1854,7 @@ bool IndoorGMLReader::readRawDataFile(std::string& filePath) {
 			//cout << xmlFile << ": parse OK" << endl;
 			DOMDocument* dom = parser->getDocument();
 			//cout << "Now processing start" << endl;
-			readFlag = readIndoorGML(dom, filePath, container, refLon, refLat);
+			readFlag = readIndoorGML(dom, filePath, splitFilter, container, refLon, refLat);
 
 			delete parser;
 			delete errHandler;
