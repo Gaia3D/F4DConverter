@@ -90,6 +90,8 @@ bool ConversionProcessor::initialize()
 		{
 			LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 			LogWriter::getLogWriter()->addContents(std::string(CANNOT_INITIALIZE_WND), true);
+			//replaced
+			LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_INITIALIZE_WND));
 			return false;
 		}
 		scv->m_hWnd = hWnd;
@@ -105,6 +107,8 @@ bool ConversionProcessor::initialize()
 		{
 			LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 			LogWriter::getLogWriter()->addContents(std::string(CANNOT_INITIALIZE_DC), true);
+			// replaced
+			LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_INITIALIZE_DC));
 			return false;
 		}
 		// dc와 연결
@@ -154,6 +158,8 @@ bool ConversionProcessor::initialize()
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CANNOT_CHOOSE_PF), true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_CHOOSE_PF));
 		return false;
 	}
 
@@ -161,6 +167,8 @@ bool ConversionProcessor::initialize()
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CANNOT_SET_PF), true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_SET_PF));
 		return false;
 	}
 
@@ -169,6 +177,8 @@ bool ConversionProcessor::initialize()
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CANNOT_CREATE_GL_CONTEXT), true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_CREATE_GL_CONTEXT));
 		return false;
 	}
 
@@ -176,6 +186,8 @@ bool ConversionProcessor::initialize()
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CANNOT_CONNECT_GLC_TO_DC), true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_CONNECT_GLC_TO_DC));
 		return false;
 	}
 #else
@@ -248,6 +260,8 @@ bool ConversionProcessor::initialize()
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 		LogWriter::getLogWriter()->addContents(std::string(CANNOT_INITIALIZE_GLEW), true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("ConversionProcessor::initialize : ") + std::string(CANNOT_INITIALIZE_GLEW));
 		return false;
 	}
 
@@ -364,8 +378,12 @@ bool ConversionProcessor::proceedConversion(std::vector<gaia3d::TrianglePolyhedr
 		LogWriter::getLogWriter()->addContents(std::string(INVAID_ORIGINAL_MESH_TYPE), false);
 		char meshTypeString[256];
 		memset(meshTypeString, 0x00, 256);
-		sprintf(meshTypeString, "original mesh type : %d", settings.meshType);
+		sprintf(meshTypeString, "injected mesh type : %d", settings.meshType);
 		LogWriter::getLogWriter()->addContents(std::string(meshTypeString), true);
+		// replaced
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string() + std::string(INVAID_ORIGINAL_MESH_TYPE) + std::string(meshTypeString));
+
 	}
 		return false;
 	}

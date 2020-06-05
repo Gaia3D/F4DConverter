@@ -14,6 +14,8 @@
 #include "../util/utility.h"
 #include "../geometry/TrianglePolyhedron.h"
 
+#include "../LogWriter.h"
+
 std::string folder;
 bool bMustChangeYZCoordinate = false;
 
@@ -250,6 +252,9 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 		if (pjSrc == NULL || pjWgs84 == NULL)
 		{
 			printf("[ERROR][proj4]CANNOT initialize SRS\n");
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" ClassicFormatReader::readRawDataFile : failed to initialize proj"));
 			return false;
 		}
 	}
@@ -264,13 +269,28 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 		aiProcess_SortByPType);
 
 	if (scene == NULL)
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" ClassicFormatReader::readRawDataFile : loading failure"));
 		return false;
+	}
 
 	if (scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE)
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" ClassicFormatReader::readRawDataFile : loading imcomplete"));
 		return false;
+	}
 
 	if (scene->mRootNode == NULL)
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" ClassicFormatReader::readRawDataFile : no available data in file"));
 		return false;
+	}
 
 	size_t slashPosition = filePath.find_last_of("\\/");
 	if (slashPosition == std::string::npos)
@@ -324,6 +344,10 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 			delete container[i];
 		}
 
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" ClassicFormatReader::readRawDataFile : bbox is too large. check length unit."));
+
 		return false;
 	}
 
@@ -354,6 +378,10 @@ bool ClassicFormatReader::readRawDataFile(std::string& filePath)
 			for (size_t i = 0; i < meshCount; i++)
 				delete container[i];
 			container.clear();
+
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" ClassicFormatReader::readRawDataFile : boungding box center coordinate transform failure"));
 			return false;
 		}
 

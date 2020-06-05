@@ -8,6 +8,8 @@
 
 #include "../geometry/TrianglePolyhedron.h"
 
+#include "../LogWriter.h"
+
 // surface definition in rev files
 class RevSubSurface
 {
@@ -108,33 +110,20 @@ public:
 };
 
 bool createNode(FILE* file, RevNode*& rootNode, RevNode*& currentNode, std::vector<RevNode*>& createdRootNodes);
-void readPrimInfo(FILE* file, RevNode* node);
-void readObstInfo(FILE* file, RevNode* node);
+bool readPrimInfo(FILE* file, RevNode* node);
+bool readObstInfo(FILE* file, RevNode* node);
 void extractGeometryInformation(RevNode* node, std::vector<gaia3d::TrianglePolyhedron*>& container);
 void tokenizeFloatingNumbers(char buffer[], std::vector<double>& receiver);
 
 #define LineLengthMax 1024
 size_t readLineCount = 0;
 unsigned char readingMode = 0; // 0 : none, 1: creating node, 2 : reading prim, 3 : reading obst
-void readALine(char buffer[], FILE*&file)
+bool readALine(char buffer[], FILE*&file)
 {
 	memset(buffer, 0x00, LineLengthMax);
 	fgets(buffer, LineLengthMax, file);
 	readLineCount++;
 
-#ifdef _DEBUG
-	if (readingMode != 0)
-	{
-		if (std::string(buffer).find(std::string("CNTB")) != std::string::npos ||
-			std::string(buffer).find(std::string("CNTE")) != std::string::npos ||
-			std::string(buffer).find(std::string("PRIM")) != std::string::npos ||
-			std::string(buffer).find(std::string("OBST")) != std::string::npos)
-		{
-			printf("[ERROR]Parsing Status Broken.\n");
-			_ASSERT(false);
-		}
-	}
-#endif
 	if (readingMode != 0)
 	{
 		if (std::string(buffer).find(std::string("CNTB")) != std::string::npos ||
@@ -143,9 +132,17 @@ void readALine(char buffer[], FILE*&file)
 			std::string(buffer).find(std::string("OBST")) != std::string::npos)
 		{
 			printf("[ERROR]Parsing Status Broken. line number : %zd\n", readLineCount);
-			_ASSERT(false);
+			// new log
+			char log[1024];
+			memset(log, 0x00, 1024);
+			sprintf(log, "parsing status broken. line number : %zd\n", readLineCount);
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(AvevaRevReader.cpp)readALine : ") + std::string(log));
+			return false;
 		}
 	}
+
+	return true;
 }
 
 AvevaRevReader::AvevaRevReader()
@@ -172,6 +169,9 @@ bool AvevaRevReader::readRawDataFile(std::string& filePath)
 	if (file == NULL)
 	{
 		printf("[ERROR]Unable to open the file : %s\n", filePath.c_str());
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("AvevaRevReader::readRawDataFile : unable to open file"));
 		return false;
 	}
 
@@ -187,7 +187,8 @@ bool AvevaRevReader::readRawDataFile(std::string& filePath)
 	RevNode* currentNode = NULL;
 	while (feof(file) == 0)
 	{
-		readALine(line, file);
+		if (!readALine(line, file))
+			return false;
 		
 		std::string aLine = std::string(line);
 
@@ -223,13 +224,37 @@ bool AvevaRevReader::readRawDataFile(std::string& filePath)
 
 		if (aLine.find(primTag) != std::string::npos)  // meet a geometry info
 		{
-			readPrimInfo(file, currentNode);
+			if (!readPrimInfo(file, currentNode))
+			{
+				for (size_t i = 0; i < createdRootNodes.size(); i++)
+					delete createdRootNodes[i];
+
+				if (currentNode != NULL)
+					delete currentNode;
+
+				fclose(file);
+
+				return false;
+			}
+
 			continue;
 		}
 
 		if (aLine.find(obstTag) != std::string::npos)  // meet a unknown(right now, but maybe geometry) tag
 		{
-			readObstInfo(file, currentNode);
+			if (!readObstInfo(file, currentNode))
+			{
+				for (size_t i = 0; i < createdRootNodes.size(); i++)
+					delete createdRootNodes[i];
+
+				if (currentNode != NULL)
+					delete currentNode;
+
+				fclose(file);
+
+				return false;
+			}
+
 			continue;
 		}
 	}
@@ -271,6 +296,11 @@ bool createNode(FILE* file, RevNode*& rootNode, RevNode*& currentNode, std::vect
 			delete currentNode;
 
 			readingMode = 0;
+
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(AvevaRevReader.cpp)createNode : Rev node heiararchy broken"));
+
 			return false;
 		}
 
@@ -286,6 +316,10 @@ bool createNode(FILE* file, RevNode*& rootNode, RevNode*& currentNode, std::vect
 				delete createdRootNodes[i];
 
 			readingMode = 0;
+
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(AvevaRevReader.cpp)createNode : Rev node heiararchy broken"));
 			return false;
 		}
 
@@ -296,35 +330,45 @@ bool createNode(FILE* file, RevNode*& rootNode, RevNode*& currentNode, std::vect
 	}
 
 	// read 4 lines
-	readALine(line, file); // dummy 2 numbers
+	if (!readALine(line, file))  // dummy 2 numbers
+		return false;
 
-	readALine(line, file); // id of this node
+	if (!readALine(line, file)) // id of this node
+		return false; 
 	//currentNode->id = gaia3d::StringUtility::convertMultibyteToUtf8(std::string(line));
 	currentNode->id =std::string(strtok(line, "\n"));
 
-	readALine(line, file); // geometric center of this node
+	if (!readALine(line, file))  // geometric center of this node
+		return false;
 	currentNode->bboxCenter = std::string(line);
 
-	readALine(line, file); // dummy 1 number
+	if (!readALine(line, file)) // dummy 1 number
+		return false;
 
 	readingMode = 0;
 	return true;
 }
 
-void readPrimInfo(FILE* file, RevNode* node)
+bool readPrimInfo(FILE* file, RevNode* node)
 {
 	readingMode = 2;
 
 	char line[LineLengthMax];
 
-	readALine(line, file); // dummy 2 numbers
+	if (!readALine(line, file)) // dummy 2 numbers
+		return false;
 
-	readALine(line, file); // prim type
+	if (!readALine(line, file)) // prim type
+		return false;
+
 	char* token = strtok(line, " \t\n");
 	if (token == NULL)
 	{
 		readingMode = 0;
-		return;
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(AvevaRevReader.cpp)ReadPrimInfo : no prim type"));
+		return false;
 	}
 
 	std::string aPrimType = std::string(token);
@@ -365,7 +409,7 @@ void readPrimInfo(FILE* file, RevNode* node)
 	else
 	{
 		printf("[ERROR]Unknown Prim Type : %s, line number : %zd\n", aPrimType.c_str(), readLineCount);
-		system("pause");
+		return true;
 	}
 
 	RevPrim* prim = new RevPrim;
@@ -377,19 +421,25 @@ void readPrimInfo(FILE* file, RevNode* node)
 	// read 3 lines for transform matrix
 	double mat[4][4]; // [col][row]
 
-	readALine(line, file); // 1st row of matrix
+	if (!readALine(line, file)) // 1st row of matrix
+		return false;
+
 	tokenizeFloatingNumbers(line, tokenizedNumbers);
 	for (size_t i = 0; i < 4; i++)
 		mat[i][0] = tokenizedNumbers[i];
 	tokenizedNumbers.clear();
 
-	readALine(line, file); // 2nd row of matrix
+	if (!readALine(line, file)) // 2nd row of matrix
+		return false;
+
 	tokenizeFloatingNumbers(line, tokenizedNumbers);
 	for (size_t i = 0; i < 4; i++)
 		mat[i][1] = tokenizedNumbers[i];
 	tokenizedNumbers.clear();
 
-	readALine(line, file); // 3rd row of matrix
+	if (!readALine(line, file)) // 3rd row of matrix
+		return false;
+
 	tokenizeFloatingNumbers(line, tokenizedNumbers);
 	for (size_t i = 0; i < 4; i++)
 		mat[i][2] = tokenizedNumbers[i];
@@ -402,7 +452,9 @@ void readPrimInfo(FILE* file, RevNode* node)
 				mat[3][0], mat[3][1], mat[3][2], 1.0);
 
 	// read bounding box
-	readALine(line, file); // min Bounding Point
+	if(!readALine(line, file)) // min Bounding Point
+		return false;
+
 	tokenizeFloatingNumbers(line, tokenizedNumbers);
 	gaia3d::Point3D minBoundingPoint;
 	minBoundingPoint.set(tokenizedNumbers[0], tokenizedNumbers[1], tokenizedNumbers[2]);
@@ -410,7 +462,8 @@ void readPrimInfo(FILE* file, RevNode* node)
 	minBoundingPoint = transMat * minBoundingPoint;
 
 	// read maximum bounding point
-	readALine(line, file); // max Bounding Point
+	if (!readALine(line, file)) // max Bounding Point
+		return false;
 	tokenizeFloatingNumbers(line, tokenizedNumbers);
 	gaia3d::Point3D maxBoundingPoint;
 	maxBoundingPoint.set(tokenizedNumbers[0], tokenizedNumbers[1], tokenizedNumbers[2]);
@@ -430,60 +483,73 @@ void readPrimInfo(FILE* file, RevNode* node)
 	break;
 	case RevPrim::PRIM_TYPE::TYPE1:
 	{
-		readALine(line, file); // read dummy line
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE2:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE3:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE4:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE5:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE6:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE7:
 	{
-		readALine(line, file); // read dummy line
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE8:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE9:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE10:
 	{
-		readALine(line, file); // read dummy line
+		if (!readALine(line, file))
+			return false; // read dummy line
 	}
 	break;
 	case RevPrim::PRIM_TYPE::TYPE11:
 	{
 		// read surface count
-		readALine(line, file); // surface count
+		if (!readALine(line, file))
+			return false;// surface count
 
 		std::string aSurfaceCount = std::string(line);
 		int surfaceCount = 0;
@@ -496,7 +562,7 @@ void readPrimInfo(FILE* file, RevNode* node)
 				printf("[ERROR]Surface Count Not Positive\n");
 				prim->primType = RevPrim::PRIM_TYPE::BROKEN;
 				readingMode = 0;
-				return;
+				return true;
 			}
 		}
 		catch (const std::invalid_argument& error)
@@ -504,14 +570,14 @@ void readPrimInfo(FILE* file, RevNode* node)
 			std::string errorMessage = error.what();
 			printf("[ERROR]Invalid Surface Count : %s.\n", errorMessage.c_str());
 			readingMode = 0;
-			return;
+			return true;
 		}
 		catch (const std::out_of_range& error)
 		{
 			std::string errorMessage = error.what();
 			printf("[ERROR]Invalid Surface Count : %s.\n", errorMessage.c_str());
 			readingMode = 0;
-			return;
+			return true;
 		}
 
 		// read surfaces
@@ -522,7 +588,8 @@ void readPrimInfo(FILE* file, RevNode* node)
 			surface = new RevSurface;
 			prim->surfaces.push_back(surface);
 
-			readALine(line, file); // sub-surface count
+			if (!readALine(line, file))
+				return false;// sub-surface count
 
 			try
 			{
@@ -533,7 +600,7 @@ void readPrimInfo(FILE* file, RevNode* node)
 					printf("[ERROR]Sub-surface Count Not Positive\n");
 					prim->primType = RevPrim::PRIM_TYPE::BROKEN;
 					readingMode = 0;
-					return;
+					return true;
 				}
 			}
 			catch (const std::invalid_argument& error)
@@ -541,21 +608,22 @@ void readPrimInfo(FILE* file, RevNode* node)
 				std::string errorMessage = error.what();
 				printf("[ERROR]Invalid Sub-surface Count : %s.\n", errorMessage.c_str());
 				readingMode = 0;
-				return;
+				return true;
 			}
 			catch (const std::out_of_range& error)
 			{
 				std::string errorMessage = error.what();
 				printf("[ERROR]Invalid Sub-surface Count : %s.\n", errorMessage.c_str());
 				readingMode = 0;
-				return;
+				return true;
 			}
 
 			RevSubSurface* subSurface = NULL;
 			int pointCount = -1;
 			for (int j = 0; j < subSurfaceCount; j++)
 			{
-				readALine(line, file); // point count
+				if (!readALine(line, file))
+					return false;// point count
 
 				try
 				{
@@ -566,7 +634,7 @@ void readPrimInfo(FILE* file, RevNode* node)
 						printf("[ERROR]Point Count Not Positive\n");
 						prim->primType = RevPrim::PRIM_TYPE::BROKEN;
 						readingMode = 0;
-						return;
+						return true;
 					}
 
 					if (pointCount < 3)
@@ -574,8 +642,10 @@ void readPrimInfo(FILE* file, RevNode* node)
 						printf("[WARNING]Surface of point count less than 3\n");
 						for (int j = 0; j < pointCount; j++)
 						{
-							readALine(line, file); // abandoned point geometry
-							readALine(line, file); // abandoned point normal
+							if (!readALine(line, file))
+								return false;// abandoned point geometry
+							if (!readALine(line, file))
+								return false;// abandoned point normal
 						}
 						continue;
 					}
@@ -585,14 +655,14 @@ void readPrimInfo(FILE* file, RevNode* node)
 					std::string errorMessage = error.what();
 					printf("[ERROR]Invalid Point Count : %s.\n", errorMessage.c_str());
 					readingMode = 0;
-					return;
+					return true;
 				}
 				catch (const std::out_of_range& error)
 				{
 					std::string errorMessage = error.what();
 					printf("[ERROR]Invalid Point Count : %s.\n", errorMessage.c_str());
 					readingMode = 0;
-					return;
+					return true;
 				}
 
 				subSurface = new RevSubSurface;
@@ -601,21 +671,24 @@ void readPrimInfo(FILE* file, RevNode* node)
 				for (int j = 0; j < pointCount; j++)
 				{
 					vertex = new gaia3d::Vertex;
+					subSurface->vertices.push_back(vertex);
 
-					readALine(line, file); // point geometry
+					if (!readALine(line, file))
+						return false;// point geometry
 					tokenizeFloatingNumbers(line, tokenizedNumbers);
 					vertex->position.set(tokenizedNumbers[0], tokenizedNumbers[1], tokenizedNumbers[2]);
 					tokenizedNumbers.clear();
 					vertex->position = transMat * (vertex->position);
 
-					readALine(line, file); // point normal
+					if (!readALine(line, file))
+						return false;// point normal
 					tokenizeFloatingNumbers(line, tokenizedNumbers);
 					vertex->normal.set(tokenizedNumbers[0], tokenizedNumbers[1], tokenizedNumbers[2]);
 					tokenizedNumbers.clear();
 					transMat.applyOnlyRotationOnPoint(vertex->normal);
 					vertex->normal.normalize();
 
-					subSurface->vertices.push_back(vertex);
+					
 				}
 			}
 		}
@@ -626,29 +699,38 @@ void readPrimInfo(FILE* file, RevNode* node)
 	readingMode = 0;
 }
 
-void readObstInfo(FILE* file, RevNode* node)
+bool readObstInfo(FILE* file, RevNode* node)
 {
 	readingMode = 3;
 
 	char line[LineLengthMax];
 
-	readALine(line, file); // dummy 2 numbers
+	if (!readALine(line, file))
+		return false;// dummy 2 numbers
 
-	readALine(line, file); // obst type
+	if (!readALine(line, file))
+		return false;// obst type
 
 	// read 3 lines for transform matrix
-	readALine(line, file); // 1st row of matrix
-	readALine(line, file); // 2nd row of matrix
-	readALine(line, file); // 3rd row of matrix
+	if (!readALine(line, file))
+		return false;// 1st row of matrix
+	if (!readALine(line, file))
+		return false;// 2nd row of matrix
+	if (!readALine(line, file))
+		return false;// 3rd row of matrix
 
 	// read minimum bounding point
-	readALine(line, file); // min Bounding Point
+	if (!readALine(line, file))
+		return false;// min Bounding Point
 
 	// read maximum bounding point
-	readALine(line, file); // max Bounding Point
+	if (!readALine(line, file))
+		return false;// max Bounding Point
 
-	readALine(line, file); // read dummy line
-	readALine(line, file); // read dummy line
+	if (!readALine(line, file))
+		return false;// read dummy line
+	if (!readALine(line, file))
+		return false;// read dummy line
 
 	readingMode = 0;
 }

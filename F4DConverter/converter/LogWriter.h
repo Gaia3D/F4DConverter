@@ -15,7 +15,9 @@
 #define NO_NORMAL_ARRAY				"[No normal vector array]"
 #define INVALID_TRIANGLE_COUNT		"[Invalid triangle count]"
 #define UNKNOWN_NODE_TYPE			"[Unknown node type]"
-#define NO_DATA_OR_INVALID_PATH		"[No raw data or invalid data path]"
+#define NO_FILES					"[No files exist in input path]"
+#define INVALID_OUTPUT_PATH			"[Output path not exist]"
+#define INVALID_INPUT_PATH			"[Input path not exist]"
 #define UNSUPPORTED_FORMAT			"[Unsupported raw data format]"
 #define CANNOT_LOAD_FILE			"[Unable to read data file]"
 #define NO_DATA_IN_RAW_DATA			"[No data in raw data file]"
@@ -42,10 +44,19 @@ private:
 public:
 	virtual ~LogWriter();
 
+	enum CONVERSION_JOB_STATUS {success, warning, failure};
+
 	unsigned int numberOfFilesToBeConverted;
 
 	unsigned int numberOfFilesConverted;
 
+	void createNewConversionJobLog(std::string fileName, std::string fullPath);
+
+	void changeCurrentConversionJobStatus(CONVERSION_JOB_STATUS jobStatus);
+
+	void addDescriptionToCurrentConversionJobLog(std::string content);
+
+	void closeCurrentConversionJobLog();
 	
 
 private:
@@ -72,7 +83,7 @@ public:
 
 	void save();
 
-	void setStatus(bool bSuccess);
+	void setStatus(bool bSuccess, std::string message = std::string());
 
 	void start();
 

@@ -14,6 +14,7 @@
 #include "../ConverterManager.h"
 #include "../geometry/Matrix4.h"
 #include "../util/json/json.h"
+#include "../LogWriter.h"
 
 #include "../geometry/Point3D.h"
 
@@ -1666,6 +1667,9 @@ bool IndoorGMLReader::readIndoorGML(DOMDocument* dom, string filePath, std::map<
 	if (pjSrc == NULL || pjWgs84 == NULL)
 	{
 		printf("[ERROR][proj4]CANNOT initialize SRS\n");
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("IndoorGMLReader::readIndoorGML : failed to initialize proj"));
 		return false;
 	}
 
@@ -1865,20 +1869,32 @@ bool IndoorGMLReader::readRawDataFile(std::string& filePath) {
 			char* message = XMLString::transcode(toCatch.getMessage());
 			std::cout << "Exception message is: \n" << message << "\n";
 			XMLString::release(&message);
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("IndoorGMLReader::readRawDataFile : ") + std::string("(XML exception)") + std::string(message));
 			return false;
 		}
 		catch (const DOMException& toCatch) {
 			char* message = XMLString::transcode(toCatch.msg);
 			std::cout << "Exception message is: \n" << message << "\n";
 			XMLString::release(&message);
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("IndoorGMLReader::readRawDataFile : ") + std::string("(DOM exception)") + std::string(message));
 			return false;
 		}
 		catch (const SAXParseException& ex) {
 			std::cout << XMLString::transcode(ex.getMessage()) << endl;
-
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("IndoorGMLReader::readRawDataFile : ") + std::string("(SAX parse exception)") + std::string(XMLString::transcode(ex.getMessage())));
+			return false;
 		}
 		catch (...) {
 			std::cout << "Unexpected Exception \n";
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("IndoorGMLReader::readRawDataFile : ") + std::string("unexpected exception)"));
 			return false;
 		}
 	}

@@ -42,11 +42,7 @@ aReader* ReaderFactory::makeReader(std::string& filePath)
 {
 	std::string::size_type dotPosition = filePath.rfind(".");
 	if(dotPosition == std::string::npos)
-	{
-		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
 		return NULL;
-	}
 
 	std::string::size_type fileExtLength = filePath.length() - dotPosition - 1;
 

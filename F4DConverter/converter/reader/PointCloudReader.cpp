@@ -20,6 +20,8 @@
 
 #include "../geometry/TrianglePolyhedron.h"
 
+#include "../LogWriter.h"
+
 
 PointCloudReader::PointCloudReader()
 {
@@ -84,18 +86,33 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 				const char* poWKT = wkt.c_str();
 				OGRSpatialReference srs(NULL);
 				if (OGRERR_NONE != srs.importFromWkt(const_cast<char **> (&poWKT)))
+				{
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : invalid WKT"));
 					return false;
+				}
 
 				char* pszProj4 = NULL;
 				srs.exportToProj4(&pszProj4);
 				if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
+				{
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to convert WKT to proj string"));
 					return false;
+				}
 
 				originalSrsProjString = std::string(pszProj4);
 				CPLFree(pszProj4);
 
 				if (originalSrsProjString.empty())
+				{
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : empty proj string from WKT"));
 					return false;
+				}
 			}
 			else
 			{
@@ -104,7 +121,9 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 				if (originalGtif == NULL)
 				{
 					printf("[ERROR] No WKT, No GeoTiff\n");
-					system("pause");
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : no WKT, no GeoTiff srs"));
 					return false;
 				}
 
@@ -112,23 +131,41 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 				memcpy(&temp, &originalGtif, sizeof(GTIF*));
 				GTIFDefn defn;
 				if (GTIFGetDefn(temp, &defn) == 0)
+				{
+					printf("[ERROR] No WKT, No GeoTiff\n");
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to get GeoTiff srs definition"));
 					return false;
+				}
 
 				char* pszWKT = GTIFGetOGISDefn(temp, &defn);
 				if (pszWKT == NULL)
+				{
+					printf("[ERROR] No WKT, No GeoTiff\n");
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to convert GeoTiff srs definition to WKT"));
 					return false;
+				}
 
 				OGRSpatialReference srs(NULL);
 				char* pOriginalWkt = pszWKT;
 				if (OGRERR_NONE != srs.importFromWkt(&pOriginalWkt))
 				{
 					CPLFree(pszWKT);
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : WKT from GeoTiff srs definition invalid"));
 					return false;
 				}
 
 				char* pszProj4 = NULL;
 				if (OGRERR_NONE != srs.exportToProj4(&pszProj4))
 				{
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to convert WKT to proj string"));
 					CPLFree(pszWKT);
 					return false;
 				}
@@ -144,7 +181,12 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 				CPLFree(pszWKT);
 
 				if (originalSrsProjString.empty())
+				{
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : empty proj string from WKT"));
 					return false;
+				}
 			}
 		}
 	}
@@ -153,6 +195,9 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 	if (!pjSrc)
 	{
 		ifs.close();
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to initialize proj"));
 		return false;
 	}
 
@@ -165,6 +210,10 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 		{
 			ifs.close();
 			printf("[ERROR]Splitting original data failed : %s.\n", filePath.c_str());
+
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to split original points cloud"));
 
 			return false;
 		}
@@ -180,6 +229,8 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 	if(!pjDst)
 	{
 		ifs.close();
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("PointCloudReader::readLasFile : failed to initialize proj"));
 		return false;
 	}
 
@@ -194,6 +245,9 @@ bool PointCloudReader::readLasFile(std::string& filePath)
 	{
 		printf("[ERROR]%s\n", errorMessage);
 		ifs.close();
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" PointCloudReader::readLasFile : boungding box center coordinate transform failure"));
 		return false;
 	}
 

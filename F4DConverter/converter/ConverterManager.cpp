@@ -140,8 +140,10 @@ bool CConverterManager::processDataFolder()
 	if (!outputFolderExist)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
+		LogWriter::getLogWriter()->addContents(std::string(INVALID_OUTPUT_PATH), false);
 		LogWriter::getLogWriter()->addContents(outputFolder, true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("CConverterManager::processDataFolder : ") + std::string(INVALID_OUTPUT_PATH));
 		return false;
 	}
 
@@ -158,8 +160,10 @@ bool CConverterManager::processDataFolder()
 	if (!inputFolderExist)
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
+		LogWriter::getLogWriter()->addContents(std::string(INVALID_INPUT_PATH), false);
 		LogWriter::getLogWriter()->addContents(inputFolder, true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("CConverterManager::processDataFolder : ") + std::string(INVALID_INPUT_PATH));
 		return false;
 	}
 
@@ -168,8 +172,10 @@ bool CConverterManager::processDataFolder()
 	if (targetFiles.empty())
 	{
 		LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
-		LogWriter::getLogWriter()->addContents(std::string(NO_DATA_OR_INVALID_PATH), false);
+		LogWriter::getLogWriter()->addContents(std::string(NO_FILES), false);
 		LogWriter::getLogWriter()->addContents(inputFolder, true);
+		// replaced
+		LogWriter::getLogWriter()->setStatus(false, std::string("CConverterManager::processDataFolder : ") + std::string(NO_FILES));
 		return false;
 	}
 
@@ -194,6 +200,8 @@ bool CConverterManager::processDataFolder()
 				LogWriter::getLogWriter()->addContents(std::string(ERROR_FLAG), false);
 				LogWriter::getLogWriter()->addContents(std::string(CANNOT_CREATE_DIRECTORY), false);
 				LogWriter::getLogWriter()->addContents(outputFolder, true);
+				// replaced
+				LogWriter::getLogWriter()->setStatus(false, std::string("CConverterManager::processDataFolder : ") + std::string(CANNOT_CREATE_DIRECTORY));
 				return false;
 			}
 		}
@@ -294,8 +302,12 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 		printf("\n===== Start processing this file : %s\n", dataFile.c_str());
 
-		if(depth == 0)
+		if (depth == 0)
+		{
 			LogWriter::getLogWriter()->numberOfFilesToBeConverted += 1;
+			// new log
+			LogWriter::getLogWriter()->createNewConversionJobLog(dataFile, dataFileFullPath);
+		}
 
 		reader->setUnitScaleFactor(unitScaleFactor);
 		reader->setOffset(offsetX, offsetY, offsetZ);
@@ -334,9 +346,16 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			LogWriter::getLogWriter()->addContents(dataFileFullPath, true);
 			printf("[ERROR]%s\n", std::string(CANNOT_LOAD_FILE).c_str());
 			printf("===== End processing this file : %s\n", dataFile.c_str());
-			conversionResult[dataFile] = (char)ResultType::Failure;
-			conversionDescription[dataFile] = std::string("unable to read data file");
+			if (depth == 0)
+			{
+				conversionResult[dataFile] = (char)ResultType::Failure;
+				conversionDescription[dataFile] = std::string("unable to read data file");
+			}
+			
 			delete reader;
+			// new log
+			if(depth == 0)
+				LogWriter::getLogWriter()->closeCurrentConversionJobLog();
 			continue;
 		}
 
@@ -356,10 +375,22 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 				{
 					LogWriter::getLogWriter()->addContents(std::string(CANNOT_DELETE_FILE), false);
 					LogWriter::getLogWriter()->addContents(tmpFileIter->second, true);
+					// replaced
+					if (depth == 0)
+					{
+						LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::warning);
+						LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("CConverterManager::processSingleLoop") + std::string(CANNOT_DELETE_FILE) + tmpFileIter->second);
+					}
 				}
 			}
 
 			delete reader;
+
+			if (depth == 0)
+			{
+				// new log
+				LogWriter::getLogWriter()->closeCurrentConversionJobLog();
+			}
 
 			continue;
 		}
@@ -397,6 +428,14 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			conversionResult[dataFile] = (char)ResultType::Failure;
 			conversionDescription[dataFile] = std::string("no data in data file");
 			delete reader;
+			// replaced
+			if (depth == 0)
+			{
+				LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+				LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("CConverterManager::processSingleLoop : ") + std::string(NO_DATA_IN_RAW_DATA));
+				LogWriter::getLogWriter()->closeCurrentConversionJobLog();
+			}
+			
 			continue;
 		}
 
@@ -428,7 +467,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 			{
 				processor->setResponsibilityForDisposing(false);
 
-				// in this case, marked model/reference info in polyhedron should be cleared before proceeding
+				///< in this case, marked model/reference info in polyhedron should be cleared before proceeding
 				gaia3d::Matrix4 identityMat;
 				for (size_t i = 0; i < subItemIter->second.size(); i++)
 				{
@@ -495,8 +534,6 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 					continue;
 				}
-
-
 			}
 
 			// 2.2 conversion
@@ -520,6 +557,13 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 					conversionResult[dataFile] = (char)ResultType::Failure;
 					conversionDescription[dataFile] = std::string("conversion failure");
+
+					// new log
+					if (depth == 0)
+					{
+						LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+						LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("ConverterManager::ProcessSingleLoop : conversion process failure"));
+					}
 				}
 
 				processor->clear();
@@ -552,6 +596,13 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 					conversionResult[dataFile] = (char)ResultType::Failure;
 					conversionDescription[dataFile] = std::string("writing failure");
+
+					// new log
+					if (depth == 0)
+					{
+						LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+						LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("ConverterManager::ProcessSingleLoop : outptu writing failure"));
+					}
 				}
 			}
 			else
@@ -598,17 +649,26 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 		delete reader;
 
 		if (depth == 0)
-			LogWriter::getLogWriter()->numberOfFilesConverted += 1;
-		///< Check whether conversion is fully successed or partially successed.
-		if (conversionResult.find(dataFile) == conversionResult.end())
 		{
-			if (failedSubGroupList.find(dataFile) == failedSubGroupList.end())
-				conversionResult[dataFile] = (char)ResultType::Success;
-			else
+			///< Check whether conversion is fully successed or partially successed.
+			if (conversionResult.find(dataFile) == conversionResult.end())
 			{
-				conversionResult[dataFile] = (char)ResultType::PartiallySuccess;
-				conversionDescription[dataFile] = failedSubGroupList[dataFile];
+				if (failedSubGroupList.find(dataFile) == failedSubGroupList.end())
+					conversionResult[dataFile] = (char)ResultType::Success;
+				else
+				{
+					conversionResult[dataFile] = (char)ResultType::PartiallySuccess;
+					conversionDescription[dataFile] = failedSubGroupList[dataFile];
+
+					// new log
+					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::warning);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("ConverterManager::ProcessSingleLoop : ") + failedSubGroupList[dataFile]);
+				}
 			}
+
+			LogWriter::getLogWriter()->numberOfFilesConverted += 1;
+			// new log
+			LogWriter::getLogWriter()->closeCurrentConversionJobLog();
 		}
 
 		printf("===== End processing this file : %s\n", dataFile.c_str());
@@ -619,7 +679,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 	writeCheckResult(duplicationCheckResult);
 #endif
 
-	std::string logFileFullPath = outputFolder + std::string("/resultLog.csv");
+	/*std::string logFileFullPath = outputFolder + std::string("/resultLog.csv");
 	FILE* logFile = NULL;
 	logFile = fopen(logFileFullPath.c_str(), "wt");
 
@@ -632,7 +692,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 		fprintf(logFile, "\n");
 	}
-	fclose(logFile);
+	fclose(logFile);*/
 }
 
 bool CConverterManager::setProcessConfiguration(std::map<std::string, std::string>& arguments)
@@ -713,6 +773,8 @@ bool CConverterManager::setProcessConfiguration(std::map<std::string, std::strin
 				char* errorMsg = pj_strerrno(pj_errno);
 				LogWriter::getLogWriter()->addContents(std::string(UNSUPPERTED_EPSG_CODE), false);
 				LogWriter::getLogWriter()->addContents(epsgCode, true);
+				//replaced
+				LogWriter::getLogWriter()->setStatus(false, std::string("CConverterManager::setProcessConfiguration : ") + std::string(UNSUPPERTED_EPSG_CODE) + epsgCode);
 
 				return false;
 			}

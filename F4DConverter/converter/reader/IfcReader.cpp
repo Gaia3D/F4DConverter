@@ -16,6 +16,8 @@
 #include "../geometry/ColorU4.h"
 #include "../util/utility.h"
 
+#include "../LogWriter.h"
+
 IfcReader::IfcReader()
 {
 }
@@ -39,6 +41,9 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 		if (pjSrc == NULL || pjWgs84 == NULL)
 		{
 			printf("[ERROR][proj4]CANNOT initialize SRS\n");
+			// new log
+			LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+			LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" IfcReader::readRawDataFile : failed to initialize proj"));
 			return false;
 		}
 	}
@@ -51,6 +56,10 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 	if (!loader->loadIfcFile(wFilePath))
 	{
 		destroyIfcLoader(loader);
+
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" IfcReader::readRawDataFile : loading failure"));
 		return false;
 	}
 
@@ -205,6 +214,10 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 				for (size_t i = 0; i < meshCount; i++)
 					delete container[i];
 				container.clear();
+
+				// new log
+				LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+				LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" IfcReader::readRawDataFile : boungding box center coordinate transform failure"));
 				return false;
 			}
 
@@ -398,6 +411,10 @@ bool IfcReader::readRawDataFile(std::string& filePath)
 					iterSubgroup->second.clear();
 				}
 				containers.clear();
+
+				// new log
+				LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+				LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string(" IfcReader::readRawDataFile : boungding box center coordinate transform failure"));
 				return false;
 			}
 

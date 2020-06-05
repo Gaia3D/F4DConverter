@@ -7,13 +7,20 @@
 #include <chrono>
 #include <ctime>
 
+#include "util/json/json.h"
+
 LogWriter LogWriter::logWriter; 
+Json::Value logObject(Json::objectValue);
+Json::Value currentConversionJob(Json::objectValue);
+bool isConversionJobGoing = false;
 
 LogWriter::LogWriter()
 {
 	numberOfFilesToBeConverted = 0;
 
 	numberOfFilesConverted = 0;
+
+	isSuccess = true;
 }
 
 LogWriter::~LogWriter()
@@ -42,46 +49,63 @@ void LogWriter::clearContents()
 
 void LogWriter::save()
 {
-	std::ofstream outFile;
-	outFile.open(fullPath);
+	Json::StyledWriter writer;
+	std::string documentContent = writer.write(logObject);
+	FILE* file = fopen(fullPath.c_str(), "wt");
+	fprintf(file, "%s", documentContent.c_str());
+	fclose(file);
 
-	// 1. result
-	char stringLine[1024];
-	memset(stringLine, 0x00, sizeof(char)* 1024);
-	sprintf(stringLine, "%u of %u files have been converted.\n", numberOfFilesConverted, numberOfFilesToBeConverted);
-	outFile << stringLine;
+	//std::ofstream outFile;
+	//outFile.open(fullPath);
 
-	outFile << "-----------------------------------------------------\n";
+	//// 1. result
+	//char stringLine[1024];
+	//memset(stringLine, 0x00, sizeof(char)* 1024);
+	//sprintf(stringLine, "%u of %u files have been converted.\n", numberOfFilesConverted, numberOfFilesToBeConverted);
+	//outFile << stringLine;
 
-	// 2. conversion time
-	outFile << "start time : " << startTime << "\n";
-	outFile << "end time   : " << endTime << "\n";
+	//outFile << "-----------------------------------------------------\n";
 
-	outFile << "-----------------------------------------------------\n";
+	//// 2. conversion time
+	//outFile << "start time : " << startTime << "\n";
+	//outFile << "end time   : " << endTime << "\n";
+
+	//outFile << "-----------------------------------------------------\n";
 
 
-	// 3. detailed result
+	//// 3. detailed result
 
-	outFile << logContents;
+	//outFile << logContents;
 
-	outFile.close();
+	//outFile.close();
 }
 
-void LogWriter::setStatus(bool bSuccess)
+void LogWriter::setStatus(bool bSuccess, std::string message)
 {
 	isSuccess = bSuccess;
+	logObject["isSuccess"] = isSuccess;
+	if(!bSuccess)
+		logObject["failureLog"] = message;
 }
 
 ///< Record the start time of conversion
 void LogWriter::start()
 {
 	startTime = getCurrentTimeString();
+	logObject["startTime"] = startTime;
+	logObject["numberOfFilesToBeConverted"] = 0;
+	logObject["numberOfFilesConverted"] = 0;
+	logObject["isSuccess"] = true;
+	logObject["conversionJobResult"] = Json::Value(Json::arrayValue);
 }
 
 ///< Record the finishing time of conversion
 void LogWriter::finish()
 {
 	endTime = getCurrentTimeString();
+	logObject["endTime"] = endTime;
+	logObject["numberOfFilesToBeConverted"] = numberOfFilesToBeConverted;
+	logObject["numberOfFilesConverted"] = numberOfFilesConverted;
 }
 
 ///< Check conversion is started or not
@@ -97,4 +121,60 @@ std::string LogWriter::getCurrentTimeString()
 	std::time_t currentTime = std::chrono::system_clock::to_time_t(nowTime);
 
 	return std::string(std::ctime(&currentTime));
+}
+
+void LogWriter::createNewConversionJobLog(std::string fileName, std::string fullPath)
+{
+	if (isConversionJobGoing)
+		return;
+
+	currentConversionJob["fileName"] = fileName;
+	currentConversionJob["fullPath"] = fullPath;
+	currentConversionJob["startTime"] = getCurrentTimeString();
+	currentConversionJob["resultStatus"] = std::string("success");
+	currentConversionJob["message"] = std::string("");
+
+	isConversionJobGoing = true;
+}
+
+void LogWriter::changeCurrentConversionJobStatus(CONVERSION_JOB_STATUS jobStatus)
+{
+	if (!isConversionJobGoing)
+		return;
+
+	switch (jobStatus)
+	{
+	case success:
+		currentConversionJob["resultStatus"] = std::string("success");
+		break;
+	case warning:
+		currentConversionJob["resultStatus"] = std::string("warning");
+		break;
+	case failure:
+		currentConversionJob["resultStatus"] = std::string("failure");
+		break;
+	}
+}
+
+void LogWriter::addDescriptionToCurrentConversionJobLog(std::string content)
+{
+	if (!isConversionJobGoing)
+		return;
+
+	if (currentConversionJob["message"].empty())
+		currentConversionJob["message"] = content;
+	else
+		currentConversionJob["message"] = currentConversionJob["message"].asString() + std::string("\n") + content;
+}
+
+void LogWriter::closeCurrentConversionJobLog()
+{
+	if (!isConversionJobGoing)
+		return;
+
+	currentConversionJob["endTime"] = getCurrentTimeString();
+	logObject["conversionJobResult"].append(currentConversionJob);
+	currentConversionJob.clear();
+
+	isConversionJobGoing = false;
 }

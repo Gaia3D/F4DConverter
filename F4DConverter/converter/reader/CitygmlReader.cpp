@@ -20,6 +20,8 @@
 #include "../util/utility.h"
 #include "../util/json/json.h"
 
+#include "../LogWriter.h"
+
 bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 			std::string& folderPath,
 			double& lon, double& lat,
@@ -55,16 +57,24 @@ bool CitygmlReader::readRawDataFile(std::string& filePath)
 	try
 	{
 		city = citygml::load(filePath, params);
+		
 	}
 	catch (const std::runtime_error& e)
 	{
 		printf("[ERROR]%s\n", e.what());
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("CitygmlReader::readRawDataFile : loading failure"));
 		return false;
 	}
 
 	if (city == NULL)
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("CitygmlReader::readRawDataFile : no city model in file"));
 		return false;
-
+	}
 
 	std::string folderPath;
 	size_t lastSlashIndex = filePath.find_last_of("\\/");
@@ -102,7 +112,12 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 {
 	const citygml::ConstCityObjects& roots = city->getRootCityObjects();
 	if (roots.size() == 0)
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(CitygmlReader.cpp)readCity : no root in city model"));
 		return false;
+	}
 
 	const citygml::Envelope envelope = city->getEnvelope();
 
@@ -136,7 +151,12 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 	}
 
 	if (epsgCodes.empty())
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(CitygmlReader.cpp)readCity : no EPSG info"));
 		return false;
+	}
 
 	// select an available EPSG code
 	std::string originalSrsProjString;
@@ -152,7 +172,12 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 		}
 	}
 	if (originalSrsProjString.empty())
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(CitygmlReader.cpp)readCity : unable to make proj string with EPSG"));
 		return false;
+	}
 
 	// get bounding box
 	const TVec3d bboxLowerPoint = envelope.getLowerBound();
@@ -168,13 +193,21 @@ bool readCity(std::shared_ptr<const citygml::CityModel>& city,
 	projPJ pjSrc, pjDst;
 
 	if (!(pjDst = pj_init_plus(wgs84ProjString.c_str())) || !(pjSrc = pj_init_plus(originalSrsProjString.c_str())))
+	{
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(CitygmlReader.cpp)readCity : failed to initialize proj"));
 		return false;
+	}
 
 	int errorCode = pj_transform(pjSrc, pjDst, 1, 1, &lon, &lat, &alt);
 	char* errorMessage = pj_strerrno(errorCode);
 	if (errorMessage != NULL)
 	{
 		printf("[ERROR]%s\n", errorMessage);
+		// new log
+		LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::failure);
+		LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("(CitygmlReader.cpp)readCity : boungding box center coordinate transform failure"));
 		return false;
 	}
 
