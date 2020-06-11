@@ -55,6 +55,9 @@ void LogWriter::save()
 	fprintf(file, "%s", documentContent.c_str());
 	fclose(file);
 
+	logObject.clear();
+	currentConversionJob.clear();
+
 	//std::ofstream outFile;
 	//outFile.open(fullPath);
 
@@ -120,7 +123,11 @@ std::string LogWriter::getCurrentTimeString()
 	auto nowTime = std::chrono::system_clock::now();
 	std::time_t currentTime = std::chrono::system_clock::to_time_t(nowTime);
 
-	return std::string(std::ctime(&currentTime));
+	std::string timeString = std::string(std::ctime(&currentTime));
+	if (timeString.find_last_of(std::string("\n")) != std::string::npos)
+		timeString = timeString.substr(0, timeString.find_last_of(std::string("\n")));
+
+	return timeString;
 }
 
 void LogWriter::createNewConversionJobLog(std::string fileName, std::string fullPath)
@@ -161,7 +168,7 @@ void LogWriter::addDescriptionToCurrentConversionJobLog(std::string content)
 	if (!isConversionJobGoing)
 		return;
 
-	if (currentConversionJob["message"].empty())
+	if (currentConversionJob["message"].asString().empty())
 		currentConversionJob["message"] = content;
 	else
 		currentConversionJob["message"] = currentConversionJob["message"].asString() + std::string("\n") + content;

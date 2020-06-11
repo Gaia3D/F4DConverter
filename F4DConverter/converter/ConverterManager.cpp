@@ -256,7 +256,8 @@ void CConverterManager::processDataFiles(std::map<std::string, std::string>& tar
 	}
 
 	// save relative path of each F4D
-	writeRelativePathOfEachData(relativePaths);
+	if(!relativePaths.empty())
+		writeRelativePathOfEachData(relativePaths);
 }
 
 bool CConverterManager::writeIndexFile()
