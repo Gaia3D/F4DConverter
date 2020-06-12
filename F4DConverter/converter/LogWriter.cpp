@@ -123,9 +123,13 @@ std::string LogWriter::getCurrentTimeString()
 	auto nowTime = std::chrono::system_clock::now();
 	std::time_t currentTime = std::chrono::system_clock::to_time_t(nowTime);
 
-	std::string timeString = std::string(std::ctime(&currentTime));
-	if (timeString.find_last_of(std::string("\n")) != std::string::npos)
-		timeString = timeString.substr(0, timeString.find_last_of(std::string("\n")));
+	char timeStringLine[256];
+	memset(timeStringLine, 0x00, 256);
+	std::strftime(timeStringLine, 256, "%Y-%m-%d %H:%M:%S", std::localtime(&currentTime));
+
+	std::string timeString(timeStringLine);
+	/*if (timeString.find_last_of(std::string("\n")) != std::string::npos)
+		timeString = timeString.substr(0, timeString.find_last_of(std::string("\n")));*/
 
 	return timeString;
 }

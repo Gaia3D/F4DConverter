@@ -697,6 +697,8 @@ bool readPrimInfo(FILE* file, RevNode* node)
 	}
 	
 	readingMode = 0;
+
+	return true;
 }
 
 bool readObstInfo(FILE* file, RevNode* node)
