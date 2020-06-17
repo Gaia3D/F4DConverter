@@ -175,7 +175,7 @@ void LogWriter::addDescriptionToCurrentConversionJobLog(std::string content)
 	if (currentConversionJob["message"].asString().empty())
 		currentConversionJob["message"] = content;
 	else
-		currentConversionJob["message"] = currentConversionJob["message"].asString() + std::string("\n") + content;
+		currentConversionJob["message"] = currentConversionJob["message"].asString() + std::string(" | ") + content;
 }
 
 void LogWriter::closeCurrentConversionJobLog()
@@ -188,4 +188,26 @@ void LogWriter::closeCurrentConversionJobLog()
 	currentConversionJob.clear();
 
 	isConversionJobGoing = false;
+}
+
+void LogWriter::setGeoReferencingInfo(bool bHasInfo, double minx, double miny, double minz, double maxx, double maxy, double maxz)
+{
+	if (bHasInfo)
+	{
+		currentConversionJob["bGeoReferenced"] = true;
+	}
+	else
+	{
+		currentConversionJob["bGeoReferenced"] = false;
+
+		Json::Value bbox(Json::arrayValue);
+		bbox.append(minx);
+		bbox.append(miny);
+		bbox.append(minz);
+		bbox.append(maxx);
+		bbox.append(maxy);
+		bbox.append(maxz);
+
+		currentConversionJob["bbox"] = bbox;
+	}
 }

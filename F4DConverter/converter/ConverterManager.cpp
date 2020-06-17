@@ -615,6 +615,19 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 					reader->getGeoReferencingInfo(lon, lat);
 					centerXs[fullId] = lon;
 					centerYs[fullId] = lat;
+
+					if (depth == 0)
+					{
+						LogWriter::getLogWriter()->setGeoReferencingInfo(true, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+					}
+				}
+				else
+				{
+					if (depth == 0)
+					{
+						gaia3d::BoundingBox bbox = processor->getBoundingBox();
+						LogWriter::getLogWriter()->setGeoReferencingInfo(false, bbox.minX, bbox.minY, bbox.minZ, bbox.maxX, bbox.maxY, bbox.maxZ);
+					}
 				}
 
 				relativePaths[fullId] = relativeOutputFolder;
@@ -663,7 +676,7 @@ void CConverterManager::processSingleLoop(std::map<std::string, std::string>& ta
 
 					// new log
 					LogWriter::getLogWriter()->changeCurrentConversionJobStatus(LogWriter::warning);
-					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("ConverterManager::ProcessSingleLoop : ") + failedSubGroupList[dataFile]);
+					LogWriter::getLogWriter()->addDescriptionToCurrentConversionJobLog(std::string("ConverterManager::ProcessSingleLoop : sub-division conversion failure - ") + failedSubGroupList[dataFile]);
 				}
 			}
 

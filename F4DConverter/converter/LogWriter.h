@@ -57,6 +57,8 @@ public:
 	void addDescriptionToCurrentConversionJobLog(std::string content);
 
 	void closeCurrentConversionJobLog();
+
+	void setGeoReferencingInfo(bool bHasInfo, double minx, double miny, double minz, double maxx, double maxy, double maxz);
 	
 
 private:
