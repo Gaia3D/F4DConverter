@@ -3,21 +3,23 @@
 
 #include "IfcLoader.h"
 
-#include "ifcpp/model/IfcPPModel.h"
-#include "ifcpp/geometry/GeometryConverter.h"
-#include "ifcpp/reader/IfcPPReaderSTEP.h"
+#include "ifcpp/model/StatusCallback.h"
+
+#include "ifcpp/model/BuildingModel.h"
+#include "ifcpp/geometry/Carve/GeometryConverter.h"
+#include "ifcpp/reader/ReaderSTEP.h"
 #include "ifcpp/IFC4/include/IfcSite.h"
 #include "ifcpp/IFC4/include/IfcSpace.h"
-// for spatial structure
-#include "ifcpp/IFC4/include/IfcBuilding.h"
+#include "ifcpp/IFC4/include/IfcGloballyUniqueId.h"
+
+// for geometry structure
+#include "ifcpp/IFC4/include/ifcBuilding.h"
 #include "ifcpp/IFC4/include/IfcBuildingStorey.h"
 #include "ifcpp/IFC4/include/IfcFooting.h"
 #include "ifcpp/IFC4/include/IfcColumn.h"
 #include "ifcpp/IFC4/include/IfcSlab.h"
 #include "ifcpp/IFC4/include/IfcBeam.h"
-#include "ifcpp/IFC4/include/IfcWall.h"
 #include "ifcpp/IFC4/include/IfcWallStandardCase.h"
-//
 
 // for property value
 #include "ifcpp/IFC4/include/IfcAreaMeasure.h"
@@ -25,7 +27,7 @@
 #include "ifcpp/IFC4/include/IfcIdentifier.h"
 #include "ifcpp/IFC4/include/IfcInteger.h"
 #include "ifcpp/IFC4/include/IfcLabel.h"
-#include "ifcpp/IFC4/include/IfcText.h"
+#include "ifcpp/IFC4/include/ifcText.h"
 #include "ifcpp/IFC4/include/IfcLengthMeasure.h"
 #include "ifcpp/IFC4/include/IfcPlaneAngleMeasure.h"
 #include "ifcpp/IFC4/include/IfcPositiveLengthMeasure.h"
@@ -40,7 +42,9 @@
 
 #include "./json/json.h"
 
-
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 class MessageWrapper
 {
@@ -104,7 +108,7 @@ private:
 
 	void loadProjectAttributes();
 	void loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Value& root);
-	bool checkIfPropertiesCanBeExtracted(IfcPPEntityEnum ppEnum);
+	bool checkIfPropertiesCanBeExtracted(std::string className);
 	void parsePropertySingleValue(Json::Value& valueObject, shared_ptr<IfcValue> value);
 	std::string convertWideStringToUtf8(std::wstring& sourceString);
 
@@ -175,9 +179,9 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 {
 	// initializing
 	shared_ptr<MessageWrapper> mw(new MessageWrapper());
-	shared_ptr<IfcPPModel> ifc_model(new IfcPPModel());
+	shared_ptr<BuildingModel> ifc_model(new BuildingModel());
 	shared_ptr<GeometryConverter> geometry_converter(new GeometryConverter(ifc_model));
-	shared_ptr<IfcPPReaderSTEP> reader(new IfcPPReaderSTEP());
+	shared_ptr<ReaderSTEP> reader(new ReaderSTEP());
 
 	reader->setMessageCallBack(mw.get(), &MessageWrapper::slotMessageWrapper);
 	geometry_converter->setMessageCallBack(mw.get(), &MessageWrapper::slotMessageWrapper);
@@ -348,26 +352,49 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 
 	std::map<std::wstring, std::vector<Polyhedron*>> polyhedronToGuidMapper;
 
-	// conversion raw data into geometries of OSG type
-	osg::ref_ptr<osg::Switch> model_switch = new osg::Switch();
-	geometry_converter->createGeometryOSG(model_switch);
 
 	// contains the VEF graph for each IfcProduct:
-	std::map<int, shared_ptr<ProductShapeInputData> >& map_vef_data = geometry_converter->getShapeInputData();
+	const double length_in_meter = geometry_converter->getBuildingModel()->getUnitConverter()->getLengthInMeterFactor();
+	geometry_converter->setCsgEps(carve::CARVE_EPSILON*length_in_meter);
+	geometry_converter->convertGeometry();
+	std::map<std::string, shared_ptr<ProductShapeData> >& map_vef_data = geometry_converter->getShapeInputData();
+	std::map<std::string, shared_ptr<ProductShapeData> >::iterator it;
 	double volume_all_products = 0;
-
-	std::map<int, shared_ptr<ProductShapeInputData> >::iterator it;
+	shared_ptr<ProductShapeData> ifc_project_data;
+	
 	for (it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
 		//for (auto it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
 	{
 		// STEP entity id:
-		int entity_id = it->first;
+		std::string entity_id = it->first;
 
 		// shape data
-		shared_ptr<ProductShapeInputData>& shape_data = it->second;
+		shared_ptr<ProductShapeData>& shape_data = it->second;
+
+		weak_ptr<IfcObjectDefinition>& ifc_object_def_weak = shape_data->m_ifc_object_definition;
+		if (ifc_object_def_weak.expired())
+		{
+			continue;
+		}
+		shared_ptr<IfcObjectDefinition> ifc_object_def(ifc_object_def_weak);
+		if (dynamic_pointer_cast<IfcFeatureElementSubtraction>(ifc_object_def))
+		{
+			// geometry will be created in method subtractOpenings
+			continue;
+		}
 
 		// IfcProduct(abstract type)
-		shared_ptr<IfcProduct> ifc_product(shape_data->m_ifc_product);
+		shared_ptr<IfcProduct> ifc_product = dynamic_pointer_cast<IfcProduct>(ifc_object_def);
+		if (!ifc_product)
+		{
+			continue;
+		}
+
+		// check if this IFcProduct entity has geometric shapes
+		if (!ifc_product->m_Representation)
+		{
+			continue;
+		}
 
 		// filtering out IfcProduct of IfcSpace type
 		shared_ptr<IfcSpace> Ifc_Space = dynamic_pointer_cast<IfcSpace>(ifc_product);
@@ -384,35 +411,40 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 		std::wstring productLabel = (ifc_product->m_Name != NULL) ? ifc_product->m_Name->m_value : L"";
 		std::wstring productDescription = (ifc_product->m_Description != NULL)? ifc_product->m_Description->m_value : L"";
 		std::wstring productGuid, productIdentifier;
-		std::vector<std::pair<std::string, shared_ptr<IfcPPObject> > > vec_attributes;
+		std::vector<std::pair<std::string, shared_ptr<BuildingObject> > > vec_attributes;
 		std::string ifcAttributeTitle, ifcAttributeClassName;
 		ifc_product->getAttributes(vec_attributes);
 		for (size_t i_attr = 0; i_attr < vec_attributes.size(); i_attr++)
 		{
 			ifcAttributeTitle = vec_attributes[i_attr].first;
 
-			shared_ptr<IfcPPObject> ifcPpObj = vec_attributes[i_attr].second;
-			if (ifcPpObj == NULL)
+			shared_ptr<BuildingObject> buildingObject = vec_attributes[i_attr].second;
+			if (buildingObject == NULL)
 				continue;
 
-			ifcAttributeClassName = ifcPpObj->className();
+			ifcAttributeClassName = buildingObject->className();
 			if (ifcAttributeClassName.compare("IfcGloballyUniqueId") == 0)
-				productGuid = dynamic_pointer_cast<IfcGloballyUniqueId>(ifcPpObj)->m_value;
+				productGuid = dynamic_pointer_cast<IfcGloballyUniqueId>(buildingObject)->m_value;
 			else if (ifcAttributeClassName.compare("IfcIdentifier") == 0)
 				productIdentifier = dynamic_pointer_cast<IfcElement>(ifc_product)->m_Tag->m_value;
 		}
 
 		// for each IfcProduct, there can be mulitple geometric representation items:
-		std::vector<shared_ptr<ProductRepresentationData> >& vec_representations = shape_data->m_vec_representations;
+		std::vector<shared_ptr<RepresentationData> >& vec_representations = shape_data->m_vec_representations;
+		carve::math::Matrix transformMatrix =  shape_data->getTransform();
 		for (size_t i_representation = 0; i_representation < vec_representations.size(); ++i_representation)
 		{
-			shared_ptr<ProductRepresentationData>& representation_data = vec_representations[i_representation];
+			shared_ptr<RepresentationData>& representation_data = vec_representations[i_representation];
+			if (representation_data->m_ifc_representation.expired())
+			{
+				continue;
+			}
 
 			// a representation item can have multiple item shapes
-			std::vector<shared_ptr<ItemShapeInputData> >& vec_item_data = representation_data->m_vec_item_data;
+			std::vector<shared_ptr<ItemShapeData> >& vec_item_data = representation_data->m_vec_item_data;
 			for (size_t i_item = 0; i_item < vec_item_data.size(); ++i_item)
 			{
-				shared_ptr<ItemShapeInputData>& item_data = vec_item_data[i_item];
+				shared_ptr<ItemShapeData>& item_data = vec_item_data[i_item];
 
 				// appearance data for getting color
 				std::vector<shared_ptr<AppearanceData> > vec_items_appearances = item_data->m_vec_item_appearances;
@@ -511,11 +543,16 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 						polyhedron->vertexCount = verticesSorted.size();
 						polyhedron->vertices = new double[3 * polyhedron->vertexCount];
 						memset(polyhedron->vertices, 0x00, sizeof(double) * 3 * polyhedron->vertexCount);
+						carve::geom::vector<3> transformApplied;
 						for (size_t vIndex = 0; vIndex < polyhedron->vertexCount; vIndex++)
 						{
-							polyhedron->vertices[3 * vIndex] = verticesSorted[vIndex]->v.x;
+							transformApplied = transformMatrix * verticesSorted[vIndex]->v;
+							/*polyhedron->vertices[3 * vIndex] = verticesSorted[vIndex]->v.x;
 							polyhedron->vertices[3 * vIndex + 1] = verticesSorted[vIndex]->v.y;
-							polyhedron->vertices[3 * vIndex + 2] = verticesSorted[vIndex]->v.z;
+							polyhedron->vertices[3 * vIndex + 2] = verticesSorted[vIndex]->v.z;*/
+							polyhedron->vertices[3 * vIndex] = transformApplied.x;
+							polyhedron->vertices[3 * vIndex + 1] = transformApplied.y;
+							polyhedron->vertices[3 * vIndex + 2] = transformApplied.z;
 						}
 					}
 					////////////////////////
@@ -581,21 +618,26 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 						polyhedron->vertexCount = vertices.size();
 						polyhedron->vertices = new double[3 * polyhedron->vertexCount];
 						memset(polyhedron->vertices, 0x00, sizeof(double) * 3 * polyhedron->vertexCount);
+						carve::geom::vector<3> transformApplied;
 						for (size_t vIndex = 0; vIndex < polyhedron->vertexCount; vIndex++)
 						{
-							polyhedron->vertices[3 * vIndex] = vertices[vIndex]->v.x;
+							transformApplied = transformMatrix * vertices[vIndex]->v;
+							/*polyhedron->vertices[3 * vIndex] = vertices[vIndex]->v.x;
 							polyhedron->vertices[3 * vIndex + 1] = vertices[vIndex]->v.y;
-							polyhedron->vertices[3 * vIndex + 2] = vertices[vIndex]->v.z;
+							polyhedron->vertices[3 * vIndex + 2] = vertices[vIndex]->v.z;*/
+							polyhedron->vertices[3 * vIndex] = transformApplied.x;
+							polyhedron->vertices[3 * vIndex + 1] = transformApplied.y;
+							polyhedron->vertices[3 * vIndex + 2] = transformApplied.z;
 						}
 					}
 
 					// get representative color of a Polyhedron, if exist
 					if (vec_items_appearances.size() > 0)
 					{
-						polyhedron->color[0] = vec_items_appearances[0]->m_color_diffuse.x;
-						polyhedron->color[1] = vec_items_appearances[0]->m_color_diffuse.y;
-						polyhedron->color[2] = vec_items_appearances[0]->m_color_diffuse.z;
-						polyhedron->color[3] = vec_items_appearances[0]->m_color_diffuse.w;
+						polyhedron->color[0] = vec_items_appearances[0]->m_color_diffuse.m_r;
+						polyhedron->color[1] = vec_items_appearances[0]->m_color_diffuse.m_g;
+						polyhedron->color[2] = vec_items_appearances[0]->m_color_diffuse.m_b;
+						polyhedron->color[3] = vec_items_appearances[0]->m_color_diffuse.m_a;
 					}
 					else
 						memset(polyhedron->color, 0x00, sizeof(float) * 4);
@@ -616,7 +658,7 @@ bool IfcLoader::loadIfcFile(std::wstring& filePath)
 			}
 		}
 
-		if (this->bAttributesExtraction && checkIfPropertiesCanBeExtracted(ifc_product->m_entity_enum))
+		if (this->bAttributesExtraction && checkIfPropertiesCanBeExtracted(  std::string(ifc_product->className())  ))
 			loadObjectAttributes(ifc_product, objectPropertyRoot);
 	}
 
@@ -668,9 +710,9 @@ bool IfcLoader::loadOnlyPropertiesFromIfc(std::wstring& filePath)
 {
 	// initializing
 	shared_ptr<MessageWrapper> mw(new MessageWrapper());
-	shared_ptr<IfcPPModel> ifc_model(new IfcPPModel());
+	shared_ptr<BuildingModel> ifc_model(new BuildingModel());
 	shared_ptr<GeometryConverter> geometry_converter(new GeometryConverter(ifc_model));
-	shared_ptr<IfcPPReaderSTEP> reader(new IfcPPReaderSTEP());
+	shared_ptr<ReaderSTEP> reader(new ReaderSTEP());
 
 	reader->setMessageCallBack(mw.get(), &MessageWrapper::slotMessageWrapper);
 	geometry_converter->setMessageCallBack(mw.get(), &MessageWrapper::slotMessageWrapper);
@@ -678,26 +720,47 @@ bool IfcLoader::loadOnlyPropertiesFromIfc(std::wstring& filePath)
 	// loading
 	reader->loadModelFromFile(filePath, ifc_model);
 
-	// conversion raw data into geometries of OSG type
-	osg::ref_ptr<osg::Switch> model_switch = new osg::Switch();
-	geometry_converter->createGeometryOSG(model_switch);
-
 	// contains the VEF graph for each IfcProduct:
-	std::map<int, shared_ptr<ProductShapeInputData> >& map_vef_data = geometry_converter->getShapeInputData();
+	const double length_in_meter = geometry_converter->getBuildingModel()->getUnitConverter()->getLengthInMeterFactor();
+	geometry_converter->setCsgEps(carve::CARVE_EPSILON*length_in_meter);
+	geometry_converter->convertGeometry();
+	std::map<std::string, shared_ptr<ProductShapeData> >& map_vef_data = geometry_converter->getShapeInputData();
 	double volume_all_products = 0;
 
-	std::map<int, shared_ptr<ProductShapeInputData> >::iterator it;
+	std::map<std::string, shared_ptr<ProductShapeData> >::iterator it;
 	for (it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
 		//for (auto it = map_vef_data.begin(); it != map_vef_data.end(); ++it)
 	{
 		// STEP entity id:
-		int entity_id = it->first;
+		std::string entity_id = it->first;
 
 		// shape data
-		shared_ptr<ProductShapeInputData>& shape_data = it->second;
+		shared_ptr<ProductShapeData>& shape_data = it->second;
+
+		weak_ptr<IfcObjectDefinition>& ifc_object_def_weak = shape_data->m_ifc_object_definition;
+		if (ifc_object_def_weak.expired())
+		{
+			continue;
+		}
+		shared_ptr<IfcObjectDefinition> ifc_object_def(ifc_object_def_weak);
+		if (dynamic_pointer_cast<IfcFeatureElementSubtraction>(ifc_object_def))
+		{
+			// geometry will be created in method subtractOpenings
+			continue;
+		}
 
 		// IfcProduct(abstract type)
-		shared_ptr<IfcProduct> ifc_product(shape_data->m_ifc_product);
+		shared_ptr<IfcProduct> ifc_product = dynamic_pointer_cast<IfcProduct>(ifc_object_def);
+		if (!ifc_product)
+		{
+			continue;
+		}
+
+		// check if this IFcProduct entity has geometric shapes
+		if (!ifc_product->m_Representation)
+		{
+			continue;
+		}
 
 		// filtering out IfcProduct of IfcSpace type
 		shared_ptr<IfcSpace> Ifc_Space = dynamic_pointer_cast<IfcSpace>(ifc_product);
@@ -709,7 +772,7 @@ bool IfcLoader::loadOnlyPropertiesFromIfc(std::wstring& filePath)
 		if (site_elem != NULL)
 			continue;
 
-		if (!checkIfPropertiesCanBeExtracted(ifc_product->m_entity_enum))
+		if (!checkIfPropertiesCanBeExtracted(std::string(ifc_product->className())))
 			continue;
 
 		loadObjectAttributes(ifc_product, objectPropertyRoot);
@@ -858,7 +921,6 @@ void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Va
 	properties["guid"] = guid;
 
 	// element type
-	IfcPPEntityEnum ppEnum = ifcProduct->m_entity_enum;
 	std::string elemType1(ifcProduct->className());
 	properties["entityType"] = elemType1;
 	properties["propertySets"] = Json::Value(Json::arrayValue);
@@ -949,14 +1011,11 @@ void IfcLoader::loadObjectAttributes(shared_ptr<IfcProduct> ifcProduct, Json::Va
 	root["objects"].append(properties);
 }
 
-bool IfcLoader::checkIfPropertiesCanBeExtracted(IfcPPEntityEnum ppEnum)
+bool IfcLoader::checkIfPropertiesCanBeExtracted(std::string className)
 {
-	switch (ppEnum)
-	{
-	case IfcPPEntityEnum::IFCANNOTATION:
-	case IfcPPEntityEnum::IFCANNOTATIONFILLAREA:
+	if (className == std::string("IfcAnnotation") || className == std::string("IfcAnnotationFillArea"))
 		return false;
-	}
+
 	return true;
 }
 

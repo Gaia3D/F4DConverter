@@ -105,14 +105,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;IFCLOADER_DLL_EXPORTS;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)include/IfcLoader;$(SolutionDir)external/boost_1_62_0;$(SolutionDir)external/ifcplusplus/include/Carve;$(SolutionDir)external/ifcplusplus/include/OpenSceneGraph;$(SolutionDir)external/ifcplusplus/include/IfcPlusPlus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include/IfcLoader;$(SolutionDir)external/boost_1_68_0;$(SolutionDir)external/ifcplusplus/include/carve;$(SolutionDir)external/ifcplusplus/include/IfcPlusPlus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(SolutionDir)bin/lib/$(TargetName).lib</ImportLibrary>
-      <AdditionalDependencies>$(SolutionDir)external/ifcplusplus/lib/CarveD.lib;$(SolutionDir)external/ifcplusplus/lib/IfcPlusPlusd.lib;$(SolutionDir)external/ifcplusplus/lib/OpenThreadsd.lib;$(SolutionDir)external/ifcplusplus/lib/osgd.lib;$(SolutionDir)external/ifcplusplus/lib/osgUtild.lib;$(SolutionDir)external/ifcplusplus/lib/osgDBd.lib;$(SolutionDir)external/ifcplusplus/lib/osgAnimationd.lib;$(SolutionDir)external/ifcplusplus/lib/osgFXd.lib;$(SolutionDir)external/ifcplusplus/lib/osgGAd.lib;$(SolutionDir)external/ifcplusplus/lib/osgTextd.lib;$(SolutionDir)external/ifcplusplus/lib/osgTerraind.lib;$(SolutionDir)external/ifcplusplus/lib/osgVolumed.lib;$(SolutionDir)external/ifcplusplus/lib/osgParticled.lib;$(SolutionDir)external/ifcplusplus/lib/osgShadowd.lib;$(SolutionDir)external/ifcplusplus/lib/osgUId.lib;$(SolutionDir)external/ifcplusplus/lib/osgSimd.lib;$(SolutionDir)external/ifcplusplus/lib/osgWidgetd.lib;$(SolutionDir)external/ifcplusplus/lib/osgViewerd.lib;$(SolutionDir)external/ifcplusplus/lib/osgPresentationd.lib;$(SolutionDir)external/ifcplusplus/lib/osgManipulatord.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external/ifcplusplus/lib/Carved.lib;$(SolutionDir)external/ifcplusplus/lib/IfcPlusPlusd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
@@ -143,7 +143,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;IFCLOADER_DLL_EXPORTS;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)include/IfcLoader;$(SolutionDir)external/boost_1_62_0;$(SolutionDir)external/ifcplusplus/include/Carve;$(SolutionDir)external/ifcplusplus/include/OpenSceneGraph;$(SolutionDir)external/ifcplusplus/include/IfcPlusPlus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include/IfcLoader;$(SolutionDir)external/boost_1_68_0;$(SolutionDir)external/ifcplusplus/include/carve;$(SolutionDir)external/ifcplusplus/include/IfcPlusPlus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
@@ -153,7 +153,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(SolutionDir)bin/lib/$(TargetName).lib</ImportLibrary>
-      <AdditionalDependencies>$(SolutionDir)external/ifcplusplus/lib/IfcPlusPlus.lib;$(SolutionDir)external/ifcplusplus/lib/Carve.lib;$(SolutionDir)external/ifcplusplus/lib/OpenThreads.lib;$(SolutionDir)external/ifcplusplus/lib/osg.lib;$(SolutionDir)external/ifcplusplus/lib/osgUtil.lib;$(SolutionDir)external/ifcplusplus/lib/osgDB.lib;$(SolutionDir)external/ifcplusplus/lib/osgAnimation.lib;$(SolutionDir)external/ifcplusplus/lib/osgFX.lib;$(SolutionDir)external/ifcplusplus/lib/osgGA.lib;$(SolutionDir)external/ifcplusplus/lib/osgText.lib;$(SolutionDir)external/ifcplusplus/lib/osgTerrain.lib;$(SolutionDir)external/ifcplusplus/lib/osgVolume.lib;$(SolutionDir)external/ifcplusplus/lib/osgParticle.lib;$(SolutionDir)external/ifcplusplus/lib/osgShadow.lib;$(SolutionDir)external/ifcplusplus/lib/osgUI.lib;$(SolutionDir)external/ifcplusplus/lib/osgSim.lib;$(SolutionDir)external/ifcplusplus/lib/osgWidget.lib;$(SolutionDir)external/ifcplusplus/lib/osgViewer.lib;$(SolutionDir)external/ifcplusplus/lib/osgPresentation.lib;$(SolutionDir)external/ifcplusplus/lib/osgManipulator.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external/ifcplusplus/lib/IfcPlusPlus.lib;$(SolutionDir)external/ifcplusplus/lib/carve.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <ProjectReference>
