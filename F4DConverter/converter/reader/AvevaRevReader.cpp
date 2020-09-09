@@ -735,6 +735,8 @@ bool readObstInfo(FILE* file, RevNode* node)
 		return false;// read dummy line
 
 	readingMode = 0;
+
+	return true;
 }
 
 void extractGeometryInformation(RevNode* node, std::vector<gaia3d::TrianglePolyhedron*>& container)
